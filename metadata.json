@@ -1,0 +1,8 @@
+{
+  "name": "Uganda Districts Agricultural Weather Predictor",
+  "description": "An interactive meteorological forecaster and Gemini AI agricultural predictor for Ugandan districts, featuring visual weather charts, soil metrics, and custom farming advisories.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
