@@ -116,7 +116,7 @@ Based on these exact conditions, return a JSON response summarizing the agricult
 
     // Configure schema-enforced structured JSON output from Gemini
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         systemInstruction,
@@ -230,7 +230,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     }));
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.0-flash',
       contents: contents,
       config: {
         systemInstruction,
