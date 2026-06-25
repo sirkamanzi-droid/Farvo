@@ -171,7 +171,7 @@ export const DISTRICTS: District[] = [
   longitude: 29.9419,
   mainCrops: ['Coffee', 'Matooke (Bananas)', 'Beans', 'Maize'],
   description: 'A fertile highland district famous for coffee, bananas, and mixed crop farming. Rukungiri benefits from favorable rainfall and productive agricultural land.'
-}
+  },
   {
     id: 'kabale',
     name: 'Kabale',
