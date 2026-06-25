@@ -253,22 +253,4 @@ export const MAJOR_CROPS = [
   'Sunflower',
   'Vanilla',
   'Vegetables'
-  {
-    id: 'ntungamo',
-    name: 'Ntungamo',
-    region: 'Western',
-    latitude: -0.8779,
-    longitude: 30.2649,
-    mainCrops: ['Coffee', 'Matooke (Bananas)', 'Beans', 'Maize', 'Irish Potatoes'],
-    description: 'A highland district in southwestern Uganda. Known for Arabica coffee and Matooke plantations on fertile volcanic soils.'
-  },
-  {
-    id: 'rukungiri',
-    name: 'Rukungiri',
-    region: 'Western',
-    latitude: -0.8417,
-    longitude: 29.9444,
-    mainCrops: ['Coffee', 'Tea', 'Matooke (Bananas)', 'Beans', 'Vanilla'],
-    description: 'A southwestern highland district bordering DRC. Rich volcanic soils support premium coffee, tea estates, and vanilla cultivation.'
-  },
 ];
