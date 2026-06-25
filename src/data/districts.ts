@@ -154,7 +154,6 @@ export const DISTRICTS: District[] = [
     mainCrops: ['Matooke (Bananas)', 'Dairy Cattle', 'Coffee', 'Beans'],
     description: 'The "land of milk and honey." Mbarara is Uganda\'s primary dairy hub and a top-tier supplier of fresh Matooke (cooking bananas).'
   },
-  ,
 {
   id: 'ntungamo',
   name: 'Ntungamo',
@@ -163,7 +162,7 @@ export const DISTRICTS: District[] = [
   longitude: 30.2642,
   mainCrops: ['Coffee', 'Matooke (Bananas)', 'Beans', 'Dairy Cattle'],
   description: 'A major agricultural district known for coffee production, dairy farming, and banana cultivation. Ntungamo plays an important role in Uganda’s food supply and export agriculture.'
-},
+}
 {
   id: 'rukungiri',
   name: 'Rukungiri',
@@ -254,4 +253,22 @@ export const MAJOR_CROPS = [
   'Sunflower',
   'Vanilla',
   'Vegetables'
+  {
+    id: 'ntungamo',
+    name: 'Ntungamo',
+    region: 'Western',
+    latitude: -0.8779,
+    longitude: 30.2649,
+    mainCrops: ['Coffee', 'Matooke (Bananas)', 'Beans', 'Maize', 'Irish Potatoes'],
+    description: 'A highland district in southwestern Uganda. Known for Arabica coffee and Matooke plantations on fertile volcanic soils.'
+  },
+  {
+    id: 'rukungiri',
+    name: 'Rukungiri',
+    region: 'Western',
+    latitude: -0.8417,
+    longitude: 29.9444,
+    mainCrops: ['Coffee', 'Tea', 'Matooke (Bananas)', 'Beans', 'Vanilla'],
+    description: 'A southwestern highland district bordering DRC. Rich volcanic soils support premium coffee, tea estates, and vanilla cultivation.'
+  },
 ];
