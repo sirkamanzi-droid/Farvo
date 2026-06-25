@@ -154,6 +154,25 @@ export const DISTRICTS: District[] = [
     mainCrops: ['Matooke (Bananas)', 'Dairy Cattle', 'Coffee', 'Beans'],
     description: 'The "land of milk and honey." Mbarara is Uganda\'s primary dairy hub and a top-tier supplier of fresh Matooke (cooking bananas).'
   },
+  ,
+{
+  id: 'ntungamo',
+  name: 'Ntungamo',
+  region: 'Western',
+  latitude: -0.8794,
+  longitude: 30.2642,
+  mainCrops: ['Coffee', 'Matooke (Bananas)', 'Beans', 'Dairy Cattle'],
+  description: 'A major agricultural district known for coffee production, dairy farming, and banana cultivation. Ntungamo plays an important role in Uganda’s food supply and export agriculture.'
+},
+{
+  id: 'rukungiri',
+  name: 'Rukungiri',
+  region: 'Western',
+  latitude: -0.8411,
+  longitude: 29.9419,
+  mainCrops: ['Coffee', 'Matooke (Bananas)', 'Beans', 'Maize'],
+  description: 'A fertile highland district famous for coffee, bananas, and mixed crop farming. Rukungiri benefits from favorable rainfall and productive agricultural land.'
+}
   {
     id: 'kabale',
     name: 'Kabale',
