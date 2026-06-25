@@ -62,11 +62,11 @@ export default function AIAdvisor({ weatherData, district, cropName }: AIAdvisor
       const q = chatInput.toLowerCase();
       if (q.includes('plant') || q.includes('when')) {
         reply = p ? `For ${cropName} in ${district.name}: ${p.cropAdvisories[0]?.plantingAdvisory}` : `Please click "Get AI Farming Advice" first to get your personalised planting advice for ${cropName}.`;
-      } else if (q.includes('pest') || q.includes('disease') || q.includes('spray')) {
+      } else if (q.includes('pest') || q.includes('disease') || q.includes('spray') || q.includes('yellow') || q.includes('wilt') || q.includes('rot') || q.includes('spot') || q.includes('dying') || q.includes('leaves') || q.includes('fungus')) {
         reply = p ? `Pest & Disease outlook: ${p.cropAdvisories[0]?.pestDiseaseAdvisory}` : `Get your farming advice first, then I can give you specific pest alerts for ${cropName}.`;
       } else if (q.includes('harvest') || q.includes('pick') || q.includes('cut')) {
         reply = p ? `Harvest conditions: ${p.cropAdvisories[0]?.harvestAdvisory}` : `Click "Get AI Farming Advice" first for harvest timing advice.`;
-      } else if (q.includes('water') || q.includes('irrigat') || q.includes('rain') || q.includes('drain')) {
+      } else if (q.includes('water') || q.includes('irrigat') || q.includes('drain') || q.includes('flood') || q.includes('waterlog') || q.includes('channel')) {
         reply = p ? `Water management: ${p.cropAdvisories[0]?.irrigationGuidance}` : `Get your farming advice first for water management guidance.`;
       } else if (q.includes('fertiliz') || q.includes('weed') || q.includes('grow')) {
         reply = p ? `Crop care: ${p.cropAdvisories[0]?.growthAdvisory}` : `Click "Get AI Farming Advice" first for crop care tips.`;
