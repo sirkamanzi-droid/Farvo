@@ -16,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const { current, daily } = weatherData;
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash-8b',
+      model: 'gemini-1.5-flash',
       contents: `Analyze weather for ${districtName}, crop: ${cropName}. Current: Temp ${current.temperature}°C, Rain ${current.rainfall}mm, Humidity ${current.relativeHumidity}%, Soil Temp ${current.soilTemperature}°C, Soil Moisture ${current.soilMoisture}. 7-Day forecast: ${JSON.stringify(daily.slice(0,3))}`,
       config: {
         systemInstruction: 'You are a professional agricultural meteorologist in Uganda. Respond ONLY with valid JSON, no markdown, no explanation.',
