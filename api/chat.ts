@@ -9,7 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!messages || !Array.isArray(messages)) { res.status(400).json({ error: 'Messages array is required.' }); return; }
   const contents = messages.map((m: any) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
   const response = await ai.models.generateContent({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-3.5-flash',
     contents,
     config: {
       systemInstruction: `You are Kato, a friendly Ugandan AI Agronomist helping smallholder farmers in ${districtName || 'Uganda'} with ${cropName || 'general farming'}. Be practical and use local terms like Matooke, Simsim, G-nuts.`,
