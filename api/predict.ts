@@ -9,7 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!districtName || !cropName || !weatherData) { res.status(400).json({ error: 'Missing required parameters.' }); return; }
   const { current, daily } = weatherData;
   const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash-8b',
     contents: `Analyze the weather data and provide custom farming predictions for ${districtName} focusing on ${cropName}.\n\nCurrent: Temp ${current.temperature}°C, Rain ${current.rainfall}mm, Humidity ${current.relativeHumidity}%, Wind ${current.windSpeed}km/h, Soil Temp ${current.soilTemperature}°C, Soil Moisture ${current.soilMoisture}, ET ${current.evapotranspiration}mm\n\n7-Day: ${JSON.stringify(daily)}`,
     config: {
       systemInstruction: 'You are a professional agricultural meteorologist in Uganda. Analyze weather for smallholder farmers.',
