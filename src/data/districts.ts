@@ -162,7 +162,7 @@ export const DISTRICTS: District[] = [
   longitude: 30.2642,
   mainCrops: ['Coffee', 'Matooke (Bananas)', 'Beans', 'Dairy Cattle'],
   description: 'A major agricultural district known for coffee production, dairy farming, and banana cultivation. Ntungamo plays an important role in Uganda’s food supply and export agriculture.'
-}
+},
 {
   id: 'rukungiri',
   name: 'Rukungiri',
@@ -209,11 +209,11 @@ export const DISTRICTS: District[] = [
     description: 'In the extreme southwest under Mount Muhabura. The volcanic soils produce exceptional Irish potatoes and high-grade climbing beans.'
   },
   {
-    id: 'bundibugyo',
-    name: 'Bundibugyo',
+    id: 'ntugamo',
+    name: 'Ntugamo',
     region: 'Western',
-    latitude: 0.7078,
-    longitude: 30.0169,
+    latitude: 0.88,
+    longitude: 30.26528,
     mainCrops: ['Cocoa Beans', 'Vanilla', 'Coffee', 'Palm Oil', 'Bananas'],
     description: 'Nestled on the western side of the Rwenzoris bordering DRC. It produces over 70% of Uganda\'s exported cocoa beans due to its warm, humid forest climate.'
   },
