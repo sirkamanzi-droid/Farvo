@@ -41,7 +41,7 @@ export default function App() {
   }, [selectedDistrict.id]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans" id="app-root">
+    <div className="min-h-screen bg-[#F5F0E8] flex flex-col font-sans" id="app-root">
       {/* Premium Agriculture Top Navigation Header */}
       <header className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white shadow-md shrink-0" id="app-header">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -59,9 +59,9 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2 text-xs bg-emerald-900/50 backdrop-blur-sm border border-emerald-500/20 px-3 py-1.5 rounded-full font-semibold">
+          <div className="flex items-center gap-2 text-xs bg-[#12342C]/50 backdrop-blur-sm border border-emerald-500/20 px-3 py-1.5 rounded-full font-semibold">
             <CloudRain className="h-4 w-4 text-emerald-300" />
-            <span className="text-emerald-200"></span>
+            <span className="text-[#D8E7DF]"></span>
           </div>
         </div>
       </header>
@@ -75,7 +75,7 @@ export default function App() {
               <Leaf className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800 text-sm">Farvo</h3>
+              <h3 className="font-bold text-[#24332E] text-sm">Farvo</h3>
               <p className="text-xs text-slate-600 leading-relaxed mt-0.5">
                 Providing Ugandan farmers with precise meteorology data (temperature, rainfall probabilities, soil heat indices, moisture ratios, and evapotranspiration) powered by real-time meteorological servers.
               </p>
@@ -101,7 +101,7 @@ export default function App() {
             {loadingWeather && (
               <div className="bg-white rounded-2xl shadow-md border border-emerald-100 p-12 flex flex-col items-center justify-center text-center flex-1 min-h-[400px]">
                 <Loader2 className="h-10 w-10 text-emerald-600 animate-spin mb-4" />
-                <h4 className="font-bold text-slate-800 text-base">Fetching Meteorological Datasets...</h4>
+                <h4 className="font-bold text-[#24332E] text-base">Fetching Meteorological Datasets...</h4>
                 <p className="text-xs text-slate-400 mt-1 max-w-xs">
                   Downloading current air pressure, soil heat metrics, and 7-day forecast figures for {selectedDistrict.name}...
                 </p>
