@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+/* FARVO DESIGN SYSTEM */
+:root {
+  --farvo-cream: #F5F0E8;
+  --farvo-green: #173F35;
+  --farvo-green-light: #2F5D50;
+  --farvo-text: #24332E;
+  --farvo-muted: #6F7B75;
+  --farvo-card: #FBF8F2;
+  --farvo-border: #DED7CC;
+}
+
+body {
+  background: var(--farvo-cream);
+  color: var(--farvo-text);
+}
+
+h1, h2, h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.farvo-card {
+  background: var(--farvo-card);
+  border: 1px solid var(--farvo-border);
+  border-radius: 18px;
+}
+
+.farvo-green {
+  background: var(--farvo-green);
+  color: white;
+}
+
