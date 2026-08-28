@@ -54,14 +54,14 @@ export default function App() {
                 Uganda Districts Weather Predictor
               </h1>
               <p className="text-xs text-emerald-100/90 font-medium">
-                Smart Meteorological Forecasting & AI Agronomic Advice for Smallholder Farmers
+                Your crop. Your district. Your advice.
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2 text-xs bg-emerald-900/50 backdrop-blur-sm border border-emerald-500/20 px-3 py-1.5 rounded-full font-semibold">
             <CloudRain className="h-4 w-4 text-emerald-300" />
-            <span className="text-emerald-200">Equatorial Agricultural Advisor</span>
+            <span className="text-emerald-200"></span>
           </div>
         </div>
       </header>
@@ -75,7 +75,7 @@ export default function App() {
               <Leaf className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800 text-sm">Welcome to Uganda's Digital Agronomy Hub</h3>
+              <h3 className="font-bold text-slate-800 text-sm">Farvo</h3>
               <p className="text-xs text-slate-600 leading-relaxed mt-0.5">
                 Providing Ugandan farmers with precise meteorology data (temperature, rainfall probabilities, soil heat indices, moisture ratios, and evapotranspiration) powered by real-time meteorological servers.
               </p>
@@ -153,7 +153,7 @@ export default function App() {
           <p>© 2026 Uganda Districts Agricultural Weather Predictor. All rights reserved.</p>
           <p className="flex items-center gap-1.5 text-slate-500 font-medium">
             <Leaf className="h-3.5 w-3.5 text-emerald-600" />
-            Supporting Ugandan smallholders with resilient climate tech
+            © 2026 Farvo. Kampala, Uganda.
           </p>
         </div>
       </footer>
