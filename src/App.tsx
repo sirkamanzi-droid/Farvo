@@ -46,7 +46,7 @@ export default function App() {
       <header className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white shadow-md shrink-0" id="app-header">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-white/10 p-2.5 rounded-2xl border border-white/10 shadow-inner">
+            <div className="bg-[#FBF8F2]/10 p-2.5 rounded-2xl border border-white/10 shadow-inner">
               <Sprout className="h-7 w-7 text-emerald-300 animate-pulse" />
             </div>
             <div>
@@ -59,7 +59,7 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2 text-xs bg-[#12342C]/50 backdrop-blur-sm border border-emerald-500/20 px-3 py-1.5 rounded-full font-semibold">
+          <div className="flex items-center gap-2 text-xs bg-[#12342C]/50 backdrop-blur-sm border border-[#173F35]/20 px-3 py-1.5 rounded-full font-semibold">
             <CloudRain className="h-4 w-4 text-emerald-300" />
             <span className="text-[#D8E7DF]"></span>
           </div>
@@ -76,7 +76,7 @@ export default function App() {
             </div>
             <div>
               <h3 className="font-bold text-[#24332E] text-sm">Farvo</h3>
-              <p className="text-xs text-slate-600 leading-relaxed mt-0.5">
+              <p className="text-xs text-[#6F7B75] leading-relaxed mt-0.5">
                 Providing Ugandan farmers with precise meteorology data (temperature, rainfall probabilities, soil heat indices, moisture ratios, and evapotranspiration) powered by real-time meteorological servers.
               </p>
             </div>
@@ -99,7 +99,7 @@ export default function App() {
           <div className="lg:col-span-8 flex flex-col gap-6" id="right-content">
             {/* Loading Weather State */}
             {loadingWeather && (
-              <div className="bg-white rounded-2xl shadow-md border border-emerald-100 p-12 flex flex-col items-center justify-center text-center flex-1 min-h-[400px]">
+              <div className="bg-[#FBF8F2] rounded-2xl shadow-md border border-emerald-100 p-12 flex flex-col items-center justify-center text-center flex-1 min-h-[400px]">
                 <Loader2 className="h-10 w-10 text-emerald-600 animate-spin mb-4" />
                 <h4 className="font-bold text-[#24332E] text-base">Fetching Meteorological Datasets...</h4>
                 <p className="text-xs text-slate-400 mt-1 max-w-xs">
@@ -110,7 +110,7 @@ export default function App() {
 
             {/* Error Loading Weather State */}
             {weatherError && !loadingWeather && (
-              <div className="bg-white rounded-2xl shadow-md border border-rose-100 p-12 flex flex-col items-center justify-center text-center flex-1 min-h-[400px]">
+              <div className="bg-[#FBF8F2] rounded-2xl shadow-md border border-rose-100 p-12 flex flex-col items-center justify-center text-center flex-1 min-h-[400px]">
                 <AlertCircle className="h-12 w-12 text-rose-500 mb-4" />
                 <h4 className="font-bold text-rose-800 text-base">Weather Synchronization Failed</h4>
                 <p className="text-xs text-rose-600 mt-1 max-w-sm mx-auto">

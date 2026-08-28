@@ -38,7 +38,7 @@ export default function DistrictSelector({
   ];
 
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-emerald-100 p-6 flex flex-col h-full" id="district-selector-container">
+    <div className="bg-[#FBF8F2] rounded-2xl shadow-md border border-emerald-100 p-6 flex flex-col h-full" id="district-selector-container">
       {/* Title */}
       <div className="mb-5">
         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -60,7 +60,7 @@ export default function DistrictSelector({
             className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
               selectedRegion === region
                 ? 'bg-emerald-600 text-white shadow-sm'
-                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                : 'bg-[#EFE8DC] text-emerald-700 hover:bg-emerald-100'
             }`}
           >
             {region}
@@ -76,7 +76,7 @@ export default function DistrictSelector({
           placeholder="Search by district name or crop..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+          className="w-full pl-9 pr-4 py-2 border border-[#DED7CC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
         />
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
       </div>
@@ -106,14 +106,14 @@ export default function DistrictSelector({
                 }}
                 className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
                   isSelected
-                    ? 'border-emerald-600 bg-emerald-50/50 shadow-sm'
-                    : 'border-slate-100 bg-slate-50 hover:bg-slate-100/70 hover:border-slate-200'
+                    ? 'border-emerald-600 bg-[#EFE8DC]/50 shadow-sm'
+                    : 'border-slate-100 bg-slate-50 hover:bg-slate-100/70 hover:border-[#DED7CC]'
                 }`}
               >
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-slate-800 text-sm truncate">{district.name}</span>
-                    <span className="text-[10px] font-medium bg-white text-slate-500 px-1.5 py-0.5 rounded border border-slate-100">
+                    <span className="text-[10px] font-medium bg-[#FBF8F2] text-slate-500 px-1.5 py-0.5 rounded border border-slate-100">
                       {district.region}
                     </span>
                   </div>
@@ -162,7 +162,7 @@ export default function DistrictSelector({
                   className={`text-xs px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 ${
                     isCropSelected
                       ? 'bg-amber-500 text-white border-amber-500 font-medium'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      : 'bg-slate-50 border-[#DED7CC] text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   <Star className={`h-3 w-3 ${isCropSelected ? 'fill-white' : 'text-slate-400'}`} />
@@ -182,7 +182,7 @@ export default function DistrictSelector({
             id="crop-select"
             value={selectedCrop}
             onChange={(e) => setSelectedCrop(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white text-slate-700"
+            className="w-full px-3 py-2 border border-[#DED7CC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-[#FBF8F2] text-[#24332E]"
           >
             {MAJOR_CROPS.map((crop) => (
               <option key={crop} value={crop}>
