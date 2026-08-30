@@ -44,6 +44,7 @@ export default function App() {
     <div className="min-h-screen bg-[#F5F0E8] flex flex-col font-sans" id="app-root">
       {/* Premium Agriculture Top Navigation Header */}
       <header className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white shadow-md shrink-0" id="app-header">
+        <a href="https://farvosite.vercel.app" className="inline-flex items-center gap-2 text-xs md:text-sm font-medium text-[#D8E7DF] hover:text-white bg-[#12342C] hover:bg-[#0D2620] px-3 py-1.5 rounded-lg border border-[#2F5D50] transition-colors mb-4 md:mb-0">← Back to Farvo</a>
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="bg-[#FBF8F2]/10 p-2.5 rounded-2xl border border-white/10 shadow-inner">
