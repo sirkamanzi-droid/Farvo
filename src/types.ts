@@ -17,9 +17,9 @@ export interface CurrentWeather {
   windSpeed: number;
   windDirection: number;
   weatherCode: number;
-  soilTemperature: number; // in Celsius (at 10cm depth if possible)
-  soilMoisture: number; // in m³/m³ (or index)
-  evapotranspiration: number; // in mm
+  soilTemperature: number;
+  soilMoisture: number;
+  evapotranspiration: number;
   uvIndex?: number;
   time: string;
 }
@@ -28,8 +28,8 @@ export interface DailyForecast {
   date: string;
   maxTemp: number;
   minTemp: number;
-  precipitation: number; // in mm
-  precipitationProbability: number; // in %
+  precipitation: number;
+  precipitationProbability: number;
   windSpeedMax: number;
   weatherCode: number;
   soilTempAvg: number;
@@ -45,10 +45,10 @@ export interface WeatherData {
 
 export interface CropAdvisory {
   cropName: string;
-  plantingScore: number; // 0 - 100
+  plantingScore: number;
   plantingAdvisory: string;
   growthAdvisory: string;
-  harvestScore: number; // 0 - 100
+  harvestScore: number;
   harvestAdvisory: string;
   pestDiseaseRisk: 'Low' | 'Medium' | 'High';
   pestDiseaseAdvisory: string;
@@ -69,4 +69,11 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+}
+
+export interface Farm {
+  id: string;
+  label: string;
+  district: District;
+  crop: string;
 }
