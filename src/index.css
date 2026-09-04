@@ -1,33 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
-/* FARVO DESIGN SYSTEM */
+@theme {
+  --color-leaf-700: #2F5226;
+  --color-leaf-600: #3F6B33;
+  --color-leaf-400: #6B9A5C;
+  --color-leaf-100: #E3ECDE;
+  --color-clay-600: #B5651D;
+  --color-clay-400: #CE8347;
+  --color-gold-500: #D9A441;
+  --color-gold-100: #F7E9C9;
+  --color-soil-900: #2B1B12;
+  --color-soil-700: #5C4030;
+  --color-soil-400: #8A6E5A;
+  --color-parchment-200: #E8DFCC;
+  --color-parchment-100: #F1EBDC;
+  --color-parchment-50: #F8F4EB;
+}
+
 :root {
-  --farvo-cream: #F5F0E8;
-  --farvo-green: #173F35;
-  --farvo-green-light: #2F5D50;
-  --farvo-text: #24332E;
-  --farvo-muted: #6F7B75;
-  --farvo-card: #FBF8F2;
-  --farvo-border: #DED7CC;
+  --farvo-cream: #F1EBDC;
+  --farvo-green: #2F5226;
+  --farvo-green-light: #3F6B33;
+  --farvo-text: #2B1B12;
+  --farvo-muted: #5C4030;
+  --farvo-card: #F8F4EB;
+  --farvo-border: #D8C9B0;
 }
 
 body {
   background: var(--farvo-cream);
   color: var(--farvo-text);
+  font-family: 'Work Sans', sans-serif;
 }
 
 h1, h2, h3 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Fraunces', Georgia, serif;
 }
 
-.farvo-card {
-  background: var(--farvo-card);
-  border: 1px solid var(--farvo-border);
-  border-radius: 18px;
+.furrow-divider {
+  height: 5px;
+  background-image: repeating-linear-gradient(90deg, #B5651D 0px, #B5651D 9px, transparent 9px, transparent 15px);
+  opacity: 0.5;
+  border-radius: 3px;
 }
-
-.farvo-green {
-  background: var(--farvo-green);
-  color: white;
-}
-
