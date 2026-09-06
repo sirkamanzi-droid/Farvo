@@ -19,7 +19,7 @@ interface SkyHeroProps {
 export default function SkyHero({ farms, activeFarm, onSelectFarm, onAddFarm, onOpenDistrictPicker, onSelectCrop, weatherCode, temperature, wasGeoDetected }: SkyHeroProps) {
   const sky = getSkyTheme(weatherCode);
   return (
-    <div className="relative overflow-hidden rounded-3xl px-4 pt-4 pb-5" style={{ background: sky.gradient }}>
+    <div className="relative overflow-hidden rounded-b-3xl px-4 pt-6 pb-5" style={{ background: sky.gradient }}>
       <div className="absolute rounded-full" style={{ top: 34, right: 36, width: 80, height: 36, borderRadius: 20, background: sky.cloudColor }} />
       <div className="absolute rounded-full" style={{ top: 24, right: 52, width: 46, height: 46, background: sky.cloudColor }} />
       <div className="absolute" style={{ top: 70, left: 16, width: 56, height: 24, borderRadius: 16, background: sky.cloudColor, opacity: 0.7 }} />

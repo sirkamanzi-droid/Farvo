@@ -110,7 +110,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-parchment-100 flex flex-col font-sans pb-20" id="app-root">
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 pt-4 sm:px-6 lg:px-8 flex flex-col gap-6" id="app-main">
+      <main className="flex-1 max-w-7xl w-full mx-auto flex flex-col gap-6" id="app-main">
         {activeTab === 'weather' && (
           <>
             <SkyHero
@@ -124,6 +124,7 @@ export default function App() {
               temperature={weatherData?.current.temperature ?? 0}
               wasGeoDetected={locationStatus === 'success' && locationDetected}
             />
+            <div className="px-4 sm:px-6 lg:px-8 flex flex-col gap-6">
             {loadingWeather && (
               <div className="bg-parchment-50 rounded-2xl shadow-md border border-leaf-100 p-12 flex flex-col items-center justify-center text-center min-h-[300px]">
                 <Loader2 className="h-10 w-10 text-leaf-600 animate-spin mb-4" />
@@ -147,12 +148,17 @@ export default function App() {
                 <AIAdvisor weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} />
               </div>
             )}
+            </div>
           </>
         )}
-        {activeTab === 'disease' && <ComingSoon icon={Leaf} title="Disease Detection" description="Send a photo of a sick crop and get an instant diagnosis. This feature is on its way." onBack={() => setActiveTab('weather')} />}
-        {activeTab === 'livestock' && <ComingSoon icon={Beef} title="Livestock Advisor" description="Care guidance for cattle, goats, and poultry — coming soon." onBack={() => setActiveTab('weather')} />}
-        {activeTab === 'records' && <ComingSoon icon={Wallet} title="Financial Records" description="Track income and expenses across your farms — coming soon." onBack={() => setActiveTab('weather')} />}
-        {activeTab === 'account' && <ComingSoon icon={User} title="Account" description="Sign in to sync your farms across devices — coming soon." onBack={() => setActiveTab('weather')} />}
+        {activeTab !== 'weather' && (
+          <div className="px-4 sm:px-6 lg:px-8">
+            {activeTab === 'disease' && <ComingSoon icon={Leaf} title="Disease Detection" description="Send a photo of a sick crop and get an instant diagnosis. This feature is on its way." onBack={() => setActiveTab('weather')} />}
+            {activeTab === 'livestock' && <ComingSoon icon={Beef} title="Livestock Advisor" description="Care guidance for cattle, goats, and poultry — coming soon." onBack={() => setActiveTab('weather')} />}
+            {activeTab === 'records' && <ComingSoon icon={Wallet} title="Financial Records" description="Track income and expenses across your farms — coming soon." onBack={() => setActiveTab('weather')} />}
+            {activeTab === 'account' && <ComingSoon icon={User} title="Account" description="Sign in to sync your farms across devices — coming soon." onBack={() => setActiveTab('weather')} />}
+          </div>
+        )}
       </main>
       <footer className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 text-xs text-soil-400 flex items-center gap-1.5">
         <Leaf className="h-3.5 w-3.5 text-leaf-400" /> © 2026 Farvo. Kampala, Uganda.
