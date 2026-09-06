@@ -32,9 +32,7 @@ export default function AIAdvisor({ weatherData, district, cropName }: AIAdvisor
     }]);
   }, [district.id, cropName]);
 
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, sendingChat]);
+  // Scroll only happens explicitly inside handleSendChat, not here.
 
   function fetchPrediction() {
     setLoading(true);
