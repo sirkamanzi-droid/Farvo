@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { WeatherData, District } from '../types';
-import { Thermometer, Droplets, Wind, Waves, Sun, Cloud, CloudSun, CloudFog, CloudDrizzle, CloudRain, CloudLightning, Gauge, Compass } from 'lucide-react';
+import { Thermometer, Droplets, Wind, Waves, Sun, Cloud, CloudSun, CloudFog, CloudDrizzle, CloudRain, CloudLightning, Gauge, Compass, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface WeatherDashboardProps {
   weatherData: WeatherData;
@@ -30,39 +30,54 @@ function getSoilMoistureStatus(moisture: number) {
 }
 
 export default function WeatherDashboard({ weatherData, district }: WeatherDashboardProps) {
+  const [showMore, setShowMore] = useState(false);
   const { current, daily } = weatherData;
   const soilMoistureStatus = getSoilMoistureStatus(current.soilMoisture);
 
   return (
-    <div className="bg-parchment-50 rounded-2xl shadow-md border border-leaf-100 p-6 flex flex-col gap-6" id="weather-dashboard-container">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" id="agronomy-metrics-grid">
-        <div className="bg-gradient-to-br from-orange-50/50 to-orange-50/20 border border-orange-100 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between"><span className="text-xs font-semibold text-orange-700 uppercase tracking-wider">Temperature</span><Thermometer className="h-5 w-5 text-orange-500" /></div>
-          <div className="mt-4"><span className="text-3xl font-black text-soil-900">{current.temperature}°C</span>{current.apparentTemperature && <span className="text-[11px] text-orange-600 font-semibold block mt-1">Feels like {current.apparentTemperature}°C</span>}</div>
+    <div className="bg-parchment-50 rounded-2xl shadow-md border border-leaf-100 p-6 flex flex-col gap-5" id="weather-dashboard-container">
+      <button onClick={() => setShowMore((s) => !s)} className="w-full flex items-center justify-between bg-parchment-50 border border-parchment-100 rounded-2xl p-4">
+        <div className="flex items-center gap-3">
+          <Droplets className="h-5 w-5 text-leaf-600" />
+          <div className="text-left">
+            <div className="text-sm font-bold text-soil-900">{current.rainfall > 0 ? `${current.rainfall.toFixed(1)}mm rain today` : 'No rain expected'}</div>
+            <div className="text-xs text-soil-400">{current.windSpeed.toFixed(1)} km/h wind</div>
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-gold-100/50 to-gold-100/20 border border-gold-100 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between"><span className="text-xs font-semibold text-clay-600 uppercase tracking-wider">Soil Temp (6cm)</span><Gauge className="h-5 w-5 text-gold-500" /></div>
-          <div className="mt-4"><span className="text-3xl font-black text-soil-900">{current.soilTemperature.toFixed(1)}°C</span><span className="text-[11px] text-clay-600 font-semibold block mt-1">Seeds germ-sensitive</span></div>
-        </div>
-        <div className="bg-gradient-to-br from-leaf-100/50 to-leaf-100/20 border border-leaf-100 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between"><span className="text-xs font-semibold text-leaf-700 uppercase tracking-wider">Soil Moisture</span><Droplets className="h-5 w-5 text-leaf-600" /></div>
-          <div className="mt-4"><span className="text-3xl font-black text-soil-900">{(current.soilMoisture * 100).toFixed(0)}%</span><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border mt-1.5 inline-block ${soilMoistureStatus.color}`}>{soilMoistureStatus.label}</span></div>
-        </div>
-        <div className="bg-gradient-to-br from-blue-50/50 to-blue-50/20 border border-blue-100 rounded-2xl p-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between"><span className="text-xs font-semibold text-blue-800 uppercase tracking-wider">Water Loss (ET0)</span><Waves className="h-5 w-5 text-blue-500" /></div>
-          <div className="mt-4"><span className="text-3xl font-black text-soil-900">{current.evapotranspiration.toFixed(2)} mm</span><span className="text-[11px] text-blue-600 font-semibold block mt-1">Hourly evapotranspiration</span></div>
-        </div>
-      </div>
+        <div className="flex items-center gap-1 text-xs font-semibold text-leaf-600">More {showMore ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</div>
+      </button>
 
-      <div className="bg-parchment-50 border border-parchment-100 rounded-2xl p-4 grid grid-cols-3 gap-2 text-center" id="secondary-metrics-bar">
-        <div><div className="text-xs font-semibold text-soil-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Wind className="h-3.5 w-3.5 text-soil-400" /> Wind Speed</div><div className="text-sm font-bold text-soil-900">{current.windSpeed.toFixed(1)} km/h</div><div className="text-[10px] text-soil-400 mt-0.5 flex items-center justify-center gap-0.5"><Compass className="h-2.5 w-2.5" /> {current.windDirection}° Direction</div></div>
-        <div className="border-x border-parchment-200"><div className="text-xs font-semibold text-soil-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Droplets className="h-3.5 w-3.5 text-blue-500" /> Humidity</div><div className="text-sm font-bold text-soil-900">{current.relativeHumidity}%</div><div className="text-[10px] text-soil-400 mt-0.5">Relative Air Humidity</div></div>
-        <div><div className="text-xs font-semibold text-soil-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><CloudRain className="h-3.5 w-3.5 text-blue-600" /> Today's Rain</div><div className="text-sm font-bold text-soil-900">{current.rainfall.toFixed(1)} mm</div><div className="text-[10px] text-soil-400 mt-0.5">Accumulated precipitation</div></div>
-      </div>
+      {showMore && (
+        <div className="flex flex-col gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-orange-50/50 to-orange-50/20 border border-orange-100 rounded-2xl p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between"><span className="text-xs font-semibold text-orange-700 uppercase tracking-wider">Temperature</span><Thermometer className="h-5 w-5 text-orange-500" /></div>
+              <div className="mt-4"><span className="text-3xl font-black text-soil-900">{current.temperature}°C</span>{current.apparentTemperature && <span className="text-[11px] text-orange-600 font-semibold block mt-1">Feels like {current.apparentTemperature}°C</span>}</div>
+            </div>
+            <div className="bg-gradient-to-br from-gold-100/50 to-gold-100/20 border border-gold-100 rounded-2xl p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between"><span className="text-xs font-semibold text-clay-600 uppercase tracking-wider">Soil Temp (6cm)</span><Gauge className="h-5 w-5 text-gold-500" /></div>
+              <div className="mt-4"><span className="text-3xl font-black text-soil-900">{current.soilTemperature.toFixed(1)}°C</span><span className="text-[11px] text-clay-600 font-semibold block mt-1">Seeds germ-sensitive</span></div>
+            </div>
+            <div className="bg-gradient-to-br from-leaf-100/50 to-leaf-100/20 border border-leaf-100 rounded-2xl p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between"><span className="text-xs font-semibold text-leaf-700 uppercase tracking-wider">Soil Moisture</span><Droplets className="h-5 w-5 text-leaf-600" /></div>
+              <div className="mt-4"><span className="text-3xl font-black text-soil-900">{(current.soilMoisture * 100).toFixed(0)}%</span><span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border mt-1.5 inline-block ${soilMoistureStatus.color}`}>{soilMoistureStatus.label}</span></div>
+            </div>
+            <div className="bg-gradient-to-br from-blue-50/50 to-blue-50/20 border border-blue-100 rounded-2xl p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between"><span className="text-xs font-semibold text-blue-800 uppercase tracking-wider">Water Loss (ET0)</span><Waves className="h-5 w-5 text-blue-500" /></div>
+              <div className="mt-4"><span className="text-3xl font-black text-soil-900">{current.evapotranspiration.toFixed(2)} mm</span><span className="text-[11px] text-blue-600 font-semibold block mt-1">Hourly evapotranspiration</span></div>
+            </div>
+          </div>
+          <div className="bg-parchment-50 border border-parchment-100 rounded-2xl p-4 grid grid-cols-3 gap-2 text-center">
+            <div><div className="text-xs font-semibold text-soil-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Wind className="h-3.5 w-3.5 text-soil-400" /> Wind</div><div className="text-sm font-bold text-soil-900">{current.windSpeed.toFixed(1)} km/h</div><div className="text-[10px] text-soil-400 mt-0.5 flex items-center justify-center gap-0.5"><Compass className="h-2.5 w-2.5" /> {current.windDirection}°</div></div>
+            <div className="border-x border-parchment-200"><div className="text-xs font-semibold text-soil-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><Droplets className="h-3.5 w-3.5 text-blue-500" /> Humidity</div><div className="text-sm font-bold text-soil-900">{current.relativeHumidity}%</div></div>
+            <div><div className="text-xs font-semibold text-soil-400 uppercase tracking-wider mb-1 flex items-center justify-center gap-1"><CloudRain className="h-3.5 w-3.5 text-blue-600" /> Rain</div><div className="text-sm font-bold text-soil-900">{current.rainfall.toFixed(1)} mm</div></div>
+          </div>
+        </div>
+      )}
 
       <div>
         <h3 className="font-bold text-soil-900 text-sm mb-3">7-Day Daily Farming Outlook</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3" id="daily-micro-cards">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {daily.slice(0, 7).map((day, idx) => {
             const d = new Date(day.date);
             const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });

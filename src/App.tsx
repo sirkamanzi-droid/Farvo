@@ -4,7 +4,7 @@ import { District, WeatherData, Farm } from './types';
 import { detectNearestDistrict, LocationStatus } from './data/geolocation';
 import { loadFarms, saveFarms, createFarm } from './data/farms';
 import SkyHero from './components/SkyHero';
-import DistrictSelector from './components/DistrictSelector';
+import DistrictPicker from './components/DistrictPicker';
 import WeatherDashboard from './components/WeatherDashboard';
 import AIAdvisor from './components/AIAdvisor';
 import BottomNav, { Tab } from './components/BottomNav';
@@ -17,6 +17,7 @@ export default function App() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('weather');
+  const [districtPickerOpen, setDistrictPickerOpen] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -77,6 +78,7 @@ export default function App() {
     setFarms(updated);
     saveFarms(updated);
     setActiveFarmId(newFarm.id);
+    setDistrictPickerOpen(true);
   };
 
   const handleSelectFarm = (farm: Farm) => setActiveFarmId(farm.id);
@@ -108,11 +110,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-parchment-100 flex flex-col font-sans pb-20" id="app-root">
-      <header className="max-w-7xl mx-auto w-full px-4 pt-4 sm:px-6 lg:px-8">
-        <a href="https://farvosite.vercel.app" className="inline-flex items-center gap-2 text-xs font-medium text-leaf-700 hover:text-leaf-600 mb-3">← Back to Farvo</a>
-      </header>
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-6" id="app-main">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 pt-4 sm:px-6 lg:px-8 flex flex-col gap-6" id="app-main">
         {activeTab === 'weather' && (
           <>
             <SkyHero
@@ -120,63 +118,54 @@ export default function App() {
               activeFarm={activeFarm}
               onSelectFarm={handleSelectFarm}
               onAddFarm={handleAddFarm}
+              onOpenDistrictPicker={() => setDistrictPickerOpen(true)}
+              onSelectCrop={(c) => handleUpdateActiveFarm(activeFarm.district, c)}
               weatherCode={weatherData?.current.weatherCode ?? 1}
               temperature={weatherData?.current.temperature ?? 0}
               wasGeoDetected={locationStatus === 'success' && locationDetected}
             />
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="dashboard-grid">
-              <div className="lg:col-span-4 flex flex-col gap-6" id="left-sidebar">
-                <DistrictSelector
-                  selectedDistrict={activeFarm.district}
-                  setSelectedDistrict={(d) => handleUpdateActiveFarm(d, activeFarm.crop)}
-                  selectedCrop={activeFarm.crop}
-                  setSelectedCrop={(c) => handleUpdateActiveFarm(activeFarm.district, c)}
-                  onUseMyLocation={detectLocationForActiveFarm}
-                  locationStatus={locationStatus}
-                />
+            {loadingWeather && (
+              <div className="bg-parchment-50 rounded-2xl shadow-md border border-leaf-100 p-12 flex flex-col items-center justify-center text-center min-h-[300px]">
+                <Loader2 className="h-10 w-10 text-leaf-600 animate-spin mb-4" />
+                <h4 className="font-bold text-soil-900 text-base">Fetching Meteorological Datasets...</h4>
+                <p className="text-xs text-soil-400 mt-1 max-w-xs">Downloading current conditions and 7-day forecast for {activeFarm.district.name}...</p>
               </div>
-              <div className="lg:col-span-8 flex flex-col gap-6" id="right-content">
-                {loadingWeather && (
-                  <div className="bg-parchment-50 rounded-2xl shadow-md border border-leaf-100 p-12 flex flex-col items-center justify-center text-center flex-1 min-h-[400px]">
-                    <Loader2 className="h-10 w-10 text-leaf-600 animate-spin mb-4" />
-                    <h4 className="font-bold text-soil-900 text-base">Fetching Meteorological Datasets...</h4>
-                    <p className="text-xs text-soil-400 mt-1 max-w-xs">Downloading current conditions and 7-day forecast for {activeFarm.district.name}...</p>
-                  </div>
-                )}
-                {weatherError && !loadingWeather && (
-                  <div className="bg-parchment-50 rounded-2xl shadow-md border border-rose-100 p-12 flex flex-col items-center justify-center text-center flex-1 min-h-[400px]">
-                    <AlertCircle className="h-12 w-12 text-rose-500 mb-4" />
-                    <h4 className="font-bold text-rose-800 text-base">Weather Synchronization Failed</h4>
-                    <p className="text-xs text-rose-600 mt-1 max-w-sm mx-auto">{weatherError}</p>
-                    <button onClick={() => fetchWeather(activeFarm.district)} className="mt-6 flex items-center gap-2 bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-sm">
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Try Reconnecting
-                    </button>
-                  </div>
-                )}
-                {!loadingWeather && !weatherError && weatherData && (
-                  <div className="flex flex-col gap-6" id="dashboard-loaded-data">
-                    <WeatherDashboard weatherData={weatherData} district={activeFarm.district} />
-                    <AIAdvisor weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} />
-                  </div>
-                )}
+            )}
+            {weatherError && !loadingWeather && (
+              <div className="bg-parchment-50 rounded-2xl shadow-md border border-rose-100 p-12 flex flex-col items-center justify-center text-center min-h-[300px]">
+                <AlertCircle className="h-12 w-12 text-rose-500 mb-4" />
+                <h4 className="font-bold text-rose-800 text-base">Weather Synchronization Failed</h4>
+                <p className="text-xs text-rose-600 mt-1 max-w-sm mx-auto">{weatherError}</p>
+                <button onClick={() => fetchWeather(activeFarm.district)} className="mt-6 flex items-center gap-2 bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-sm">
+                  <RefreshCw className="h-3.5 w-3.5" /> Try Reconnecting
+                </button>
               </div>
-            </div>
+            )}
+            {!loadingWeather && !weatherError && weatherData && (
+              <div className="flex flex-col gap-6" id="dashboard-loaded-data">
+                <WeatherDashboard weatherData={weatherData} district={activeFarm.district} />
+                <AIAdvisor weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} />
+              </div>
+            )}
           </>
         )}
-
         {activeTab === 'disease' && <ComingSoon icon={Leaf} title="Disease Detection" description="Send a photo of a sick crop and get an instant diagnosis. This feature is on its way." onBack={() => setActiveTab('weather')} />}
         {activeTab === 'livestock' && <ComingSoon icon={Beef} title="Livestock Advisor" description="Care guidance for cattle, goats, and poultry — coming soon." onBack={() => setActiveTab('weather')} />}
         {activeTab === 'records' && <ComingSoon icon={Wallet} title="Financial Records" description="Track income and expenses across your farms — coming soon." onBack={() => setActiveTab('weather')} />}
         {activeTab === 'account' && <ComingSoon icon={User} title="Account" description="Sign in to sync your farms across devices — coming soon." onBack={() => setActiveTab('weather')} />}
       </main>
-
       <footer className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 text-xs text-soil-400 flex items-center gap-1.5">
-        <Leaf className="h-3.5 w-3.5 text-leaf-400" />
-        © 2026 Farvo. Kampala, Uganda.
+        <Leaf className="h-3.5 w-3.5 text-leaf-400" /> © 2026 Farvo. Kampala, Uganda.
       </footer>
-
       <BottomNav active={activeTab} onChange={setActiveTab} />
+      <DistrictPicker
+        isOpen={districtPickerOpen}
+        onClose={() => setDistrictPickerOpen(false)}
+        selectedDistrict={activeFarm.district}
+        onSelect={(d) => handleUpdateActiveFarm(d, d.mainCrops[0] || activeFarm.crop)}
+        onUseMyLocation={detectLocationForActiveFarm}
+        locationStatus={locationStatus}
+      />
     </div>
   );
 }
