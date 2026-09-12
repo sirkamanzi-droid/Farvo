@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check } from 'lucide-react';
+import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan } from 'lucide-react';
 
 interface Crop {
   id: string;
@@ -119,38 +119,45 @@ export default function DiseaseDetection() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-xl font-bold text-soil-900">Disease Detection</h2>
-        <p className="text-xs text-soil-400 mt-1">Find out what's affecting your crops and get AI-powered solutions.</p>
+      <div className="relative overflow-hidden rounded-3xl -mx-4 sm:mx-0" style={{ background: 'linear-gradient(160deg, #E8F0E0 0%, #A8C89A 45%, #4A6B3A 100%)' }}>
+        <div className="px-6 pt-6 pb-24 relative">
+          <h2 className="text-2xl font-bold text-soil-900" style={{ fontFamily: 'Fraunces, serif' }}>Disease Detection</h2>
+          <p className="text-sm text-soil-700 mt-2 max-w-xs">Find out what's affecting your crops and get AI-powered solutions.</p>
+          <div className="absolute right-8 bottom-8 h-16 w-16 border-2 border-white/70 rounded-2xl flex items-center justify-center">
+            <Scan className="h-7 w-7 text-white" />
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <button onClick={() => setView('cropSelect')} className="flex items-center gap-3 bg-parchment-50 border border-parchment-100 rounded-2xl p-4 text-left">
-          <div className="h-11 w-11 rounded-xl bg-leaf-600 flex items-center justify-center shrink-0">
-            <Camera className="h-5 w-5 text-white" />
+      <div className="-mt-16 flex flex-col gap-3 bg-parchment-50 rounded-3xl shadow-md border border-leaf-100 p-4 relative z-10">
+        <button onClick={() => setView('cropSelect')} className="flex items-center gap-3.5 text-left p-2">
+          <div className="h-14 w-14 rounded-2xl bg-leaf-600 flex items-center justify-center shrink-0">
+            <Camera className="h-6 w-6 text-white" />
           </div>
           <div>
-            <div className="text-sm font-bold text-soil-900">Take a photo</div>
-            <div className="text-xs text-soil-400">Use your camera to capture the affected part of your plant.</div>
+            <div className="text-base font-bold text-soil-900">Take a photo</div>
+            <div className="text-xs text-soil-400 mt-0.5">Use your camera to capture the affected part of your plant.</div>
           </div>
         </button>
 
-        <button onClick={() => setView('cropSelect')} className="flex items-center gap-3 bg-parchment-50 border border-parchment-100 rounded-2xl p-4 text-left">
-          <div className="h-11 w-11 rounded-xl bg-gold-500 flex items-center justify-center shrink-0">
-            <ImageIcon className="h-5 w-5 text-soil-900" />
+        <div className="h-px bg-parchment-100" />
+
+        <button onClick={() => setView('cropSelect')} className="flex items-center gap-3.5 text-left p-2">
+          <div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center shrink-0">
+            <ImageIcon className="h-6 w-6 text-leaf-700" />
           </div>
           <div>
-            <div className="text-sm font-bold text-soil-900">Upload from gallery</div>
-            <div className="text-xs text-soil-400">Choose a photo from your phone.</div>
+            <div className="text-base font-bold text-soil-900">Upload from gallery</div>
+            <div className="text-xs text-soil-400 mt-0.5">Choose a photo from your phone.</div>
           </div>
         </button>
       </div>
 
-      <div className="bg-gold-100/30 border border-gold-100 rounded-xl p-3 flex gap-2.5">
-        <Lightbulb className="h-4 w-4 text-clay-600 shrink-0 mt-0.5" />
+      <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-4 flex gap-3">
+        <Lightbulb className="h-5 w-5 text-leaf-700 shrink-0 mt-0.5" />
         <div>
-          <div className="text-xs font-bold text-soil-900 mb-0.5">For best results</div>
-          <div className="text-[11px] text-soil-400 leading-relaxed">Capture the affected part clearly, use good lighting and avoid blurry photos.</div>
+          <div className="text-sm font-bold text-soil-900 mb-1">For best results:</div>
+          <div className="text-xs text-soil-700 leading-relaxed">Capture the affected part clearly, use good lighting and avoid blurry photos.</div>
         </div>
       </div>
 
