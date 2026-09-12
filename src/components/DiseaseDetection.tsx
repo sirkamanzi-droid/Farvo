@@ -28,7 +28,50 @@ interface RecentScan {
 
 const MOCK_RECENT_SCANS: RecentScan[] = [];
 
-type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'resultStub';
+type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'result';
+
+interface Diagnosis {
+  outcome: 'disease' | 'healthy' | 'uncertain';
+  diseaseName?: string;
+  confidence: number;
+  severity?: 'Low' | 'Moderate' | 'High';
+  affectedPart?: string;
+  whatObserved?: string;
+}
+
+const MOCK_DISEASES: Record<string, { name: string; part: string; observed: string }[]> = {
+  maize: [{ name: 'Maize Streak Virus', part: 'Leaf', observed: 'Yellow streaking along the leaf veins, typical of viral infection spread by leafhoppers.' }],
+  beans: [{ name: 'Bean Rust', part: 'Leaf', observed: 'Orange-brown pustules on the leaf surface, typical signs of bean rust.' }],
+  coffee: [{ name: 'Coffee Leaf Rust', part: 'Leaf', observed: 'Orange powdery spots on the underside of the leaf, consistent with leaf rust.' }],
+  banana: [{ name: 'Black Sigatoka', part: 'Leaf', observed: 'Dark streaks running parallel to leaf veins, a common fungal leaf spot disease.' }],
+  tomato: [{ name: 'Early Blight', part: 'Leaf', observed: 'Concentric dark rings on lower leaves, typical of early blight.' }],
+  potato: [{ name: 'Late Blight', part: 'Leaf', observed: 'Water-soaked dark patches spreading quickly across the leaf.' }],
+  cassava: [{ name: 'Cassava Mosaic Disease', part: 'Leaf', observed: 'Patchy yellow-green mottling across the leaf surface.' }],
+  rice: [{ name: 'Rice Blast', part: 'Leaf', observed: 'Diamond-shaped lesions with grey centers on the leaf blade.' }],
+};
+
+function computeMockDiagnosis(cropId: string): Diagnosis {
+  const roll = Math.random();
+  const confidence = Math.floor(40 + Math.random() * 55);
+
+  if (roll < 0.2) {
+    return { outcome: 'healthy', confidence: Math.floor(80 + Math.random() * 15) };
+  }
+  if (confidence < 55) {
+    return { outcome: 'uncertain', confidence };
+  }
+  const options = MOCK_DISEASES[cropId] || MOCK_DISEASES.maize;
+  const picked = options[Math.floor(Math.random() * options.length)];
+  const severity: Diagnosis['severity'] = confidence > 80 ? 'High' : confidence > 65 ? 'Moderate' : 'Low';
+  return {
+    outcome: 'disease',
+    diseaseName: picked.name,
+    confidence,
+    severity,
+    affectedPart: picked.part,
+    whatObserved: picked.observed,
+  };
+}
 
 const severityColor = (severity: RecentScan['severity']) => {
   switch (severity) {
@@ -45,6 +88,7 @@ export default function DiseaseDetection() {
   const [searchTerm, setSearchTerm] = useState('');
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [checkedSteps, setCheckedSteps] = useState<number>(0);
+  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,7 +111,10 @@ export default function DiseaseDetection() {
     delays.forEach((delay, idx) => {
       setTimeout(() => setCheckedSteps(idx + 1), delay);
     });
-    setTimeout(() => setView('resultStub'), 2600);
+    setTimeout(() => {
+      setDiagnosis(computeMockDiagnosis(selectedCrop?.id || 'maize'));
+      setView('result');
+    }, 2600);
   }
 
   const filteredCrops = CROPS.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -192,24 +239,98 @@ export default function DiseaseDetection() {
     );
   }
 
-  if (view === 'resultStub') {
+  if (view === 'result' && diagnosis) {
+    const resetAll = () => { setView('home'); setSelectedCrop(null); setPhotoDataUrl(null); setDiagnosis(null); };
+
+    if (diagnosis.outcome === 'uncertain') {
+      return (
+        <div className="flex flex-col gap-5">
+          <div className="rounded-3xl overflow-hidden h-48">
+            {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
+          </div>
+          <div className="bg-gold-100/40 border border-gold-100 rounded-2xl p-5 text-center">
+            <p className="text-sm font-bold text-soil-900 mb-1">Not confident enough to diagnose</p>
+            <p className="text-xs text-soil-700 max-w-xs mx-auto">
+              Only {diagnosis.confidence}% confident — that's too low to name a disease reliably. Try retaking the photo with better lighting, closer to the affected leaf.
+            </p>
+          </div>
+          <button onClick={() => setView('capture')} className="bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl">
+            Retake photo
+          </button>
+          <button onClick={resetAll} className="text-xs font-semibold text-soil-400 py-1">Cancel</button>
+        </div>
+      );
+    }
+
+    if (diagnosis.outcome === 'healthy') {
+      return (
+        <div className="flex flex-col gap-5">
+          <div className="rounded-3xl overflow-hidden h-48">
+            {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
+          </div>
+          <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
+            <p className="text-sm font-bold text-leaf-700 mb-1">✓ Healthy — no disease detected</p>
+            <p className="text-xs text-soil-700 max-w-xs mx-auto">
+              {diagnosis.confidence}% confident this {selectedCrop?.name} leaf shows no signs of disease. Keep monitoring as usual.
+            </p>
+          </div>
+          <button onClick={resetAll} className="bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2">
+            <RotateCcw className="h-3.5 w-3.5" /> Scan another
+          </button>
+        </div>
+      );
+    }
+
+    const severityBg = diagnosis.severity === 'High' ? 'bg-rose-600' : diagnosis.severity === 'Moderate' ? 'bg-clay-600' : 'bg-gold-500';
     return (
-      <div className="flex flex-col gap-5">
-        <div className="rounded-3xl overflow-hidden h-48">
-          {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-3 items-start">
+          <div className="h-24 w-24 rounded-2xl overflow-hidden shrink-0">
+            {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="inline-block bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5">● Likely Disease</span>
+            <div className="text-lg font-bold text-soil-900">{diagnosis.diseaseName}</div>
+            <div className="text-xs text-soil-400 mt-1">Confidence</div>
+            <div className="text-base font-bold text-soil-900">{diagnosis.confidence}%</div>
+            <div className="w-full bg-parchment-200 h-2 rounded-full overflow-hidden mt-1">
+              <div className="h-full bg-leaf-600 rounded-full" style={{ width: `${diagnosis.confidence}%` }} />
+            </div>
+          </div>
         </div>
-        <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
-          <p className="text-sm font-bold text-soil-900 mb-1">Photo captured and analyzed ✓</p>
-          <p className="text-xs text-soil-400 max-w-xs mx-auto">
-            The real diagnosis card — disease name, confidence %, treatment steps — is the next piece we build. This confirms the camera, upload, and analyzing flow all work end to end.
-          </p>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-parchment-50 border border-parchment-100 rounded-xl p-2.5 text-center">
+            <div className="text-[10px] text-soil-400 font-semibold uppercase">Crop</div>
+            <div className="text-xs font-bold text-soil-900 mt-0.5">{selectedCrop?.name}</div>
+          </div>
+          <div className="bg-parchment-50 border border-parchment-100 rounded-xl p-2.5 text-center">
+            <div className="text-[10px] text-soil-400 font-semibold uppercase">Affected part</div>
+            <div className="text-xs font-bold text-soil-900 mt-0.5">{diagnosis.affectedPart}</div>
+          </div>
+          <div className="bg-parchment-50 border border-parchment-100 rounded-xl p-2.5 text-center">
+            <div className="text-[10px] text-soil-400 font-semibold uppercase">Severity</div>
+            <div className={`text-xs font-bold text-white mt-0.5 rounded px-1.5 py-0.5 inline-block ${severityBg}`}>{diagnosis.severity}</div>
+          </div>
         </div>
-        <button
-          onClick={() => { setView('home'); setSelectedCrop(null); setPhotoDataUrl(null); }}
-          className="text-xs font-semibold text-leaf-600 border border-leaf-100 px-4 py-2.5 rounded-lg flex items-center justify-center gap-2"
-        >
-          <RotateCcw className="h-3.5 w-3.5" /> Scan another
+
+        <div className="bg-parchment-50 border border-parchment-100 rounded-2xl p-4">
+          <div className="text-xs font-bold text-soil-900 mb-1.5">What Omulimi observed</div>
+          <p className="text-xs text-soil-400 leading-relaxed">{diagnosis.whatObserved}</p>
+        </div>
+
+        <div className="bg-leaf-100/30 border border-leaf-100 rounded-2xl p-4 flex gap-2.5">
+          <span className="text-sm">💡</span>
+          <div>
+            <div className="text-xs font-bold text-soil-900 mb-0.5">Not 100% certain?</div>
+            <div className="text-[11px] text-soil-400 leading-relaxed">Omulimi gives a likely diagnosis. For severe cases, consult an agricultural officer.</div>
+          </div>
+        </div>
+
+        <button disabled className="bg-parchment-200 text-soil-400 font-bold text-sm py-3 rounded-xl">
+          Get treatment advice → (next step)
         </button>
+        <button onClick={resetAll} className="text-xs font-semibold text-soil-400 py-1">Scan another</button>
       </div>
     );
   }
