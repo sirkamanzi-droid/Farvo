@@ -9,6 +9,7 @@ import WeatherDashboard from './components/WeatherDashboard';
 import AIAdvisor from './components/AIAdvisor';
 import BottomNav, { Tab } from './components/BottomNav';
 import ComingSoon from './components/ComingSoon';
+import DiseaseDetection from './components/DiseaseDetection';
 import { Loader2, AlertCircle, RefreshCw, Leaf, Beef, Wallet, User } from 'lucide-react';
 
 const DEFAULT_DISTRICT = DISTRICTS[1];
@@ -153,7 +154,7 @@ export default function App() {
         )}
         {activeTab !== 'weather' && (
           <div className="px-4 sm:px-6 lg:px-8">
-            {activeTab === 'disease' && <ComingSoon icon={Leaf} title="Disease Detection" description="Send a photo of a sick crop and get an instant diagnosis. This feature is on its way." onBack={() => setActiveTab('weather')} />}
+            {activeTab === 'disease' && <DiseaseDetection />}
             {activeTab === 'livestock' && <ComingSoon icon={Beef} title="Livestock Advisor" description="Care guidance for cattle, goats, and poultry — coming soon." onBack={() => setActiveTab('weather')} />}
             {activeTab === 'records' && <ComingSoon icon={Wallet} title="Financial Records" description="Track income and expenses across your farms — coming soon." onBack={() => setActiveTab('weather')} />}
             {activeTab === 'account' && <ComingSoon icon={User} title="Account" description="Sign in to sync your farms across devices — coming soon." onBack={() => setActiveTab('weather')} />}
