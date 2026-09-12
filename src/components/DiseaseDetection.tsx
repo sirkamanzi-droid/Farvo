@@ -119,17 +119,23 @@ export default function DiseaseDetection() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="relative overflow-hidden rounded-3xl -mx-4 sm:mx-0" style={{ background: 'linear-gradient(160deg, #E8F0E0 0%, #A8C89A 45%, #4A6B3A 100%)' }}>
-        <div className="px-6 pt-6 pb-24 relative">
-          <h2 className="text-2xl font-bold text-soil-900" style={{ fontFamily: 'Fraunces, serif' }}>Disease Detection</h2>
-          <p className="text-sm text-soil-700 mt-2 max-w-xs">Find out what's affecting your crops and get AI-powered solutions.</p>
-          <div className="absolute right-8 bottom-8 h-16 w-16 border-2 border-white/70 rounded-2xl flex items-center justify-center">
+      <div>
+        <h2 className="text-2xl font-bold text-soil-900" style={{ fontFamily: 'Fraunces, serif' }}>Disease Detection</h2>
+        <p className="text-sm text-soil-400 mt-2">Find out what's affecting your crops and get AI-powered solutions.</p>
+      </div>
+
+      <div
+        className="relative overflow-hidden rounded-3xl h-48 bg-cover bg-center"
+        style={{ backgroundImage: 'url(/disease-hero.jpg)', backgroundColor: '#4A6B3A' }}
+      >
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="h-16 w-16 border-2 border-white/80 rounded-2xl flex items-center justify-center">
             <Scan className="h-7 w-7 text-white" />
           </div>
         </div>
       </div>
 
-      <div className="-mt-16 flex flex-col gap-3 bg-parchment-50 rounded-3xl shadow-md border border-leaf-100 p-4 relative z-10">
+      <div className="flex flex-col gap-3 bg-parchment-50 rounded-3xl shadow-md border border-leaf-100 p-4">
         <button onClick={() => setView('cropSelect')} className="flex items-center gap-3.5 text-left p-2">
           <div className="h-14 w-14 rounded-2xl bg-leaf-600 flex items-center justify-center shrink-0">
             <Camera className="h-6 w-6 text-white" />
