@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
 
 interface Crop {
   id: string;
@@ -28,7 +28,7 @@ interface RecentScan {
 
 const MOCK_RECENT_SCANS: RecentScan[] = [];
 
-type DiseaseView = 'home' | 'cropSelect' | 'nextStepStub';
+type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'resultStub';
 
 const severityColor = (severity: RecentScan['severity']) => {
   switch (severity) {
@@ -43,6 +43,32 @@ export default function DiseaseDetection() {
   const [view, setView] = useState<DiseaseView>('home');
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [checkedSteps, setCheckedSteps] = useState<number>(0);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPhotoDataUrl(reader.result as string);
+      setView('analyzing');
+      setCheckedSteps(0);
+      runAnalysisSequence();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  function runAnalysisSequence() {
+    const delays = [600, 1200, 1900];
+    delays.forEach((delay, idx) => {
+      setTimeout(() => setCheckedSteps(idx + 1), delay);
+    });
+    setTimeout(() => setView('resultStub'), 2600);
+  }
 
   const filteredCrops = CROPS.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -90,7 +116,7 @@ export default function DiseaseDetection() {
         </div>
 
         <button
-          onClick={() => selectedCrop && setView('nextStepStub')}
+          onClick={() => selectedCrop && setView('capture')}
           disabled={!selectedCrop}
           className="mt-2 bg-leaf-600 disabled:bg-parchment-200 disabled:text-soil-400 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl transition"
         >
@@ -100,18 +126,89 @@ export default function DiseaseDetection() {
     );
   }
 
-  if (view === 'nextStepStub') {
+  if (view === 'capture') {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-16 gap-3">
-        <div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center">
-          <Camera className="h-6 w-6 text-leaf-600" />
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView('cropSelect')} className="text-soil-400 hover:text-soil-900">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <h2 className="text-base font-bold text-soil-900">Add a photo</h2>
         </div>
-        <p className="text-sm font-semibold text-soil-900">Camera capture is next up</p>
-        <p className="text-xs text-soil-400 max-w-xs">
-          You picked <span className="font-semibold text-leaf-700">{selectedCrop?.name}</span>. The photo capture and AI diagnosis step isn't built yet — that's the next piece we add.
-        </p>
-        <button onClick={() => { setView('home'); setSelectedCrop(null); }} className="mt-2 text-xs font-semibold text-leaf-600 border border-leaf-100 px-4 py-2 rounded-lg">
-          Back to Disease Detection
+        <p className="text-xs text-soil-400 -mt-3">Checking <span className="font-semibold text-leaf-700">{selectedCrop?.name}</span> for signs of disease.</p>
+
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelected} className="hidden" />
+        <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
+
+        <div className="flex flex-col gap-3">
+          <button onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-3.5 bg-parchment-50 border border-parchment-100 rounded-2xl p-4 text-left">
+            <div className="h-12 w-12 rounded-xl bg-leaf-600 flex items-center justify-center shrink-0">
+              <Camera className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-soil-900">Take a photo</div>
+              <div className="text-xs text-soil-400">Opens your camera</div>
+            </div>
+          </button>
+          <button onClick={() => galleryInputRef.current?.click()} className="flex items-center gap-3.5 bg-parchment-50 border border-parchment-100 rounded-2xl p-4 text-left">
+            <div className="h-12 w-12 rounded-xl bg-leaf-100 flex items-center justify-center shrink-0">
+              <ImageIcon className="h-5 w-5 text-leaf-700" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-soil-900">Upload from gallery</div>
+              <div className="text-xs text-soil-400">Choose an existing photo</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'analyzing') {
+    const steps = ['Checking for visible symptoms', 'Comparing with known diseases', 'Estimating confidence level'];
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="relative rounded-3xl overflow-hidden h-64">
+          {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
+          <div className="absolute inset-0 bg-soil-900/50 flex flex-col items-center justify-center gap-3 text-center px-6">
+            <Loader2 className="h-8 w-8 text-white animate-spin" />
+            <p className="text-sm font-bold text-white">Analyzing your photo...</p>
+            <p className="text-xs text-parchment-100">This may take a few seconds.</p>
+          </div>
+        </div>
+        <div className="bg-parchment-50 border border-parchment-100 rounded-2xl p-4 flex flex-col gap-2.5">
+          {steps.map((step, idx) => (
+            <div key={step} className="flex items-center gap-2.5">
+              {checkedSteps > idx ? (
+                <Check className="h-4 w-4 text-leaf-600 shrink-0" />
+              ) : (
+                <div className="h-4 w-4 rounded-full border-2 border-parchment-200 shrink-0" />
+              )}
+              <span className={`text-xs ${checkedSteps > idx ? 'text-soil-900 font-semibold' : 'text-soil-400'}`}>{step}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'resultStub') {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="rounded-3xl overflow-hidden h-48">
+          {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
+        </div>
+        <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
+          <p className="text-sm font-bold text-soil-900 mb-1">Photo captured and analyzed ✓</p>
+          <p className="text-xs text-soil-400 max-w-xs mx-auto">
+            The real diagnosis card — disease name, confidence %, treatment steps — is the next piece we build. This confirms the camera, upload, and analyzing flow all work end to end.
+          </p>
+        </div>
+        <button
+          onClick={() => { setView('home'); setSelectedCrop(null); setPhotoDataUrl(null); }}
+          className="text-xs font-semibold text-leaf-600 border border-leaf-100 px-4 py-2.5 rounded-lg flex items-center justify-center gap-2"
+        >
+          <RotateCcw className="h-3.5 w-3.5" /> Scan another
         </button>
       </div>
     );
