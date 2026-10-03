@@ -12,6 +12,14 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['pwa-icon-192.png', 'pwa-icon-512.png'],
+        workbox: {
+          globIgnores: ['**/ort-wasm*.wasm'],
+          runtimeCaching: [{
+            urlPattern: /ort-wasm.*\.wasm$/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'onnx-runtime-cache' },
+          }],
+        },
         manifest: {
           name: 'Farvo',
           short_name: 'Farvo',

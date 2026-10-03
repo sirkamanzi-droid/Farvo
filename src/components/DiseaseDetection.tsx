@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
+import { runBeansInference } from '../lib/beansModel';
 
 interface Crop {
   id: string;
@@ -50,26 +51,44 @@ const MOCK_DISEASES: Record<string, { name: string; part: string; observed: stri
   rice: [{ name: 'Rice Blast', part: 'Leaf', observed: 'Diamond-shaped lesions with grey centers on the leaf blade.' }],
 };
 
-function computeMockDiagnosis(cropId: string): Diagnosis {
-  const roll = Math.random();
-  const confidence = Math.floor(40 + Math.random() * 55);
+const BEANS_LABEL_INFO: Record<string, { name: string; observed: string }> = {
+  angular_leaf_spot: { name: 'Angular Leaf Spot', observed: 'Angular brown lesions bounded by leaf veins, typical of angular leaf spot.' },
+  bean_rust: { name: 'Bean Rust', observed: 'Orange-brown pustules on the leaf surface, typical signs of bean rust.' },
+};
 
-  if (roll < 0.2) {
-    return { outcome: 'healthy', confidence: Math.floor(80 + Math.random() * 15) };
+const CONFIDENCE_THRESHOLD = 55;
+
+async function computeDiagnosis(cropId: string, photoDataUrl: string): Promise<Diagnosis> {
+  if (cropId === 'beans') {
+    const result = await runBeansInference(photoDataUrl);
+
+    if (result.confidencePercent < CONFIDENCE_THRESHOLD) {
+      return { outcome: 'uncertain', confidence: result.confidencePercent };
+    }
+    if (result.label === 'healthy') {
+      return { outcome: 'healthy', confidence: result.confidencePercent };
+    }
+    const info = BEANS_LABEL_INFO[result.label];
+    const severity: Diagnosis['severity'] = result.confidencePercent > 80 ? 'High' : result.confidencePercent > 65 ? 'Moderate' : 'Low';
+    return {
+      outcome: 'disease',
+      diseaseName: info.name,
+      confidence: result.confidencePercent,
+      severity,
+      affectedPart: 'Leaf',
+      whatObserved: info.observed,
+    };
   }
-  if (confidence < 55) {
-    return { outcome: 'uncertain', confidence };
-  }
+
   const options = MOCK_DISEASES[cropId] || MOCK_DISEASES.maize;
-  const picked = options[Math.floor(Math.random() * options.length)];
-  const severity: Diagnosis['severity'] = confidence > 80 ? 'High' : confidence > 65 ? 'Moderate' : 'Low';
+  const picked = options[0];
   return {
     outcome: 'disease',
-    diseaseName: picked.name,
-    confidence,
-    severity,
+    diseaseName: `${picked.name} (model not yet built for this crop)`,
+    confidence: 0,
+    severity: 'Low',
     affectedPart: picked.part,
-    whatObserved: picked.observed,
+    whatObserved: 'This crop is not supported by a real AI model yet — only Beans has a working model so far.',
   };
 }
 
@@ -97,24 +116,30 @@ export default function DiseaseDetection() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setPhotoDataUrl(reader.result as string);
+      const dataUrl = reader.result as string;
+      setPhotoDataUrl(dataUrl);
       setView('analyzing');
       setCheckedSteps(0);
-      runAnalysisSequence();
+      runAnalysisSequence(dataUrl);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   }
 
-  function runAnalysisSequence() {
-    const delays = [600, 1200, 1900];
+  async function runAnalysisSequence(dataUrl: string) {
+    const delays = [400, 900, 1400];
     delays.forEach((delay, idx) => {
       setTimeout(() => setCheckedSteps(idx + 1), delay);
     });
+
+    const cropId = selectedCrop?.id || 'maize';
+    const result = await computeDiagnosis(cropId, dataUrl);
+
+    const minimumDisplayTime = 1800;
     setTimeout(() => {
-      setDiagnosis(computeMockDiagnosis(selectedCrop?.id || 'maize'));
+      setDiagnosis(result);
       setView('result');
-    }, 2600);
+    }, minimumDisplayTime);
   }
 
   const filteredCrops = CROPS.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
