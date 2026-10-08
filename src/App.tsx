@@ -10,7 +10,7 @@ import AIAdvisor from './components/AIAdvisor';
 import BottomNav, { Tab } from './components/BottomNav';
 import ComingSoon from './components/ComingSoon';
 import DiseaseDetection from './components/DiseaseDetection';
-import { Loader2, AlertCircle, RefreshCw, Leaf, Beef, Wallet, User } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Beef, Wallet, User } from 'lucide-react';
 
 const DEFAULT_DISTRICT = DISTRICTS[1];
 
@@ -161,9 +161,6 @@ export default function App() {
           </div>
         )}
       </main>
-      <footer className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 text-xs text-soil-400 flex items-center gap-1.5">
-        <Leaf className="h-3.5 w-3.5 text-leaf-400" /> © 2026 Farvo. Kampala, Uganda.
-      </footer>
       <BottomNav active={activeTab} onChange={setActiveTab} />
       <DistrictPicker
         isOpen={districtPickerOpen}

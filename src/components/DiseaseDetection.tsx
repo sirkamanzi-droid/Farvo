@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
-import { runBeansInference } from '../lib/beansModel';
 
 interface Crop {
   id: string;
@@ -19,15 +18,7 @@ const CROPS: Crop[] = [
   { id: 'rice', name: 'Rice', emoji: '🌾' },
 ];
 
-interface RecentScan {
-  id: string;
-  cropName: string;
-  diseaseName: string;
-  severity: 'Low' | 'Moderate' | 'High' | 'Healthy';
-  date: string;
-}
 
-const MOCK_RECENT_SCANS: RecentScan[] = [];
 
 type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'result';
 
@@ -40,66 +31,18 @@ interface Diagnosis {
   whatObserved?: string;
 }
 
-const MOCK_DISEASES: Record<string, { name: string; part: string; observed: string }[]> = {
-  maize: [{ name: 'Maize Streak Virus', part: 'Leaf', observed: 'Yellow streaking along the leaf veins, typical of viral infection spread by leafhoppers.' }],
-  beans: [{ name: 'Bean Rust', part: 'Leaf', observed: 'Orange-brown pustules on the leaf surface, typical signs of bean rust.' }],
-  coffee: [{ name: 'Coffee Leaf Rust', part: 'Leaf', observed: 'Orange powdery spots on the underside of the leaf, consistent with leaf rust.' }],
-  banana: [{ name: 'Black Sigatoka', part: 'Leaf', observed: 'Dark streaks running parallel to leaf veins, a common fungal leaf spot disease.' }],
-  tomato: [{ name: 'Early Blight', part: 'Leaf', observed: 'Concentric dark rings on lower leaves, typical of early blight.' }],
-  potato: [{ name: 'Late Blight', part: 'Leaf', observed: 'Water-soaked dark patches spreading quickly across the leaf.' }],
-  cassava: [{ name: 'Cassava Mosaic Disease', part: 'Leaf', observed: 'Patchy yellow-green mottling across the leaf surface.' }],
-  rice: [{ name: 'Rice Blast', part: 'Leaf', observed: 'Diamond-shaped lesions with grey centers on the leaf blade.' }],
-};
-
-const BEANS_LABEL_INFO: Record<string, { name: string; observed: string }> = {
-  angular_leaf_spot: { name: 'Angular Leaf Spot', observed: 'Angular brown lesions bounded by leaf veins, typical of angular leaf spot.' },
-  bean_rust: { name: 'Bean Rust', observed: 'Orange-brown pustules on the leaf surface, typical signs of bean rust.' },
-};
-
-const CONFIDENCE_THRESHOLD = 55;
-
 async function computeDiagnosis(cropId: string, photoDataUrl: string): Promise<Diagnosis> {
-  if (cropId === 'beans') {
-    const result = await runBeansInference(photoDataUrl);
+  // Disease API integration will replace this function.
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
-    if (result.confidencePercent < CONFIDENCE_THRESHOLD) {
-      return { outcome: 'uncertain', confidence: result.confidencePercent };
-    }
-    if (result.label === 'healthy') {
-      return { outcome: 'healthy', confidence: result.confidencePercent };
-    }
-    const info = BEANS_LABEL_INFO[result.label];
-    const severity: Diagnosis['severity'] = result.confidencePercent > 80 ? 'High' : result.confidencePercent > 65 ? 'Moderate' : 'Low';
-    return {
-      outcome: 'disease',
-      diseaseName: info.name,
-      confidence: result.confidencePercent,
-      severity,
-      affectedPart: 'Leaf',
-      whatObserved: info.observed,
-    };
-  }
-
-  const options = MOCK_DISEASES[cropId] || MOCK_DISEASES.maize;
-  const picked = options[0];
   return {
-    outcome: 'disease',
-    diseaseName: `${picked.name} (model not yet built for this crop)`,
+    outcome: 'uncertain',
     confidence: 0,
-    severity: 'Low',
-    affectedPart: picked.part,
-    whatObserved: 'This crop is not supported by a real AI model yet — only Beans has a working model so far.',
+    whatObserved: 'Disease detection is being upgraded. Please try again after the new diagnostic service is connected.',
   };
 }
 
-const severityColor = (severity: RecentScan['severity']) => {
-  switch (severity) {
-    case 'Healthy': return 'bg-leaf-600';
-    case 'Low': return 'bg-leaf-600';
-    case 'Moderate': return 'bg-clay-600';
-    case 'High': return 'bg-rose-600';
-  }
-};
+
 
 export default function DiseaseDetection() {
   const [view, setView] = useState<DiseaseView>('home');
@@ -410,27 +353,7 @@ export default function DiseaseDetection() {
         </div>
       </div>
 
-      <div>
-        <h3 className="text-xs font-bold text-soil-400 uppercase tracking-wider mb-2.5">Recent scans</h3>
-        {MOCK_RECENT_SCANS.length === 0 ? (
-          <div className="text-center py-8 text-xs text-soil-400 bg-parchment-50/50 rounded-xl border border-parchment-100">
-            No scans yet — your first check will show up here.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {MOCK_RECENT_SCANS.map((scan) => (
-              <div key={scan.id} className="flex items-center gap-2.5 bg-parchment-50 rounded-xl p-2.5 border border-parchment-100">
-                <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-leaf-600 to-leaf-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-soil-900 truncate">{scan.diseaseName}</div>
-                  <div className="text-[10px] text-soil-400">{scan.date}, {scan.cropName}</div>
-                </div>
-                <span className={`${severityColor(scan.severity)} text-white text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0`}>{scan.severity}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+
     </div>
   );
 }
