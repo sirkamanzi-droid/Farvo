@@ -49,7 +49,7 @@ export default async function handler(
 
     const form = new FormData();
     form.append(
-      'image',
+      'images',
       new Blob([Uint8Array.from(imageBytes)], { type: mimeType }),
       mimeType === 'image/png' ? 'leaf.png' : 'leaf.jpg'
     );
