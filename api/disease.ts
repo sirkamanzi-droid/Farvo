@@ -67,7 +67,12 @@ export default async function handler(
     });
 
     if (!upstream.ok) {
-      console.error('Pl@ntNet request failed with status:', upstream.status);
+      const upstreamError = await upstream.text();
+
+      console.error('Pl@ntNet failure:', {
+        status: upstream.status,
+        response: upstreamError.slice(0, 1000),
+      });
 
       return res.status(
         upstream.status === 429 ? 429 : 502
