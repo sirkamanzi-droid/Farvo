@@ -258,9 +258,9 @@ export default function DiseaseDetection() {
             {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
           </div>
           <div className="bg-gold-100/40 border border-gold-100 rounded-2xl p-5 text-center">
-            <p className="text-sm font-bold text-soil-900 mb-1">Disease detection is being upgraded</p>
+            <p className="text-sm font-bold text-soil-900 mb-1">Unable to identify this photo</p>
             <p className="text-xs text-soil-700 max-w-xs mx-auto">
-              Our diagnostic service is temporarily unavailable. Your photo has not been diagnosed yet. Please try again later.
+              {diagnosis.whatObserved || 'No reliable match was returned. Please try a clearer photo of the plant.'}
             </p>
           </div>
           <button onClick={() => setView('capture')} className="bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl">
