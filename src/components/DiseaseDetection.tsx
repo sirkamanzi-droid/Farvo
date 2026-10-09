@@ -32,14 +32,55 @@ interface Diagnosis {
 }
 
 async function computeDiagnosis(cropId: string, photoDataUrl: string): Promise<Diagnosis> {
-  // Disease API integration will replace this function.
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  try {
+    const response = await fetch('/api/disease', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        imageDataUrl: photoDataUrl,
+        cropId,
+      }),
+    });
 
-  return {
-    outcome: 'uncertain',
-    confidence: 0,
-    whatObserved: 'Disease detection is being upgraded. Please try again after the new diagnostic service is connected.',
-  };
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        typeof data.error === 'string'
+          ? data.error
+          : 'The disease detection service could not process this photo.'
+      );
+    }
+
+    const match = Array.isArray(data.results) ? data.results[0] : null;
+
+    if (!match || typeof match.score !== 'number') {
+      return {
+        outcome: 'uncertain',
+        confidence: 0,
+        whatObserved: 'No reliable disease match was returned. Try a clearer photo of the affected plant.',
+      };
+    }
+
+    return {
+      outcome: 'disease',
+      diseaseName: match.description || match.name || 'Possible plant disease',
+      confidence: Math.round(match.score * 100),
+      whatObserved: 'This is a possible match from Pl@ntNet, not a confirmed diagnosis. Check the plant carefully before taking action.',
+    };
+  } catch (error) {
+    console.error('Disease detection failed:', error);
+
+    return {
+      outcome: 'uncertain',
+      confidence: 0,
+      whatObserved: error instanceof Error
+        ? error.message
+        : 'Unable to check this photo right now. Please try again.',
+    };
+  }
 }
 
 
