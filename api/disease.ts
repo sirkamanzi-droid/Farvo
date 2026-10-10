@@ -85,6 +85,20 @@ export default async function handler(
 
     const data = await upstream.json();
 
+    console.log(
+      'Pl@ntNet disease result fields:',
+      JSON.stringify({
+        results: Array.isArray(data.results)
+          ? data.results.map((item: any) => ({
+              name: item.name ?? null,
+              description: item.description ?? null,
+              score: typeof item.score === 'number' ? item.score : null,
+            }))
+          : [],
+        version: data.version ?? null,
+      }).slice(0, 6000)
+    );
+
     return res.status(200).json({
       results: Array.isArray(data.results)
         ? data.results.map((item: any) => ({
