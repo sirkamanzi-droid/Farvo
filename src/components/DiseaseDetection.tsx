@@ -97,11 +97,28 @@ async function computeDiagnosis(
       const selectedCrop =
         CROPS.find((crop) => crop.id === cropId)?.name ?? 'selected crop';
 
+      const candidateSummary = plantResults
+        .slice(0, 5)
+        .map((candidate: any) => {
+          const name =
+            typeof candidate.scientificName === 'string'
+              ? candidate.scientificName
+              : 'Unknown species';
+
+          const score =
+            typeof candidate.score === 'number'
+              ? ` (${Math.round(candidate.score * 100)}%)`
+              : '';
+
+          return `${name}${score}`;
+        })
+        .join('; ');
+
       return {
         outcome: 'uncertain',
         confidence: Math.round(bestPlant.score * 100),
         whatObserved:
-          `The photo was identified as ${bestPlant.scientificName}, which does not match the ${selectedCrop} crop selected. Please check your crop selection and try again.`,
+          `The leading match was ${bestPlant.scientificName} (${Math.round(bestPlant.score * 100)}%), which does not match ${selectedCrop}. Other candidates: ${candidateSummary}. Please try a clearer photo.`,
       };
     }
 
