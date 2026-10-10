@@ -155,6 +155,22 @@ async function computeDiagnosis(
       };
     }
 
+    // Reject this generic Pl@ntNet result instead of presenting it as a named diagnosis.
+    const diseaseLabel =
+      typeof match.description === 'string' ? match.description.trim() : '';
+
+    if (
+      match.name === 'ZZXXZZ' ||
+      /^unknown parasitic pathogen$/i.test(diseaseLabel)
+    ) {
+      return {
+        outcome: 'uncertain',
+        confidence: 0,
+        whatObserved:
+          `The photo was identified as ${bestPlant.scientificName}, but the disease service returned a generic pathogen label rather than a reliable, specific diagnosis. Try a clearer photo of the affected leaf. Do not treat this result as a confirmed disease.`,
+      };
+    }
+
     const confidence = Math.round(match.score * 100);
 
     // Temporary conservative gate, not a clinically or scientifically validated threshold.
