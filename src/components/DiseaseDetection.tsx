@@ -31,44 +31,131 @@ interface Diagnosis {
   whatObserved?: string;
 }
 
-async function computeDiagnosis(cropId: string, photoDataUrl: string): Promise<Diagnosis> {
+async function computeDiagnosis(
+  cropId: string,
+  photoDataUrl: string
+): Promise<Diagnosis> {
   try {
-    const response = await fetch('/api/disease', {
+    // Stage 1: identify the plant
+    const plantResponse = await fetch('/api/plant', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageDataUrl: photoDataUrl }),
+    });
+
+    const plantData = await plantResponse.json();
+
+    if (!plantResponse.ok) {
+      throw new Error(
+        typeof plantData.error === 'string'
+          ? plantData.error
+          : 'The plant identification service could not process this photo.'
+      );
+    }
+
+    const plantResults = Array.isArray(plantData.results)
+      ? plantData.results
+      : [];
+    const bestPlant = plantResults[0];
+
+    if (
+      !bestPlant ||
+      typeof bestPlant.score !== 'number' ||
+      !bestPlant.scientificName
+    ) {
+      return {
+        outcome: 'uncertain',
+        confidence: 0,
+        whatObserved:
+          'We could not reliably identify a plant in this photo. Try a clear photo of the plant or affected leaf.',
+      };
+    }
+
+    const scientificName = bestPlant.scientificName
+      .toLowerCase()
+      .trim();
+
+    // Stage 2: compare the identified species with the selected crop.
+    // Keep this conservative: unsupported or unmatched crops are not diagnosed.
+    const cropMatches: Record<string, string[]> = {
+      maize: ['zea mays'],
+      beans: ['phaseolus vulgaris'],
+      coffee: ['coffea'],
+      banana: ['musa'],
+      tomato: ['solanum lycopersicum'],
+      potato: ['solanum tuberosum'],
+    };
+
+    const acceptedNames = cropMatches[cropId] ?? [];
+    const cropMatchesPlant = acceptedNames.some(
+      (name) =>
+        scientificName === name ||
+        scientificName.startsWith(`${name} `)
+    );
+
+    if (!cropMatchesPlant) {
+      const selectedCrop =
+        CROPS.find((crop) => crop.id === cropId)?.name ?? 'selected crop';
+
+      return {
+        outcome: 'uncertain',
+        confidence: Math.round(bestPlant.score * 100),
+        whatObserved:
+          `The photo was identified as ${bestPlant.scientificName}, which does not match the ${selectedCrop} crop selected. Please check your crop selection and try again.`,
+      };
+    }
+
+    // Stage 3: only after crop validation, request disease identification.
+    const diseaseResponse = await fetch('/api/disease', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         imageDataUrl: photoDataUrl,
         cropId,
       }),
     });
 
-    const data = await response.json();
+    const diseaseData = await diseaseResponse.json();
 
-    if (!response.ok) {
+    if (!diseaseResponse.ok) {
       throw new Error(
-        typeof data.error === 'string'
-          ? data.error
+        typeof diseaseData.error === 'string'
+          ? diseaseData.error
           : 'The disease detection service could not process this photo.'
       );
     }
 
-    const match = Array.isArray(data.results) ? data.results[0] : null;
+    const match = Array.isArray(diseaseData.results)
+      ? diseaseData.results[0]
+      : null;
 
     if (!match || typeof match.score !== 'number') {
       return {
         outcome: 'uncertain',
         confidence: 0,
-        whatObserved: 'No reliable disease match was returned. Try a clearer photo of the affected plant.',
+        whatObserved:
+          'The plant was identified, but no disease match was returned reliably. Try a clearer photo of the affected part.',
+      };
+    }
+
+    const confidence = Math.round(match.score * 100);
+
+    // Temporary conservative gate, not a clinically or scientifically validated threshold.
+    if (confidence < 30) {
+      return {
+        outcome: 'uncertain',
+        confidence,
+        whatObserved:
+          'The plant was identified, but the possible disease match was too uncertain to report. Try a clearer photo and compare the visible symptoms before taking action.',
       };
     }
 
     return {
       outcome: 'disease',
       diseaseName: match.description || match.name || 'Possible plant disease',
-      confidence: Math.round(match.score * 100),
-      whatObserved: 'This is a possible match from Pl@ntNet, not a confirmed diagnosis. Check the plant carefully before taking action.',
+      confidence,
+      whatObserved:
+        `The photo was identified as ${bestPlant.scientificName}. This is a possible disease match, not a confirmed diagnosis. Check the visible symptoms before taking action.`,
     };
   } catch (error) {
     console.error('Disease detection failed:', error);
@@ -76,9 +163,10 @@ async function computeDiagnosis(cropId: string, photoDataUrl: string): Promise<D
     return {
       outcome: 'uncertain',
       confidence: 0,
-      whatObserved: error instanceof Error
-        ? error.message
-        : 'Unable to check this photo right now. Please try again.',
+      whatObserved:
+        error instanceof Error
+          ? error.message
+          : 'Unable to check this photo right now. Please try again.',
     };
   }
 }
