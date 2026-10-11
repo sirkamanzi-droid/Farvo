@@ -17,7 +17,7 @@ export default function ComingSoon({ icon: Icon, title, description, onBack }: C
       <h2 className="text-xl font-bold text-soil-900 mb-2">{title}</h2>
       <p className="text-sm text-soil-400 max-w-xs leading-relaxed mb-6">{description}</p>
       <a
-        href="https://wa.me/000000000000?text=Notify%20me%20when%20this%20launches%20on%20Farvo"
+        href="https://wa.me/000000000000?text=Notify%20me%20when%20this%20launches%20on%20Omulimi"
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center gap-2 bg-gold-500 hover:bg-gold-500/90 text-soil-900 font-semibold text-sm px-5 py-2.5 rounded-xl transition shadow-sm mb-4"

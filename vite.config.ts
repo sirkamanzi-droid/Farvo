@@ -15,8 +15,8 @@ export default defineConfig(() => {
         workbox: {
         },
         manifest: {
-          name: 'Farvo',
-          short_name: 'Farvo',
+          name: 'Omulimi',
+          short_name: 'Omulimi',
           description: 'AI-powered farming advisory for Ugandan smallholder farmers',
           theme_color: '#2F5226',
           background_color: '#F1EBDC',
