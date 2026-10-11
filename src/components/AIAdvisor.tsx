@@ -49,40 +49,78 @@ export default function AIAdvisor({ weatherData, district, cropName }: AIAdvisor
 
   async function handleSendChat(e: React.FormEvent) {
     e.preventDefault();
-    if (!chatInput.trim() || sendingChat) return;
+    const question = chatInput.trim();
+    if (!question || sendingChat) return;
+
     const userMsg: Message = {
-      id: Math.random().toString(), role: 'user', content: chatInput,
+      id: Math.random().toString(),
+      role: 'user',
+      content: question,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
+
+    const conversation = [
+      ...chatMessages
+        .filter((msg) => msg.id !== 'welcome')
+        .map(({ role, content }) => ({ role, content })),
+      { role: 'user' as const, content: question },
+    ].slice(-12);
+
     setChatMessages((prev) => [...prev, userMsg]);
     setChatInput('');
     setSendingChat(true);
-    setTimeout(() => { chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, 50);
-    setTimeout(() => {
-      const p = prediction;
-      let reply = '';
-      const q = chatInput.toLowerCase();
-      if (q.includes('plant') || q.includes('when')) {
-        reply = p ? `For ${cropName} in ${district.name}: ${p.cropAdvisories[0]?.plantingAdvisory}` : `Click "Get AI Farming Advice" first for planting advice.`;
-      } else if (q.includes('pest') || q.includes('disease') || q.includes('spray') || q.includes('yellow') || q.includes('wilt')) {
-        reply = p ? `Pest & Disease outlook: ${p.cropAdvisories[0]?.pestDiseaseAdvisory}` : `Get your farming advice first for pest alerts.`;
-      } else if (q.includes('harvest')) {
-        reply = p ? `Harvest conditions: ${p.cropAdvisories[0]?.harvestAdvisory}` : `Click "Get AI Farming Advice" first for harvest timing.`;
-      } else if (q.includes('water') || q.includes('irrigat')) {
-        reply = p ? `Water management: ${p.cropAdvisories[0]?.irrigationGuidance}` : `Get your farming advice first for water guidance.`;
-      } else if (q.includes('fertiliz') || q.includes('weed') || q.includes('grow')) {
-        reply = p ? `Crop care: ${p.cropAdvisories[0]?.growthAdvisory}` : `Click "Get AI Farming Advice" first for crop care tips.`;
-      } else if (q.includes('weather') || q.includes('forecast') || q.includes('rain')) {
-        reply = p ? p.weeklyOutlook : `Current temperature is ${weatherData.current.temperature}°C in ${district.name}.`;
-      } else {
-        reply = p ? `${p.summary} Ask me about planting, pests, harvest, water, or fertilizer for more.` : `Click "Get AI Farming Advice" first, then ask me anything about ${cropName}.`;
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: conversation,
+          districtName: district.name,
+          cropName,
+          weatherContext: {
+            current: weatherData.current,
+            daily: weatherData.daily.slice(0, 3),
+          },
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Kato is temporarily unavailable. Please try again.',
+        );
       }
+
+      if (typeof data.content !== 'string' || !data.content.trim()) {
+        throw new Error('Kato returned an empty response. Please try again.');
+      }
+
       setChatMessages((prev) => [...prev, {
-        id: Math.random().toString(), role: 'assistant', content: reply,
+        id: Math.random().toString(),
+        role: 'assistant',
+        content: data.content.trim(),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       }]);
+    } catch (error) {
+      console.error('Kato chat request failed:', error);
+      setChatMessages((prev) => [...prev, {
+        id: Math.random().toString(),
+        role: 'assistant',
+        content: error instanceof Error
+          ? error.message
+          : 'Kato is temporarily unavailable. Please check your connection and try again.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }]);
+    } finally {
       setSendingChat(false);
-    }, 800);
+      setTimeout(() => {
+        chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    }
   }
 
   const getScoreColor = (score: number) => (score >= 80 ? 'bg-[#2F5226]' : score >= 50 ? 'bg-gold-500' : 'bg-rose-500');
