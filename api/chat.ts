@@ -66,10 +66,18 @@ Answer the farmer's latest question clearly and practically. Use locally familia
 
     return res.status(200).json({ content: answer.trim() });
   } catch (error: unknown) {
-    console.error(
-      'Kato chat error:',
-      error instanceof Error ? error.message : 'Unknown server error',
-    );
+    const details =
+      error instanceof Error
+        ? {
+            name: error.name,
+            message: error.message.slice(0, 500),
+            status: (error as any).status ?? (error as any).statusCode,
+            code: (error as any).code,
+          }
+        : { name: 'UnknownError', message: 'Unknown server error' };
+
+    console.error('Kato chat error details:', details);
+
     return res.status(500).json({
       error: 'Kato could not answer just now. Please try again in a moment.',
     });
