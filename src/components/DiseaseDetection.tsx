@@ -213,6 +213,7 @@ export default function DiseaseDetection() {
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [checkedSteps, setCheckedSteps] = useState<number>(0);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
+  const [unsupportedCrop, setUnsupportedCrop] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -277,7 +278,12 @@ export default function DiseaseDetection() {
             return (
               <button
                 key={crop.id}
-                onClick={() => setSelectedCrop(crop)}
+                onClick={() => {
+                  setSelectedCrop(crop);
+                  setUnsupportedCrop(
+                    ['cassava', 'rice'].includes(crop.id) ? crop.name : null
+                  );
+                }}
                 className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center ${isSelected ? 'border-leaf-600 bg-leaf-100/40' : 'border-parchment-100 bg-parchment-50'}`}
               >
                 {isSelected && (
@@ -292,9 +298,22 @@ export default function DiseaseDetection() {
           })}
         </div>
 
+        {unsupportedCrop && (
+          <div className="rounded-2xl border border-gold-100 bg-gold-100/30 p-4">
+            <p className="text-sm font-bold text-soil-900">{unsupportedCrop} disease detection is coming soon</p>
+            <p className="mt-1 text-xs text-soil-700">
+              Photo-based disease detection for this crop is not currently supported in Omulimi. Choose one of the currently supported crops to continue.
+            </p>
+          </div>
+        )}
+
         <button
-          onClick={() => selectedCrop && setView('capture')}
-          disabled={!selectedCrop}
+          onClick={() => {
+            if (!selectedCrop) return;
+            if (['cassava', 'rice'].includes(selectedCrop.id)) return;
+            setView('capture');
+          }}
+          disabled={!selectedCrop || ['cassava', 'rice'].includes(selectedCrop.id)}
           className="mt-2 bg-leaf-600 disabled:bg-parchment-200 disabled:text-soil-400 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl transition"
         >
           Continue →
