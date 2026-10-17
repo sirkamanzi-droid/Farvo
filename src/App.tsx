@@ -1,3 +1,6 @@
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from './lib/supabase';
+import AuthScreen from './components/AuthScreen';
 import React, { useState, useEffect } from 'react';
 import { DISTRICTS } from './data/districts';
 import { District, WeatherData, Farm } from './types';
@@ -14,7 +17,7 @@ import { Loader2, AlertCircle, RefreshCw, Beef, Wallet, User } from 'lucide-reac
 
 const DEFAULT_DISTRICT = DISTRICTS[1];
 
-export default function App() {
+function AuthenticatedApp() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('weather');
@@ -56,14 +59,41 @@ export default function App() {
   const fetchWeather = async (district: District) => {
     setLoadingWeather(true);
     setWeatherError(null);
+
     try {
-      const response = await fetch(`/api/weather?latitude=${district.latitude}&longitude=${district.longitude}`);
-      if (!response.ok) throw new Error('Failed to retrieve meteorology weather forecast.');
+      const { data: { session }, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        throw new Error('Please sign in again to view weather.');
+      }
+
+      const response = await fetch(
+        `/api/weather?latitude=${district.latitude}&longitude=${district.longitude}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        throw new Error('Your session has expired. Please sign in again.');
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to retrieve weather forecast.');
+      }
+
       const data = await response.json();
       setWeatherData(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Weather fetch error:', err);
-      setWeatherError(err.message || 'Unable to connect to weather services. Please check connection and try again.');
+      setWeatherError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to connect to weather services. Please try again.'
+      );
     } finally {
       setLoadingWeather(false);
     }
@@ -172,4 +202,46 @@ export default function App() {
       />
     </div>
   );
+}
+
+
+export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return;
+      if (error) console.error('Could not load session:', error);
+      setSession(data.session);
+      setCheckingSession(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
+      setSession(newSession);
+      setCheckingSession(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-parchment-100 text-soil-700">
+        Checking your Omulimi account…
+      </div>
+    );
+  }
+
+  if (!session) return <AuthScreen />;
+
+  return <AuthenticatedApp />;
 }
