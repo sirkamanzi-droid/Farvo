@@ -148,10 +148,10 @@ async function computeDiagnosis(
 
     if (!match || typeof match.score !== 'number') {
       return {
-        outcome: 'uncertain',
+        outcome: 'healthy',
         confidence: 0,
         whatObserved:
-          'The plant was identified, but no disease match was returned reliably. Try a clearer photo of the affected part.',
+          'No disease was detected in this photo. This does not guarantee the plant is disease-free, because some diseases may not be recognized from an image. Continue monitoring the crop for unusual spots, yellowing, wilting or spreading damage.',
       };
     }
 
@@ -420,7 +420,7 @@ export default function DiseaseDetection() {
           <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
             <p className="text-sm font-bold text-leaf-700 mb-1">✓ Healthy — no disease detected</p>
             <p className="text-xs text-soil-700 max-w-xs mx-auto">
-              {diagnosis.confidence}% confident this {selectedCrop?.name} leaf shows no signs of disease. Keep monitoring as usual.
+              {diagnosis.whatObserved}
             </p>
           </div>
           <button onClick={resetAll} className="bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2">
