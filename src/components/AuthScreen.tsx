@@ -27,7 +27,8 @@ export default function AuthScreen() {
           email: email.trim(),
           password,
           options: {
-            data: {
+            emailRedirectTo: window.location.origin,
+        data: {
               full_name: fullName.trim(),
               cooperative_code: cooperativeCode.trim().toUpperCase(),
             },
