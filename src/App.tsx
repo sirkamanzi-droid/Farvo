@@ -22,6 +22,7 @@ function AuthenticatedApp() {
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('weather');
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
+  const [katoOpen, setKatoOpen] = useState(false);
   const [districtPickerOpen, setDistrictPickerOpen] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(false);
@@ -177,13 +178,15 @@ function AuthenticatedApp() {
             {!loadingWeather && !weatherError && weatherData && (
               <div className="flex flex-col gap-6" id="dashboard-loaded-data">
                 <WeatherDashboard weatherData={weatherData} district={activeFarm.district} />
-                <AIAdvisor
-                  weatherData={weatherData}
-                  district={activeFarm.district}
-                  cropName={activeFarm.crop}
-                  initialQuestion={pendingKatoQuestion}
-                  onInitialQuestionHandled={() => setPendingKatoQuestion(null)}
-                />
+                {!katoOpen && (
+                  <AIAdvisor
+                    weatherData={weatherData}
+                    district={activeFarm.district}
+                    cropName={activeFarm.crop}
+                    initialQuestion={pendingKatoQuestion}
+                    onInitialQuestionHandled={() => setPendingKatoQuestion(null)}
+                  />
+                )}
               </div>
             )}
             </div>
@@ -195,7 +198,7 @@ function AuthenticatedApp() {
               <DiseaseDetection
                 onGetTreatmentAdvice={(question) => {
                   setPendingKatoQuestion(question);
-                  setActiveTab('weather');
+                  setKatoOpen(true);
                 }}
               />
             )}
@@ -205,6 +208,30 @@ function AuthenticatedApp() {
           </div>
         )}
       </main>
+      {katoOpen && weatherData && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => {
+                setKatoOpen(false);
+                setPendingKatoQuestion(null);
+              }}
+              className="absolute right-3 top-3 z-10 bg-white/90 text-soil-900 rounded-full px-3 py-1.5 text-xs font-bold shadow"
+            >
+              Close
+            </button>
+
+            <AIAdvisor
+              weatherData={weatherData}
+              district={activeFarm.district}
+              cropName={activeFarm.crop}
+              initialQuestion={pendingKatoQuestion}
+              onInitialQuestionHandled={() => setPendingKatoQuestion(null)}
+            />
+          </div>
+        </div>
+      )}
+
       <BottomNav active={activeTab} onChange={setActiveTab} />
       <DistrictPicker
         isOpen={districtPickerOpen}
