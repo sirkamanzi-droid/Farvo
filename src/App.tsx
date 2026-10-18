@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import AuthScreen from './components/AuthScreen';
+import AccountScreen from './components/AccountScreen';
 import React, { useState, useEffect } from 'react';
 import { DISTRICTS } from './data/districts';
 import { District, WeatherData, Farm } from './types';
@@ -17,7 +18,7 @@ import { Loader2, AlertCircle, RefreshCw, Beef, Wallet, User } from 'lucide-reac
 
 const DEFAULT_DISTRICT = DISTRICTS[1];
 
-function AuthenticatedApp() {
+function AuthenticatedApp({ userId }: { userId: string }) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('weather');
@@ -31,7 +32,7 @@ function AuthenticatedApp() {
   const [locationDetected, setLocationDetected] = useState(false);
 
   useEffect(() => {
-    const saved = loadFarms();
+    const saved = loadFarms(userId);
     if (saved.length > 0) {
       setFarms(saved);
       setActiveFarmId(saved[0].id);
@@ -42,7 +43,7 @@ function AuthenticatedApp() {
           const firstFarm = createFarm(district, district.mainCrops[0] || 'Maize', 0);
           setFarms([firstFarm]);
           setActiveFarmId(firstFarm.id);
-          saveFarms([firstFarm]);
+          saveFarms(userId, [firstFarm]);
           setLocationStatus(status);
           setLocationDetected(true);
         })
@@ -50,11 +51,11 @@ function AuthenticatedApp() {
           const firstFarm = createFarm(DEFAULT_DISTRICT, DEFAULT_DISTRICT.mainCrops[0] || 'Maize', 0);
           setFarms([firstFarm]);
           setActiveFarmId(firstFarm.id);
-          saveFarms([firstFarm]);
+          saveFarms(userId, [firstFarm]);
           setLocationStatus(status);
         });
     }
-  }, []);
+  }, [userId]);
 
   const activeFarm = farms.find((f) => f.id === activeFarmId) || farms[0];
 
@@ -109,7 +110,7 @@ function AuthenticatedApp() {
     const newFarm = createFarm(DEFAULT_DISTRICT, DEFAULT_DISTRICT.mainCrops[0] || 'Maize', farms.length);
     const updated = [...farms, newFarm];
     setFarms(updated);
-    saveFarms(updated);
+    saveFarms(userId, updated);
     setActiveFarmId(newFarm.id);
     setDistrictPickerOpen(true);
   };
@@ -119,7 +120,7 @@ function AuthenticatedApp() {
   const handleUpdateActiveFarm = (district: District, crop: string) => {
     const updated = farms.map((f) => (f.id === activeFarm.id ? { ...f, district, crop } : f));
     setFarms(updated);
-    saveFarms(updated);
+    saveFarms(userId, updated);
   };
 
   const detectLocationForActiveFarm = () => {
@@ -204,7 +205,7 @@ function AuthenticatedApp() {
             )}
             {activeTab === 'livestock' && <ComingSoon icon={Beef} title="Livestock Advisor" description="Care guidance for cattle, goats, and poultry — coming soon." onBack={() => setActiveTab('weather')} />}
             {activeTab === 'records' && <ComingSoon icon={Wallet} title="Financial Records" description="Track income and expenses across your farms — coming soon." onBack={() => setActiveTab('weather')} />}
-            {activeTab === 'account' && <ComingSoon icon={User} title="Account" description="Sign in to sync your farms across devices — coming soon." onBack={() => setActiveTab('weather')} />}
+            {activeTab === 'account' && <AccountScreen />}
           </div>
         )}
       </main>
@@ -284,5 +285,5 @@ export default function App() {
 
   if (!session) return <AuthScreen />;
 
-  return <AuthenticatedApp />;
+  return <AuthenticatedApp userId={session.user.id} />;
 }
