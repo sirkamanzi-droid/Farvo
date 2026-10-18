@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { User, Building2, Loader2, AlertCircle } from 'lucide-react';
+import { User, Building2, Loader2, AlertCircle, LogOut } from 'lucide-react';
 
 type FarmerProfile = {
   full_name: string;
@@ -11,6 +11,19 @@ export default function AccountScreen() {
   const [profile, setProfile] = useState<FarmerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    setError('');
+
+    const { error: signOutError } = await supabase.auth.signOut();
+
+    if (signOutError) {
+      setError('Could not sign out. Please try again.');
+      setSigningOut(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +122,20 @@ export default function AccountScreen() {
       <p className="text-xs text-soil-500">
         Your cooperative membership is managed securely through Omulimi.
       </p>
+
+      <button
+        type="button"
+        onClick={() => void handleSignOut()}
+        disabled={signingOut}
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-soil-200 bg-white px-4 py-3 font-medium text-soil-700 transition hover:bg-parchment-100 disabled:opacity-60"
+      >
+        {signingOut ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <LogOut className="h-4 w-4" />
+        )}
+        {signingOut ? 'Signing out…' : 'Sign out'}
+      </button>
     </section>
   );
 }

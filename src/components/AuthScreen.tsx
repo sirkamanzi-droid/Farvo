@@ -55,11 +55,25 @@ export default function AuthScreen() {
         setMessage('Signed in successfully. Opening Omulimi…');
       }
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Something went wrong. Please try again.'
-      );
+      const rawMessage = err instanceof Error ? err.message : '';
+      const normalizedMessage = rawMessage.toLowerCase();
+
+      if (normalizedMessage.includes('a valid cooperative code is required')) {
+        setError('That cooperative code is invalid or inactive. Please check it with your cooperative.');
+      } else if (normalizedMessage.includes('full name is required')) {
+        setError('Please enter your full name.');
+      } else if (
+        normalizedMessage.includes('user already registered') ||
+        normalizedMessage.includes('already been registered')
+      ) {
+        setError('An account with this email may already exist. Try signing in.');
+      } else if (normalizedMessage.includes('invalid login credentials')) {
+        setError('The email or password is incorrect.');
+      } else if (normalizedMessage.includes('email not confirmed')) {
+        setError('Please verify your email before signing in.');
+      } else {
+        setError('We couldn’t complete your request. Check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
