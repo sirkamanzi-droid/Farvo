@@ -7,9 +7,17 @@ interface AIAdvisorProps {
   weatherData: WeatherData;
   district: District;
   cropName: string;
+  initialQuestion?: string | null;
+  onInitialQuestionHandled?: () => void;
 }
 
-export default function AIAdvisor({ weatherData, district, cropName }: AIAdvisorProps) {
+export default function AIAdvisor({
+  weatherData,
+  district,
+  cropName,
+  initialQuestion,
+  onInitialQuestionHandled,
+}: AIAdvisorProps) {
   const [prediction, setPrediction] = useState<WeatherPrediction | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
@@ -24,6 +32,7 @@ export default function AIAdvisor({ weatherData, district, cropName }: AIAdvisor
   const [chatInput, setChatInput] = useState('');
   const [sendingChat, setSendingChat] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const lastAutoSentQuestionRef = useRef<string | null>(null);
 
   useEffect(() => {
     setPrediction(null);
@@ -47,9 +56,9 @@ export default function AIAdvisor({ weatherData, district, cropName }: AIAdvisor
     }, 1200);
   }
 
-  async function handleSendChat(e: React.FormEvent) {
-    e.preventDefault();
-    const question = chatInput.trim();
+  async function handleSendChat(e?: React.FormEvent, presetQuestion?: string) {
+    e?.preventDefault();
+    const question = (presetQuestion ?? chatInput).trim();
     if (!question || sendingChat) return;
 
     const userMsg: Message = {
@@ -122,6 +131,20 @@ export default function AIAdvisor({ weatherData, district, cropName }: AIAdvisor
       }, 50);
     }
   }
+
+  useEffect(() => {
+    const question = initialQuestion?.trim();
+    if (!question) {
+      lastAutoSentQuestionRef.current = null;
+      return;
+    }
+    if (lastAutoSentQuestionRef.current === question) return;
+
+    lastAutoSentQuestionRef.current = question;
+    setChatExpanded(true);
+    void handleSendChat(undefined, question);
+    onInitialQuestionHandled?.();
+  }, [initialQuestion]);
 
   const getScoreColor = (score: number) => (score >= 80 ? 'bg-[#2F5226]' : score >= 50 ? 'bg-gold-500' : 'bg-rose-500');
   const getPestRiskColor = (risk: string) => (risk === 'High' ? 'text-rose-700 bg-rose-50 border-rose-200' : risk === 'Medium' ? 'text-clay-600 bg-gold-100 border-gold-100' : 'text-leaf-600 bg-leaf-100 border-leaf-100');

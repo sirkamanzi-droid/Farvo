@@ -21,6 +21,7 @@ function AuthenticatedApp() {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('weather');
+  const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
   const [districtPickerOpen, setDistrictPickerOpen] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(false);
@@ -176,7 +177,13 @@ function AuthenticatedApp() {
             {!loadingWeather && !weatherError && weatherData && (
               <div className="flex flex-col gap-6" id="dashboard-loaded-data">
                 <WeatherDashboard weatherData={weatherData} district={activeFarm.district} />
-                <AIAdvisor weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} />
+                <AIAdvisor
+                  weatherData={weatherData}
+                  district={activeFarm.district}
+                  cropName={activeFarm.crop}
+                  initialQuestion={pendingKatoQuestion}
+                  onInitialQuestionHandled={() => setPendingKatoQuestion(null)}
+                />
               </div>
             )}
             </div>
@@ -184,7 +191,14 @@ function AuthenticatedApp() {
         )}
         {activeTab !== 'weather' && (
           <div className="px-4 sm:px-6 lg:px-8">
-            {activeTab === 'disease' && <DiseaseDetection />}
+            {activeTab === 'disease' && (
+              <DiseaseDetection
+                onGetTreatmentAdvice={(question) => {
+                  setPendingKatoQuestion(question);
+                  setActiveTab('weather');
+                }}
+              />
+            )}
             {activeTab === 'livestock' && <ComingSoon icon={Beef} title="Livestock Advisor" description="Care guidance for cattle, goats, and poultry — coming soon." onBack={() => setActiveTab('weather')} />}
             {activeTab === 'records' && <ComingSoon icon={Wallet} title="Financial Records" description="Track income and expenses across your farms — coming soon." onBack={() => setActiveTab('weather')} />}
             {activeTab === 'account' && <ComingSoon icon={User} title="Account" description="Sign in to sync your farms across devices — coming soon." onBack={() => setActiveTab('weather')} />}

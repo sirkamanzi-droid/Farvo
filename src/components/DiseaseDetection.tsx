@@ -206,7 +206,11 @@ async function computeDiagnosis(
 
 
 
-export default function DiseaseDetection() {
+export default function DiseaseDetection({
+  onGetTreatmentAdvice,
+}: {
+  onGetTreatmentAdvice: (question: string) => void;
+}) {
   const [view, setView] = useState<DiseaseView>('home');
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -477,8 +481,15 @@ export default function DiseaseDetection() {
           </div>
         </div>
 
-        <button disabled className="bg-parchment-200 text-soil-400 font-bold text-sm py-3 rounded-xl">
-          Get treatment advice → (next step)
+        <button
+          onClick={() => {
+            if (!selectedCrop || !diagnosis || diagnosis.outcome !== 'disease') return;
+            const question = `I scanned a ${selectedCrop.name} plant in Omulimi. The possible diagnosis is ${diagnosis.diseaseName ?? 'an unknown disease'} with a ${diagnosis.confidence}% match. Observations: ${diagnosis.whatObserved ?? 'No additional observations recorded'}. Please help me assess this result, explain practical immediate steps for a Ugandan smallholder farmer, and ask follow-up questions if needed. Do not treat the scan as a confirmed diagnosis.`;
+            onGetTreatmentAdvice(question);
+          }}
+          className="bg-leaf-700 hover:bg-leaf-800 text-white font-bold text-sm py-3 rounded-xl transition"
+        >
+          Talk to Kato about treatment →
         </button>
         <button onClick={resetAll} className="text-xs font-semibold text-soil-400 py-1">Scan another</button>
       </div>
