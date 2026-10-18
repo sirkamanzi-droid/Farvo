@@ -419,6 +419,7 @@ export default function DiseaseDetection() {
           </div>
           <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
             <p className="text-sm font-bold text-leaf-700 mb-1">✓ Healthy — no disease detected</p>
+            <p className="text-2xl font-bold text-leaf-700 mb-2">100%</p>
             <p className="text-xs text-soil-700 max-w-xs mx-auto">
               {diagnosis.whatObserved}
             </p>
