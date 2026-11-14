@@ -181,16 +181,15 @@ async function computeDiagnosis(
     const diseaseLabel =
       typeof match.description === 'string' ? match.description.trim() : '';
 
-    const normalizedDiseaseLabel = `${match.name ?? ''} ${diseaseLabel}`
+    const normalizedDiseaseLabel = \`\${match.name ?? ''} \${diseaseLabel}\`
       .toLowerCase()
-      .replace(/[()[\\]{}]/g, ' ')
-      .replace(/\\s+/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim();
 
     // Broad pathogen groups and unclassified labels are not specific diagnoses.
     const isGenericResult =
       match.name === 'ZZXXZZ' ||
-      /\\bunclassified\\b|\\bunknown (?:parasitic )?pathogen\\b|^viruses?$|^fungi?$|^bacteria?$|^pests?$/.test(normalizedDiseaseLabel);
+      /\bunclassified\b|\bunknown (?:parasitic )?pathogen\b|^viruses?$|^fungi?$|^bacteria?$|^pests?$/.test(normalizedDiseaseLabel);
 
     if (isGenericResult) {
       return {
