@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { User, Building2, Loader2, AlertCircle, LogOut } from 'lucide-react';
+import { User, Building2, BadgeCheck, Loader2, AlertCircle, LogOut } from 'lucide-react';
 
 type FarmerProfile = {
   full_name: string;
   cooperative_name: string;
+  farmer_code: string;
 };
 
 export default function AccountScreen() {
@@ -33,7 +34,7 @@ export default function AccountScreen() {
       setError('');
 
       const { data, error: requestError } = await supabase.rpc(
-        'get_my_cooperative'
+        'get_my_farmer_account'
       );
 
       if (cancelled) return;
@@ -103,7 +104,7 @@ export default function AccountScreen() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 p-5">
+          <div className="flex items-center gap-4 border-b border-soil-100 p-5">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-leaf-100">
               <Building2 className="h-6 w-6 text-leaf-700" />
             </div>
@@ -113,6 +114,23 @@ export default function AccountScreen() {
               </p>
               <p className="mt-1 break-words font-semibold text-soil-800">
                 {profile.cooperative_name}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 p-5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-leaf-100">
+              <BadgeCheck className="h-6 w-6 text-leaf-700" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide text-soil-500">
+                Your Farmer ID
+              </p>
+              <p className="mt-1 font-mono text-lg font-bold tracking-wide text-soil-800">
+                {profile.farmer_code}
+              </p>
+              <p className="mt-1 text-xs text-soil-500">
+                Keep this ID for your Omulimi records.
               </p>
             </div>
           </div>
