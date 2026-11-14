@@ -19,6 +19,16 @@ export default async function handler(
 
   try {
     const imageDataUrl = req.body?.imageDataUrl;
+    const cropId = req.body?.cropId;
+    const supportedCropIds = new Set([
+      'maize', 'beans', 'coffee', 'banana', 'tomato', 'potato'
+    ]);
+
+    if (typeof cropId !== 'string' || !supportedCropIds.has(cropId)) {
+      return res.status(400).json({
+        error: 'Disease checking is currently available only for selected supported crops.'
+      });
+    }
 
     if (typeof imageDataUrl !== 'string') {
       return res.status(400).json({ error: 'An image is required.' });
