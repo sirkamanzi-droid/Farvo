@@ -1,46 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-leaf-700: #2F5226;
-  --color-leaf-600: #3F6B33;
-  --color-leaf-400: #6B9A5C;
-  --color-leaf-100: #E3ECDE;
-  --color-clay-600: #B5651D;
-  --color-clay-400: #CE8347;
-  --color-gold-500: #D9A441;
-  --color-gold-100: #F7E9C9;
-  --color-soil-900: #2B1B12;
-  --color-soil-700: #5C4030;
-  --color-soil-400: #8A6E5A;
-  --color-parchment-200: #E8DFCC;
-  --color-parchment-100: #F1EBDC;
-  --color-parchment-50: #F8F4EB;
+  --color-leaf-700: #174432;
+  --color-leaf-600: #285b40;
+  --color-leaf-400: #719579;
+  --color-leaf-100: #e7eddf;
+  --color-clay-600: #a94d2e;
+  --color-clay-400: #c77b4b;
+  --color-gold-500: #d7a442;
+  --color-gold-100: #f5ebd2;
+  --color-soil-900: #1d2d27;
+  --color-soil-700: #52645a;
+  --color-soil-400: #879188;
+  --color-parchment-200: #e6dece;
+  --color-parchment-100: #f2ecdf;
+  --color-parchment-50: #faf7ef;
 }
 
 :root {
-  --farvo-cream: #F1EBDC;
-  --farvo-green: #2F5226;
-  --farvo-green-light: #3F6B33;
-  --farvo-text: #2B1B12;
-  --farvo-muted: #5C4030;
-  --farvo-card: #F8F4EB;
-  --farvo-border: #D8C9B0;
+  --farvo-cream: #f2ecdf;
+  --farvo-green: #174432;
+  --farvo-green-light: #285b40;
+  --farvo-text: #1d2d27;
+  --farvo-muted: #52645a;
+  --farvo-card: #faf7ef;
+  --farvo-border: #ded5c3;
+  color-scheme: light;
 }
 
+* { -webkit-tap-highlight-color: transparent; }
 body {
-  background: var(--farvo-cream);
-  color: var(--farvo-text);
+  background: #f2ecdf;
+  color: #1d2d27;
   font-family: 'Work Sans', sans-serif;
+  margin: 0;
 }
-
-h1, h2, h3 {
-  font-family: 'Fraunces', Georgia, serif;
-}
-
+h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; }
+button, input, select, textarea { font: inherit; }
 .furrow-divider {
   height: 5px;
-  background-image: repeating-linear-gradient(90deg, #B5651D 0px, #B5651D 9px, transparent 9px, transparent 15px);
-  opacity: 0.5;
+  background-image: repeating-linear-gradient(90deg, #b5653b 0px, #b5653b 9px, transparent 9px, transparent 15px);
+  opacity: .45;
   border-radius: 3px;
 }
