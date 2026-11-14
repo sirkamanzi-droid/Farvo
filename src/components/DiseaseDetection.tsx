@@ -21,7 +21,7 @@ const CROPS: Crop[] = [
 type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'result';
 
 interface Diagnosis {
-  outcome: 'disease' | 'healthy' | 'uncertain';
+  outcome: 'disease' | 'healthy' | 'no_match' | 'uncertain';
   diseaseName?: string;
   confidence: number;
   severity?: 'Low' | 'Moderate' | 'High';
@@ -140,9 +140,27 @@ async function computeDiagnosis(
       );
     }
 
-    const match = Array.isArray(diseaseData.results)
-      ? diseaseData.results[0]
-      : null;
+    if (!Array.isArray(diseaseData.results)) {
+      return {
+        outcome: 'uncertain',
+        confidence: 0,
+        whatObserved:
+          'The disease service returned an unexpected response. We cannot assess this photo reliably. Please try again later or ask an agricultural extension officer.',
+      };
+    }
+
+    // Pl@ntNet returns probable disease candidates, not a verified healthy verdict.
+    // An empty candidate list is therefore reported as "no match", never "100% healthy".
+    if (diseaseData.results.length === 0) {
+      return {
+        outcome: 'no_match',
+        confidence: 0,
+        whatObserved:
+          'The scan did not return a disease match for this photo. This does not prove that the whole plant is disease-free. Keep monitoring your crop and seek advice if symptoms appear or spread.',
+      };
+    }
+
+    const match = diseaseData.results[0];
 
     if (
       !match ||
@@ -155,7 +173,7 @@ async function computeDiagnosis(
         outcome: 'uncertain',
         confidence: 0,
         whatObserved:
-          'The plant was identified, but the disease service did not return a usable disease match. This is not proof that the plant is healthy. Check for visible symptoms and try another clear photo, or ask an agricultural extension officer if the problem is spreading.',
+          'The disease service returned a result that could not be interpreted reliably. Please try another clear photo or ask an agricultural extension officer.',
       };
     }
 
@@ -401,6 +419,26 @@ export default function DiseaseDetection({
             Retake photo
           </button>
           <button onClick={resetAll} className="text-xs font-semibold text-soil-400 py-1">Cancel</button>
+        </div>
+      );
+    }
+
+    if (diagnosis.outcome === 'no_match') {
+      return (
+        <div className="flex flex-col gap-5">
+          <div className="rounded-3xl overflow-hidden h-48">
+            {photoDataUrl && <img src={photoDataUrl} alt="Scanned crop" className="w-full h-full object-cover" />}
+          </div>
+          <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
+            <p className="text-sm font-bold text-leaf-700 mb-1">✓ No disease match found</p>
+            <p className="text-base font-bold text-leaf-700 mb-2">No disease identified in this photo</p>
+            <p className="text-xs text-soil-700 max-w-xs mx-auto">
+              {diagnosis.whatObserved}
+            </p>
+          </div>
+          <button onClick={resetAll} className="bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2">
+            <RotateCcw className="h-3.5 w-3.5" /> Scan another
+          </button>
         </div>
       );
     }
