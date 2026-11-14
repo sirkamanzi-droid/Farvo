@@ -159,11 +159,11 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         {activeTab==='home' && <HomeDashboard farm={activeFarm} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={()=>setDistrictPickerOpen(true)}/>}
         {activeTab==='weather' && <div className="flex flex-col gap-4">
           <SkyHero farms={farms} activeFarm={activeFarm} onSelectFarm={handleSelectFarm} onAddFarm={handleAddFarm} onOpenDistrictPicker={()=>setDistrictPickerOpen(true)} onSelectCrop={c=>handleUpdateActiveFarm(activeFarm.district,c)} weatherCode={weatherData?.current.weatherCode??1} temperature={weatherData?.current.temperature??0} wasGeoDetected={locationStatus==='success'&&locationDetected}/>
-          <div className="px-4 sm:px-6 flex flex-col gap-4 pb-4">
-            <div><p className="text-xs font-semibold text-leaf-700">LOCAL FORECAST</p><h1 className="text-2xl font-bold text-soil-900 mt-1">Weather intelligence</h1><p className="text-xs text-soil-600 mt-1">District forecast and farming decisions for {activeFarm.district.name}.</p></div>
+          <div className="px-0 sm:px-0 flex flex-col gap-0 pb-4">
+            
             {loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-[#e6dcc8] p-8 text-center"><Loader2 className="h-7 w-7 text-leaf-600 animate-spin mx-auto"/><p className="text-xs text-soil-600 mt-2">Loading your local forecast…</p></div>}
             {weatherError&&!loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-rose-100 p-5"><AlertCircle className="h-6 w-6 text-rose-600"/><p className="text-sm font-bold text-soil-900 mt-2">Weather unavailable</p><p className="text-xs text-soil-600 mt-1">{weatherError}</p><button onClick={()=>void fetchWeather(activeFarm.district)} className="mt-3 bg-leaf-700 text-white rounded-xl px-4 py-2 text-xs font-bold"><RefreshCw className="inline h-3 w-3 mr-1"/>Try again</button></div>}
-            {!loadingWeather&&!weatherError&&weatherData&&<><WeatherDashboard weatherData={weatherData} district={activeFarm.district}/><AIAdvisor weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)}/></>}
+            {!loadingWeather&&!weatherError&&weatherData&&<><WeatherDashboard weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} onAskKato={()=>setKatoOpen(true)}/></>}
           </div>
         </div>}
         {activeTab==='disease'&&<div className="px-4 sm:px-6 py-5"><DiseaseDetection onGetTreatmentAdvice={question=>{setPendingKatoQuestion(question);setKatoOpen(true);}}/></div>}
