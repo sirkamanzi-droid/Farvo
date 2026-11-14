@@ -70,18 +70,18 @@ export default function AccountScreen() {
     <section className="mx-auto w-full max-w-xl space-y-5">
       <div>
         <p className="text-sm font-medium text-leaf-600">YOUR PROFILE</p>
-        <h1 className="mt-1 text-2xl font-semibold text-soil-800">
+        <h1 className="mt-1 text-2xl font-semibold text-soil-900">
           Account
         </h1>
-        <p className="mt-2 text-sm text-soil-600">
+        <p className="mt-2 text-sm text-soil-700">
           Your Omulimi farmer account and cooperative details.
         </p>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-3 rounded-2xl border border-soil-200 bg-white p-5">
+        <div className="flex items-center gap-3 rounded-2xl border border-[#e6dcc8] bg-[#f8f4eb] p-5">
           <Loader2 className="h-5 w-5 animate-spin text-leaf-600" />
-          <p className="text-sm text-soil-600">Loading your profile…</p>
+          <p className="text-sm text-soil-700">Loading your profile…</p>
         </div>
       ) : error ? (
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-5">
@@ -89,47 +89,47 @@ export default function AccountScreen() {
           <p className="text-sm text-red-800">{error}</p>
         </div>
       ) : profile ? (
-        <div className="overflow-hidden rounded-2xl border border-soil-200 bg-white">
-          <div className="flex items-center gap-4 border-b border-soil-100 p-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-leaf-100">
+        <div className="overflow-hidden rounded-2xl border border-[#e6dcc8] bg-[#f8f4eb]">
+          <div className="flex items-center gap-4 border-b border-[#e6dcc8] p-5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e3ecde]">
               <User className="h-6 w-6 text-leaf-700" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-soil-500">
+              <p className="text-xs font-medium uppercase tracking-wide text-soil-400">
                 Farmer name
               </p>
-              <p className="mt-1 break-words font-semibold text-soil-800">
+              <p className="mt-1 break-words font-semibold text-soil-900">
                 {profile.full_name}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 border-b border-soil-100 p-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-leaf-100">
+          <div className="flex items-center gap-4 border-b border-[#e6dcc8] p-5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e3ecde]">
               <Building2 className="h-6 w-6 text-leaf-700" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-soil-500">
+              <p className="text-xs font-medium uppercase tracking-wide text-soil-400">
                 Cooperative
               </p>
-              <p className="mt-1 break-words font-semibold text-soil-800">
+              <p className="mt-1 break-words font-semibold text-soil-900">
                 {profile.cooperative_name}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4 p-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-leaf-100">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e3ecde]">
               <BadgeCheck className="h-6 w-6 text-leaf-700" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-soil-500">
+              <p className="text-xs font-medium uppercase tracking-wide text-soil-400">
                 Your Farmer ID
               </p>
-              <p className="mt-1 font-mono text-lg font-bold tracking-wide text-soil-800">
+              <p className="mt-1 font-mono text-lg font-bold tracking-wide text-soil-900">
                 {profile.farmer_code}
               </p>
-              <p className="mt-1 text-xs text-soil-500">
+              <p className="mt-1 text-xs text-soil-400">
                 Keep this ID for your Omulimi records.
               </p>
             </div>
@@ -137,7 +137,7 @@ export default function AccountScreen() {
         </div>
       ) : null}
 
-      <p className="text-xs text-soil-500">
+      <p className="text-xs text-soil-400">
         Your cooperative membership is managed securely through Omulimi.
       </p>
 
@@ -145,7 +145,7 @@ export default function AccountScreen() {
         type="button"
         onClick={() => void handleSignOut()}
         disabled={signingOut}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-soil-200 bg-white px-4 py-3 font-medium text-soil-700 transition hover:bg-parchment-100 disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] px-4 py-3 font-medium text-soil-700 transition hover:bg-[#efe7d8] disabled:opacity-60"
       >
         {signingOut ? (
           <Loader2 className="h-4 w-4 animate-spin" />
