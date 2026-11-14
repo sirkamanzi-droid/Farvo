@@ -37,6 +37,13 @@ export default function AuthScreen() {
 
         if (signUpError) throw signUpError;
 
+        // Supabase may return an empty identities array for an existing email
+        // instead of an error, to avoid revealing whether an account exists.
+        // Treat that response as a duplicate registration, never as success.
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          throw new Error('User already registered');
+        }
+
         if (data.session) {
           setMessage('Account created successfully. Opening Omulimi…');
         } else {
@@ -67,7 +74,8 @@ export default function AuthScreen() {
         normalizedMessage.includes('user already registered') ||
         normalizedMessage.includes('already been registered')
       ) {
-        setError('An account with this email may already exist. Try signing in.');
+        setError('This email already has an account. Sign in with your existing password instead.');
+        setMode('login');
       } else if (normalizedMessage.includes('invalid login credentials')) {
         setError('The email or password is incorrect.');
       } else if (normalizedMessage.includes('email not confirmed')) {
