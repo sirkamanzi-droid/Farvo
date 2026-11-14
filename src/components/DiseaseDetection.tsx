@@ -181,15 +181,23 @@ async function computeDiagnosis(
     const diseaseLabel =
       typeof match.description === 'string' ? match.description.trim() : '';
 
-    if (
+    const normalizedDiseaseLabel = `${match.name ?? ''} ${diseaseLabel}`
+      .toLowerCase()
+      .replace(/[()[\\]{}]/g, ' ')
+      .replace(/\\s+/g, ' ')
+      .trim();
+
+    // Broad pathogen groups and unclassified labels are not specific diagnoses.
+    const isGenericResult =
       match.name === 'ZZXXZZ' ||
-      /^unknown parasitic pathogen$/i.test(diseaseLabel)
-    ) {
+      /\\bunclassified\\b|\\bunknown (?:parasitic )?pathogen\\b|^viruses?$|^fungi?$|^bacteria?$|^pests?$/.test(normalizedDiseaseLabel);
+
+    if (isGenericResult) {
       return {
         outcome: 'uncertain',
         confidence: 0,
         whatObserved:
-          `The photo was identified as ${bestPlant.scientificName}, but the disease service returned a generic pathogen label rather than a reliable, specific diagnosis. Try a clearer photo of the affected leaf. Do not treat this result as a confirmed disease.`,
+          'We identified the crop, but could not identify a specific disease from this photo. Try a clearer close-up of the affected area.',
       };
     }
 
@@ -484,12 +492,9 @@ export default function DiseaseDetection({
           <p className="text-xs text-soil-400 leading-relaxed">{diagnosis.whatObserved}</p>
         </div>
 
-        <div className="bg-leaf-100/30 border border-leaf-100 rounded-2xl p-4 flex gap-2.5">
-          <span className="text-sm">💡</span>
-          <div>
-            <div className="text-xs font-bold text-soil-900 mb-0.5">Not 100% certain?</div>
-            <div className="text-[11px] text-soil-400 leading-relaxed">This is an AI-generated suggestion, not a confirmed diagnosis. Do not apply treatment based on this result alone. Ask an agricultural extension officer to verify it.</div>
-          </div>
+        <div className="bg-leaf-100/30 border border-leaf-100 rounded-2xl p-4">
+          <div className="text-xs font-bold text-soil-900 mb-1">Next step</div>
+          <p className="text-[11px] text-soil-500 leading-relaxed">Compare the result with the symptoms visible on your crop. Kato can help you understand the possible match and what to check next.</p>
         </div>
 
         <button
