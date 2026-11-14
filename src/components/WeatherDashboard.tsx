@@ -1,7 +1,7 @@
 import React from 'react';
 import { WeatherData, District } from '../types';
 import { generateCropAdvice } from '../data/cropAdvisor';
-import { Sun, Cloud, CloudSun, CloudFog, CloudDrizzle, CloudRain, CloudLightning, Droplets, MapPin, Sprout, Sprout as Plant, SprayCan, Wheat, ChevronRight, Clock3 } from 'lucide-react';
+import { Sun, Cloud, CloudSun, CloudFog, CloudDrizzle, CloudRain, CloudLightning, Droplets, MapPin, Sprout, Leaf, Wheat, ChevronRight, Clock3 } from 'lucide-react';
 
 interface WeatherDashboardProps {
   weatherData: WeatherData;
@@ -44,7 +44,7 @@ export default function WeatherDashboard({ weatherData, district, cropName='Maiz
     : 'Check the forecast and product label before any crop spraying.';
   const decisions = [
     {title:'Planting',icon:Sprout,body:advice.plantingAdvisory,meta:'Based on soil moisture and rainfall'},
-    {title:'Spraying',icon:SprayCan,body:sprayingAdvice,meta:'Weather timing guidance'},
+    {title:'Spraying',icon:Droplets,body:sprayingAdvice,meta:'Weather timing guidance'},
     {title:'Drying',icon:Sun,body:rainProbability >= 50 ? 'Rain is possible. Dry harvested produce under a covered, well-ventilated area.' : 'A drier window may be available. Keep produce raised and protected from damp ground.',meta:'Based on rain probability'},
     {title:'Harvesting',icon:Wheat,body:advice.harvestAdvisory,meta:'Next 3 days outlook'}
   ];
@@ -98,7 +98,7 @@ export default function WeatherDashboard({ weatherData, district, cropName='Maiz
       </section>
 
       <section className="rounded-xl border border-[#dce2d5] bg-[#edf1e8] p-3">
-        <div className="flex items-center gap-2"><Plant className="h-4 w-4 text-leaf-700"/><h3 className="text-xs font-bold text-soil-900">{cropName} crop advice</h3></div>
+        <div className="flex items-center gap-2"><Leaf className="h-4 w-4 text-leaf-700"/><h3 className="text-xs font-bold text-soil-900">{cropName} crop advice</h3></div>
         <p className="mt-1 text-[11px] leading-relaxed text-soil-700">{advice.growthAdvisory}</p>
         {onAskKato&&<button onClick={onAskKato} className="mt-3 flex items-center gap-1 text-xs font-bold text-leaf-700">Ask Kato about your farm <ChevronRight className="h-3.5 w-3.5"/></button>}
       </section>
