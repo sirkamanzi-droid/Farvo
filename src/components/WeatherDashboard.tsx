@@ -1,7 +1,7 @@
 import React from 'react';
 import { WeatherData, District } from '../types';
 import { generateCropAdvice } from '../data/cropAdvisor';
-import { Sun, Cloud, CloudSun, CloudFog, CloudDrizzle, CloudRain, CloudLightning, Droplets, Wind, Sprout, Sprout as Plant, SprayCan, Wheat, ChevronRight, Clock3 } from 'lucide-react';
+import { Sun, Cloud, CloudSun, CloudFog, CloudDrizzle, CloudRain, CloudLightning, Droplets, MapPin, Sprout, Sprout as Plant, SprayCan, Wheat, ChevronRight, Clock3 } from 'lucide-react';
 
 interface WeatherDashboardProps {
   weatherData: WeatherData;
