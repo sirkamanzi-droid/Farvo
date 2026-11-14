@@ -14,8 +14,6 @@ const CROPS: Crop[] = [
   { id: 'banana', name: 'Banana', emoji: '🍌' },
   { id: 'tomato', name: 'Tomato', emoji: '🍅' },
   { id: 'potato', name: 'Potato', emoji: '🥔' },
-  { id: 'cassava', name: 'Cassava', emoji: '🌾' },
-  { id: 'rice', name: 'Rice', emoji: '🌾' },
 ];
 
 
@@ -79,13 +77,11 @@ async function computeDiagnosis(
     // Keep this conservative: unsupported or unmatched crops are not diagnosed.
     const cropMatches: Record<string, string[]> = {
       maize: ['zea mays'],
-      beans: ['phaseolus vulgaris', 'vigna unguiculata'],
-      coffee: ['coffea'],
-      banana: ['musa'],
+      beans: ['phaseolus vulgaris'],
+      coffee: ['coffea arabica'],
+      banana: ['musa × paradisiaca', 'musa x paradisiaca', 'musa acuminata', 'musa balbisiana'],
       tomato: ['solanum lycopersicum'],
       potato: ['solanum tuberosum'],
-      cassava: ['manihot esculenta'],
-      rice: ['oryza sativa'],
     };
 
     const acceptedNames = cropMatches[cropId] ?? [];
@@ -187,7 +183,7 @@ async function computeDiagnosis(
         outcome: 'uncertain',
         confidence,
         whatObserved:
-          'The plant was identified, but the possible disease match was too uncertain to report. Try a clearer photo and compare the visible symptoms before taking action.',
+          'The plant was identified, but the service did not provide a strong enough match to show. This does not mean the plant is healthy. Try another clear photo or ask an agricultural extension officer.',
       };
     }
 
@@ -270,7 +266,7 @@ export default function DiseaseDetection({
           </button>
           <h2 className="text-base font-bold text-soil-900">What crop is this?</h2>
         </div>
-        <p className="text-xs text-soil-400 -mt-3">Select the crop for a more accurate diagnosis.</p>
+        <p className="text-xs text-soil-400 -mt-3">Select a crop currently covered by the preliminary disease-check service.</p>
 
         <div className="relative">
           <input
@@ -437,9 +433,9 @@ export default function DiseaseDetection({
             {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
           </div>
           <div className="flex-1 min-w-0">
-            <span className="inline-block bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5">● Likely Disease</span>
+            <span className="inline-block bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5">● Possible match — unconfirmed</span>
             <div className="text-lg font-bold text-soil-900">{diagnosis.diseaseName}</div>
-            <div className="text-xs text-soil-400 mt-1">Confidence</div>
+            <div className="text-xs text-soil-400 mt-1">Provider match score (not accuracy)</div>
             <div className="text-base font-bold text-soil-900">{diagnosis.confidence}%</div>
             <div className="w-full bg-parchment-200 h-2 rounded-full overflow-hidden mt-1">
               <div className="h-full bg-leaf-600 rounded-full" style={{ width: `${diagnosis.confidence}%` }} />
@@ -463,7 +459,7 @@ export default function DiseaseDetection({
         </div>
 
         <div className="bg-parchment-50 border border-parchment-100 rounded-2xl p-4">
-          <div className="text-xs font-bold text-soil-900 mb-1.5">What Omulimi observed</div>
+          <div className="text-xs font-bold text-soil-900 mb-1.5">Preliminary result</div>
           <p className="text-xs text-soil-400 leading-relaxed">{diagnosis.whatObserved}</p>
         </div>
 
@@ -471,7 +467,7 @@ export default function DiseaseDetection({
           <span className="text-sm">💡</span>
           <div>
             <div className="text-xs font-bold text-soil-900 mb-0.5">Not 100% certain?</div>
-            <div className="text-[11px] text-soil-400 leading-relaxed">Omulimi gives a likely diagnosis. For severe cases, consult an agricultural officer.</div>
+            <div className="text-[11px] text-soil-400 leading-relaxed">This is an AI-generated suggestion, not a confirmed diagnosis. Do not apply treatment based on this result alone. Ask an agricultural extension officer to verify it.</div>
           </div>
         </div>
 
@@ -494,7 +490,7 @@ export default function DiseaseDetection({
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-2xl font-bold text-soil-900" style={{ fontFamily: 'Fraunces, serif' }}>Disease Detection</h2>
-        <p className="text-sm text-soil-400 mt-2">Find out what's affecting your crops and get AI-powered solutions.</p>
+        <p className="text-sm text-soil-400 mt-2">Check selected crops for possible disease signs. Results are preliminary and may be wrong.</p>
       </div>
 
       <div
