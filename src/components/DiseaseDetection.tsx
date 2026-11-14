@@ -79,11 +79,13 @@ async function computeDiagnosis(
     // Keep this conservative: unsupported or unmatched crops are not diagnosed.
     const cropMatches: Record<string, string[]> = {
       maize: ['zea mays'],
-      beans: ['phaseolus vulgaris'],
+      beans: ['phaseolus vulgaris', 'vigna unguiculata'],
       coffee: ['coffea'],
       banana: ['musa'],
       tomato: ['solanum lycopersicum'],
       potato: ['solanum tuberosum'],
+      cassava: ['manihot esculenta'],
+      rice: ['oryza sativa'],
     };
 
     const acceptedNames = cropMatches[cropId] ?? [];
@@ -146,12 +148,18 @@ async function computeDiagnosis(
       ? diseaseData.results[0]
       : null;
 
-    if (!match || typeof match.score !== 'number') {
+    if (
+      !match ||
+      typeof match.score !== 'number' ||
+      !Number.isFinite(match.score) ||
+      match.score < 0 ||
+      match.score > 1
+    ) {
       return {
-        outcome: 'healthy',
+        outcome: 'uncertain',
         confidence: 0,
         whatObserved:
-          'No disease was detected in this photo. This does not guarantee the plant is disease-free, because some diseases may not be recognized from an image. Continue monitoring the crop for unusual spots, yellowing, wilting or spreading damage.',
+          'The plant was identified, but the disease service did not return a usable disease match. This is not proof that the plant is healthy. Check for visible symptoms and try another clear photo, or ask an agricultural extension officer if the problem is spreading.',
       };
     }
 
@@ -217,7 +225,6 @@ export default function DiseaseDetection({
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [checkedSteps, setCheckedSteps] = useState<number>(0);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
-  const [unsupportedCrop, setUnsupportedCrop] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -284,9 +291,6 @@ export default function DiseaseDetection({
                 key={crop.id}
                 onClick={() => {
                   setSelectedCrop(crop);
-                  setUnsupportedCrop(
-                    ['cassava', 'rice'].includes(crop.id) ? crop.name : null
-                  );
                 }}
                 className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center ${isSelected ? 'border-leaf-600 bg-leaf-100/40' : 'border-parchment-100 bg-parchment-50'}`}
               >
@@ -302,22 +306,12 @@ export default function DiseaseDetection({
           })}
         </div>
 
-        {unsupportedCrop && (
-          <div className="rounded-2xl border border-gold-100 bg-gold-100/30 p-4">
-            <p className="text-sm font-bold text-soil-900">{unsupportedCrop} disease detection is coming soon</p>
-            <p className="mt-1 text-xs text-soil-700">
-              Photo-based disease detection for this crop is not currently supported in Omulimi. Choose one of the currently supported crops to continue.
-            </p>
-          </div>
-        )}
-
         <button
           onClick={() => {
             if (!selectedCrop) return;
-            if (['cassava', 'rice'].includes(selectedCrop.id)) return;
             setView('capture');
           }}
-          disabled={!selectedCrop || ['cassava', 'rice'].includes(selectedCrop.id)}
+          disabled={!selectedCrop}
           className="mt-2 bg-leaf-600 disabled:bg-parchment-200 disabled:text-soil-400 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl transition"
         >
           Continue →
@@ -460,11 +454,11 @@ export default function DiseaseDetection({
           </div>
           <div className="bg-parchment-50 border border-parchment-100 rounded-xl p-2.5 text-center">
             <div className="text-[10px] text-soil-400 font-semibold uppercase">Affected part</div>
-            <div className="text-xs font-bold text-soil-900 mt-0.5">{diagnosis.affectedPart}</div>
+            <div className="text-xs font-bold text-soil-900 mt-0.5">{diagnosis.affectedPart || 'Not assessed'}</div>
           </div>
           <div className="bg-parchment-50 border border-parchment-100 rounded-xl p-2.5 text-center">
             <div className="text-[10px] text-soil-400 font-semibold uppercase">Severity</div>
-            <div className={`text-xs font-bold text-white mt-0.5 rounded px-1.5 py-0.5 inline-block ${severityBg}`}>{diagnosis.severity}</div>
+            <div className={`text-xs font-bold text-white mt-0.5 rounded px-1.5 py-0.5 inline-block ${severityBg}`}>{diagnosis.severity || 'Not assessed'}</div>
           </div>
         </div>
 
