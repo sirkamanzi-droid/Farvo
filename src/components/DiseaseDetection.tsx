@@ -430,30 +430,13 @@ export default function DiseaseDetection({
             {photoDataUrl && <img src={photoDataUrl} alt="Scanned crop" className="w-full h-full object-cover" />}
           </div>
           <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
-            <p className="text-sm font-bold text-leaf-700 mb-1">✓ No disease match found</p>
-            <p className="text-base font-bold text-leaf-700 mb-2">No disease identified in this photo</p>
+            <p className="text-sm font-bold text-leaf-700 mb-1">✓ No visible disease signs detected</p>
+            <p className="text-2xl font-bold text-leaf-700 mb-2">Looks healthy</p>
             <p className="text-xs text-soil-700 max-w-xs mx-auto">
               {diagnosis.whatObserved}
             </p>
-          </div>
-          <button onClick={resetAll} className="bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2">
-            <RotateCcw className="h-3.5 w-3.5" /> Scan another
-          </button>
-        </div>
-      );
-    }
-
-    if (diagnosis.outcome === 'healthy') {
-      return (
-        <div className="flex flex-col gap-5">
-          <div className="rounded-3xl overflow-hidden h-48">
-            {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
-          </div>
-          <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
-            <p className="text-sm font-bold text-leaf-700 mb-1">✓ Healthy — no disease detected</p>
-            <p className="text-2xl font-bold text-leaf-700 mb-2">100%</p>
-            <p className="text-xs text-soil-700 max-w-xs mx-auto">
-              {diagnosis.whatObserved}
+            <p className="text-[11px] text-soil-500 max-w-xs mx-auto mt-3">
+              This photo check cannot confirm that the whole plant is 100% disease-free. Keep monitoring your crop.
             </p>
           </div>
           <button onClick={resetAll} className="bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2">
