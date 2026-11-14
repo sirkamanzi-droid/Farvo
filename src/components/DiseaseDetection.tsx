@@ -181,7 +181,7 @@ async function computeDiagnosis(
     const diseaseLabel =
       typeof match.description === 'string' ? match.description.trim() : '';
 
-    const normalizedDiseaseLabel = \`\${match.name ?? ''} \${diseaseLabel}\`
+    const normalizedDiseaseLabel = String(match.name ?? '') + ' ' + diseaseLabel
       .toLowerCase()
       .replace(/\s+/g, ' ')
       .trim();
