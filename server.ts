@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -211,6 +212,20 @@ Based on these exact conditions, return a JSON response summarizing the agricult
 // Interactive AI Agronomist Chatbot endpoint
 app.post('/api/chat', async (req: Request, res: Response) => {
   try {
+    const authorization = req.headers.authorization || '';
+    const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (!token || !supabaseUrl || !supabaseKey) {
+      res.status(401).json({ error: 'Please sign in to use Kato.' });
+      return;
+    }
+    const authClient = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: authData, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !authData.user) {
+      res.status(401).json({ error: 'Your session is invalid. Please sign in again.' });
+      return;
+    }
     const { messages, districtName, cropName } = req.body;
     if (!messages || !Array.isArray(messages)) {
        res.status(400).json({ error: 'Messages array is required.' });
