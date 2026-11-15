@@ -37,9 +37,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       windSpeed: current.wind_speed_10m,
       windDirection: current.wind_direction_10m,
       weatherCode: current.weather_code,
-      soilTemperature: current.soil_temperature_6cm || 25,
-      soilMoisture: current.soil_moisture_3_9cm || 0.25,
-      evapotranspiration: current.evapotranspiration || 0,
+      soilTemperature: current.soil_temperature_6cm ?? 25,
+      soilMoisture: current.soil_moisture_3_9cm ?? 0.25,
+      evapotranspiration: current.evapotranspiration ?? 0,
       time: current.time,
     },
     daily: daily.time.map((dateString: string, index: number) => ({
