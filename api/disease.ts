@@ -1,4 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+async function requireFarmer(req: VercelRequest) {
+  const authorization = req.headers.authorization || '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!token || !url || !key) return null;
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await client.auth.getUser(token);
+  return error || !data.user ? null : data.user;
+}
+
+
 
 export default async function handler(
   req: VercelRequest,
@@ -8,6 +22,9 @@ export default async function handler(
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const user = await requireFarmer(req);
+  if (!user) return res.status(401).json({ error: 'Please sign in to check a crop.' });
 
   const apiKey = process.env.PLANTNET_API_KEY;
 
@@ -21,7 +38,7 @@ export default async function handler(
     const imageDataUrl = req.body?.imageDataUrl;
     const cropId = req.body?.cropId;
     const supportedCropIds = new Set([
-      'maize', 'beans', 'coffee', 'banana', 'tomato', 'potato'
+      'maize', 'beans', 'coffee', 'banana', 'tomato', 'potato', 'cassava', 'rice'
     ]);
 
     if (typeof cropId !== 'string' || !supportedCropIds.has(cropId)) {
