@@ -1,7 +1,7 @@
 import React from 'react';
-import { Home, CloudSun, Leaf, CalendarDays, User } from 'lucide-react';
+import { Home, CloudSun, Leaf, Sparkles, User } from 'lucide-react';
 
-export type Tab = 'home' | 'weather' | 'disease' | 'calendar' | 'account';
+export type Tab = 'home' | 'weather' | 'disease' | 'kato' | 'account';
 
 interface BottomNavProps { active: Tab; onChange: (tab: Tab) => void; }
 
@@ -9,7 +9,7 @@ const TABS: {id:Tab;label:string;icon:React.ElementType}[] = [
   {id:'home',label:'Home',icon:Home},
   {id:'weather',label:'Weather',icon:CloudSun},
   {id:'disease',label:'Crop',icon:Leaf},
-  {id:'calendar',label:'Calendar',icon:CalendarDays},
+  {id:'kato',label:'Kato',icon:Sparkles},
   {id:'account',label:'More',icon:User},
 ];
 
