@@ -87,7 +87,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
       try {
         const rows = await loadConversations();
         if (cancelled) return;
-        if (rows.length) {
+        if (rows.length && !initialQuestion?.trim()) {
           setActiveId(rows[0].id);
           await loadMessages(rows[0].id);
         } else {
@@ -101,7 +101,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
       }
     })();
     return () => { cancelled = true; };
-  }, [loadConversations, loadMessages]);
+  }, [loadConversations, loadMessages, initialQuestion]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -154,6 +154,8 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
         conversation_id: conversationId, user_id: userId, role: 'user', content: question,
       });
       if (saveUserError) throw saveUserError;
+      await supabase.from('kato_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId);
+      await loadConversations();
 
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
