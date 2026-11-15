@@ -59,9 +59,9 @@ app.get('/api/weather', async (req: Request, res: Response) => {
         windSpeed: current.wind_speed_10m,
         windDirection: current.wind_direction_10m,
         weatherCode: current.weather_code,
-        soilTemperature: current.soil_temperature_6cm || 25, // default safe temp if not available
-        soilMoisture: current.soil_moisture_3_9cm || 0.25, // default safe moisture if not available
-        evapotranspiration: current.evapotranspiration || 0,
+        soilTemperature: current.soil_temperature_6cm ?? 25, // default safe temp if not available
+        soilMoisture: current.soil_moisture_3_9cm ?? 0.25, // default safe moisture if not available
+        evapotranspiration: current.evapotranspiration ?? 0,
         time: current.time,
       },
       daily: daily.time.map((dateString: string, index: number) => ({
