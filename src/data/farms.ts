@@ -1,25 +1,12 @@
-
 import { Farm, District } from '../types';
 
-const STORAGE_KEY = 'omulimi_farms';
-const LEGACY_STORAGE_KEY = 'farvo_farms';
+const storageKey = (userId: string) => `omulimi_farms:${userId}`;
 
-export function loadFarms(): Farm[] {
+export function loadFarms(userId: string): Farm[] {
+  if (!userId) return [];
   try {
-    let raw = localStorage.getItem(STORAGE_KEY);
-
-    if (raw === null) {
-      const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
-
-      if (legacyRaw === null) return [];
-
-      const legacyFarms = JSON.parse(legacyRaw);
-      if (!Array.isArray(legacyFarms)) return [];
-
-      localStorage.setItem(STORAGE_KEY, legacyRaw);
-      raw = legacyRaw;
-    }
-
+    const raw = localStorage.getItem(storageKey(userId));
+    if (!raw) return [];
     const farms = JSON.parse(raw);
     return Array.isArray(farms) ? farms : [];
   } catch {
@@ -27,11 +14,12 @@ export function loadFarms(): Farm[] {
   }
 }
 
-export function saveFarms(farms: Farm[]): void {
+export function saveFarms(userId: string, farms: Farm[]): void {
+  if (!userId) return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(farms));
+    localStorage.setItem(storageKey(userId), JSON.stringify(farms));
   } catch {
-    // localStorage unavailable — fail silently.
+    // Storage can be unavailable or full; the app remains usable for this session.
   }
 }
 
@@ -41,7 +29,7 @@ export function createFarm(
   existingCount: number,
 ): Farm {
   return {
-    id: `farm-${Date.now()}`,
+    id: `farm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     label: `Farm ${existingCount + 1}`,
     district,
     crop,
