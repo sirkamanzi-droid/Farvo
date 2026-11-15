@@ -15,6 +15,8 @@ const CROPS: Crop[] = [
   { id: 'banana', name: 'Banana', emoji: '🍌' },
   { id: 'tomato', name: 'Tomato', emoji: '🍅' },
   { id: 'potato', name: 'Potato', emoji: '🥔' },
+  { id: 'cassava', name: 'Cassava', emoji: '🥔' },
+  { id: 'rice', name: 'Rice', emoji: '🌾' },
 ];
 
 
