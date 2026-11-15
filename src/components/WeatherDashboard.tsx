@@ -1,7 +1,8 @@
 import React from 'react';
 import { WeatherData, District } from '../types';
 import { generateCropAdvice } from '../data/cropAdvisor';
-import { Sun, Cloud, CloudSun, CloudFog, CloudDrizzle, CloudRain, CloudLightning, Droplets, MapPin, Sprout, Leaf, Wheat, ChevronRight, Clock3 } from 'lucide-react';
+import { Droplets, MapPin, Sprout, Leaf, Wheat, ChevronRight, Clock3 } from 'lucide-react';
+import WeatherGlyph from './WeatherGlyph';
 
 interface WeatherDashboardProps {
   weatherData: WeatherData;
@@ -12,14 +13,14 @@ interface WeatherDashboardProps {
 
 export function getWeatherDetails(code: number) {
   switch (code) {
-    case 0: return { label: 'Clear sky', icon: Sun };
-    case 1: case 2: return { label: 'Partly cloudy', icon: CloudSun };
-    case 3: return { label: 'Cloudy', icon: Cloud };
-    case 45: case 48: return { label: 'Foggy', icon: CloudFog };
-    case 51: case 53: case 55: return { label: 'Light drizzle', icon: CloudDrizzle };
-    case 61: case 63: case 65: case 80: case 81: case 82: return { label: 'Light rain', icon: CloudRain };
-    case 95: case 96: case 99: return { label: 'Thunderstorms', icon: CloudLightning };
-    default: return { label: 'Variable conditions', icon: CloudSun };
+    case 0: return { label: 'Clear sky' };
+    case 1: case 2: return { label: 'Partly cloudy' };
+    case 3: return { label: 'Cloudy' };
+    case 45: case 48: return { label: 'Foggy' };
+    case 51: case 53: case 55: return { label: 'Light drizzle' };
+    case 61: case 63: case 65: case 80: case 81: case 82: return { label: 'Light rain' };
+    case 95: case 96: case 99: return { label: 'Thunderstorms' };
+    default: return { label: 'Variable conditions' };
   }
 }
 
@@ -34,7 +35,7 @@ export default function WeatherDashboard({ weatherData, district, cropName='Maiz
   const today = daily[0];
   const nextFive = daily.slice(0,5);
   const details = getWeatherDetails(current.weatherCode);
-  const CurrentIcon = details.icon;
+
   const rainProbability = today?.precipitationProbability ?? 0;
   const expectedRain = today?.precipitation ?? 0;
   const adviceCrop = cropName.toLowerCase().includes('potato') ? 'Irish Potatoes' : cropName.toLowerCase().includes('banana') ? 'Matooke (Bananas)' : cropName;
@@ -56,7 +57,7 @@ export default function WeatherDashboard({ weatherData, district, cropName='Maiz
           <span className="text-[10px] text-soil-400">Open-Meteo</span>
         </div>
         <div className="mt-4 flex items-center gap-4">
-          <CurrentIcon className="h-14 w-14 text-[#6e9bb1]"/>
+          <WeatherGlyph code={current.weatherCode} size="lg"/>
           <div className="min-w-0"><div className="text-[38px] leading-none font-semibold tracking-tight text-soil-900">{Math.round(current.temperature)}°C</div><div className="text-xs font-semibold text-soil-700 mt-1">{details.label}</div></div>
           <div className="ml-auto border-l border-[#e4dac7] pl-4">
             <div className="text-[10px] text-soil-500">Rainfall probability</div>
@@ -74,11 +75,11 @@ export default function WeatherDashboard({ weatherData, district, cropName='Maiz
         <div className="flex items-center justify-between mb-2"><h2 className="text-sm font-bold text-soil-900">5-day forecast</h2><span className="text-[10px] text-soil-500">Daily outlook</span></div>
         <div className="grid grid-cols-5 gap-1.5">
           {nextFive.map((day,index)=>{
-            const dayWeather=getWeatherDetails(day.weatherCode); const Icon=dayWeather.icon;
+            const dayWeather=getWeatherDetails(day.weatherCode);
             const weekday=index===0?'Today':new Date(day.date).toLocaleDateString('en-US',{weekday:'short'});
             return <div key={day.date} className={`min-w-0 rounded-xl border p-2 text-center ${index===0?'border-[#b7c9b1] bg-[#e9efe2]':'border-[#e4dac7] bg-[#faf7ef]'}`}>
               <div className="text-[10px] font-bold text-soil-700">{weekday}</div>
-              <Icon className="mx-auto my-2 h-5 w-5 text-[#6e9bb1]"/>
+              <div className="my-1 flex justify-center"><WeatherGlyph code={day.weatherCode} size="sm"/></div>
               <div className="text-[10px] font-bold text-soil-900">{Math.round(day.maxTemp)}°/{Math.round(day.minTemp)}°</div>
               <div className="mt-1 flex items-center justify-center gap-0.5 text-[9px] text-[#5686a0]"><Droplets className="h-2.5 w-2.5"/>{Math.round(day.precipitationProbability)}%</div>
             </div>;
