@@ -1,7 +1,7 @@
 import React from 'react';
 import { WeatherData, District } from '../types';
 import { generateCropAdvice } from '../data/cropAdvisor';
-import { Droplets, MapPin, Sprout, Leaf, Wheat, ChevronRight, Clock3 } from 'lucide-react';
+import { Droplets, MapPin, Sprout, Leaf, Wheat, ChevronRight, Clock3, Sun } from 'lucide-react';
 import WeatherGlyph from './WeatherGlyph';
 
 interface WeatherDashboardProps {
