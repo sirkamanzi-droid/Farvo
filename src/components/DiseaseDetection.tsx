@@ -243,9 +243,14 @@ async function computeDiagnosis(
       };
     }
 
+    const providerDiseaseName = match.description || match.name || 'Possible plant disease';
+    const plainDiseaseInfo = explainDisease(providerDiseaseName);
+
     return {
       outcome: 'disease',
-      diseaseName: match.description || match.name || 'Possible plant disease',
+      diseaseName: providerDiseaseName,
+      simpleDiseaseName: plainDiseaseInfo.simpleName,
+      diseaseExplanation: plainDiseaseInfo.explanation,
       confidence,
       whatObserved:
         `The photo was identified as ${bestPlant.scientificName}. This is a possible disease match, not a confirmed diagnosis. Check the visible symptoms before taking action.`,
