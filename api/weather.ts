@@ -1,14 +1,29 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
   const { latitude, longitude } = req.query;
-  if (!latitude || !longitude) {
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  if (!latitude || !longitude || !Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
     res.status(400).json({ error: 'Latitude and Longitude are required.' });
     return;
   }
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,soil_temperature_6cm,soil_moisture_3_9cm,evapotranspiration&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,et0_fao_evapotranspiration&timezone=Africa/Kampala`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,soil_temperature_6cm,soil_moisture_3_9cm,evapotranspiration&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,et0_fao_evapotranspiration&timezone=Africa/Kampala`;
   const response = await fetch(url);
+  if (!response.ok) {
+    res.status(502).json({ error: 'Weather provider is temporarily unavailable.' });
+    return;
+  }
   const data = await response.json();
+  if (!data.current || !data.daily) {
+    res.status(502).json({ error: 'Weather provider returned incomplete data.' });
+    return;
+  }
   const current = data.current;
   const daily = data.daily;
   res.json({
