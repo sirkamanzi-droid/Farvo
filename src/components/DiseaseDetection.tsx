@@ -22,11 +22,42 @@ type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'result';
 
 interface Diagnosis {
   outcome: 'disease' | 'healthy' | 'no_match' | 'uncertain';
-  diseaseName?: string;
+  diseaseName?: string;\n  simpleDiseaseName?: string;\n  diseaseExplanation?: string;
   confidence: number;
   severity?: 'Low' | 'Moderate' | 'High';
   affectedPart?: string;
   whatObserved?: string;
+}
+
+type PlainDiseaseInfo = { simpleName: string; explanation: string };
+
+function explainDisease(label: string): PlainDiseaseInfo {
+  const value = label.toLowerCase();
+
+  const known: { match: string[]; simpleName: string; explanation: string }[] = [
+    { match: ['late blight', 'phytophthora infestans'], simpleName: 'Late blight', explanation: 'A disease that can cause dark, spreading patches on leaves and stems. It can develop quickly in cool, wet conditions.' },
+    { match: ['early blight', 'alternaria solani'], simpleName: 'Early blight', explanation: 'A leaf disease that often causes brown spots, sometimes with ring-shaped patterns, and yellowing around affected areas.' },
+    { match: ['bacterial wilt', 'ralstonia solanacearum'], simpleName: 'Bacterial wilt', explanation: 'A bacterial disease that blocks water movement inside the plant, causing leaves and stems to wilt even when the soil is moist.' },
+    { match: ['coffee leaf rust', 'hemileia vastatrix'], simpleName: 'Coffee leaf rust', explanation: 'A fungal disease that causes yellow-orange powdery spots, usually on the underside of coffee leaves. Severe infections can lead to leaf loss.' },
+    { match: ['coffee berry disease', 'colletotrichum kahawae'], simpleName: 'Coffee berry disease', explanation: 'A fungal disease that attacks developing coffee berries, causing dark, sunken lesions and berry loss.' },
+    { match: ['banana xanthomonas wilt', 'banana bacterial wilt', 'xanthomonas campestris pv. musacearum'], simpleName: 'Banana bacterial wilt', explanation: 'A serious bacterial disease that can cause yellowing and wilting, premature ripening, and rotting of banana bunches.' },
+    { match: ['black sigatoka', 'pseudocercospora fijiensis'], simpleName: 'Black Sigatoka', explanation: 'A fungal leaf disease that begins as small marks and develops into dark streaks, reducing the green leaf area used by the plant.' },
+    { match: ['bean rust', 'uromyces appendiculatus'], simpleName: 'Bean rust', explanation: 'A fungal disease that produces small raised orange-brown powdery spots, commonly on bean leaves.' },
+    { match: ['angular leaf spot', 'pseudocercospora griseola'], simpleName: 'Angular leaf spot', explanation: 'A bean disease that causes brown or grey spots limited by the small veins of the leaf, giving them an angular shape.' },
+    { match: ['anthracnose', 'colletotrichum lindemuthianum'], simpleName: 'Anthracnose', explanation: 'A fungal disease that can cause dark sunken spots on leaves, stems, pods or fruit, depending on the crop.' },
+    { match: ['maize streak', 'maize streak virus'], simpleName: 'Maize streak disease', explanation: 'A viral disease that causes thin yellow or pale streaks along maize leaves and can make plants stunted.' },
+    { match: ['common rust', 'puccinia sorghi'], simpleName: 'Common rust', explanation: 'A fungal disease that forms small reddish-brown powdery spots on maize leaves.' },
+    { match: ['gray leaf spot', 'grey leaf spot', 'cercospora zeae-maydis'], simpleName: 'Grey leaf spot', explanation: 'A maize leaf disease that causes long, rectangular grey or tan lesions, often between the leaf veins.' },
+    { match: ['tomato leaf mold', 'passalora fulva'], simpleName: 'Tomato leaf mould', explanation: 'A fungal disease that often causes pale patches on the upper leaf surface and olive-brown mould on the underside, especially in humid conditions.' },
+  ];
+
+  const found = known.find(item => item.match.some(term => value.includes(term)));
+  if (found) return { simpleName: found.simpleName, explanation: found.explanation };
+
+  return {
+    simpleName: label,
+    explanation: 'This is the disease name returned by the image-check service. We do not yet have a verified plain-language explanation for this label.',
+  };
 }
 
 async function computeDiagnosis(
@@ -462,7 +493,9 @@ export default function DiseaseDetection({
           </div>
           <div className="flex-1 min-w-0">
             <span className="inline-block bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5">● Possible match — unconfirmed</span>
-            <div className="text-lg font-bold text-soil-900">{diagnosis.diseaseName}</div>
+            <div className="text-xs text-soil-500">Provider label</div>
+            <div className="text-sm font-semibold text-soil-700">{diagnosis.diseaseName}</div>
+            <div className="text-lg font-bold text-soil-900 mt-1">{diagnosis.simpleDiseaseName || diagnosis.diseaseName}</div>
             <div className="text-xs text-soil-400 mt-1">Provider match score (not accuracy)</div>
             <div className="text-base font-bold text-soil-900">{diagnosis.confidence}%</div>
             <div className="w-full bg-parchment-200 h-2 rounded-full overflow-hidden mt-1">
@@ -487,8 +520,12 @@ export default function DiseaseDetection({
         </div>
 
         <div className="bg-parchment-50 border border-parchment-100 rounded-2xl p-4">
-          <div className="text-xs font-bold text-soil-900 mb-1.5">Preliminary result</div>
-          <p className="text-xs text-soil-400 leading-relaxed">{diagnosis.whatObserved}</p>
+          <div className="text-xs font-bold text-soil-900 mb-1.5">What this disease means</div>
+          <p className="text-xs text-soil-700 leading-relaxed">{diagnosis.diseaseExplanation || 'A plain-language explanation is not available for this disease label yet.'}</p>
+          <div className="border-t border-[#e4dac7] mt-3 pt-3">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-soil-500 mb-1">Scan details</div>
+            <p className="text-xs text-soil-500 leading-relaxed">{diagnosis.whatObserved}</p>
+          </div>
         </div>
 
         <div className="bg-leaf-100/30 border border-leaf-100 rounded-2xl p-4">
