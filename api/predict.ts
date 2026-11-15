@@ -1,5 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI, Type } from '@google/genai';
+import { createClient } from '@supabase/supabase-js';
+
+async function requireFarmer(req: VercelRequest) {
+  const authorization = req.headers.authorization || '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!token || !url || !key) return null;
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await client.auth.getUser(token);
+  return error || !data.user ? null : data.user;
+}
+
+
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -7,6 +21,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+    const user = await requireFarmer(req);
+    if (!user) {
+      res.status(401).json({ error: 'Please sign in to request a farming prediction.' });
       return;
     }
     const { districtName, cropName, weatherData } = req.body;
