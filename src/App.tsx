@@ -13,6 +13,7 @@ import WeatherDashboard from './components/WeatherDashboard';
 import KatoChat from './components/KatoChat';
 import BottomNav, { Tab } from './components/BottomNav';
 import ComingSoon from './components/ComingSoon';
+import WeatherGlyph from './components/WeatherGlyph';
 import DiseaseDetection from './components/DiseaseDetection';
 import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, CalendarDays, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain } from 'lucide-react';
 
@@ -40,7 +41,7 @@ function HomeDashboard({farm, weather, loading, onOpenWeather, onOpenDisease, on
 }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const WeatherIcon = weather?.current.weatherCode === 0 ? Sun : CloudRain;
+  
   return (
     <div className="px-4 sm:px-6 py-5 flex flex-col gap-4">
       <section className="flex items-start justify-between">
@@ -63,7 +64,7 @@ function HomeDashboard({farm, weather, loading, onOpenWeather, onOpenDisease, on
           <span className="text-[10px] font-semibold text-leaf-700">Full forecast <ChevronRight className="inline h-3 w-3"/></span>
         </div>
         <div className="flex items-center gap-4 mt-3">
-          <WeatherIcon className="h-10 w-10 text-leaf-600"/>
+          {weather ? <WeatherGlyph code={weather.current.weatherCode} size="md"/> : <CloudSun className="h-10 w-10 text-leaf-600"/>}
           <div><div className="text-3xl font-bold text-soil-900">{loading ? '—' : weather ? Math.round(weather.current.temperature) + '°C' : '—'}</div><div className="text-[11px] text-soil-600">{weather ? (weather.current.rainfall > 0 ? 'Rain recorded today' : 'Current conditions') : loading ? 'Loading local forecast…' : 'Weather unavailable'}</div></div>
           <div className="ml-auto border-l border-[#e8dfcc] pl-4"><Droplets className="h-4 w-4 text-blue-600"/><p className="text-xs font-bold text-soil-900 mt-1">{weather ? weather.current.rainfall.toFixed(1) + ' mm' : '—'}</p><p className="text-[9px] text-soil-500">Rainfall</p></div>
         </div>
