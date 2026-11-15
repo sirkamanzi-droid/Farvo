@@ -25,7 +25,9 @@ type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'result';
 
 interface Diagnosis {
   outcome: 'disease' | 'healthy' | 'no_match' | 'uncertain';
-  diseaseName?: string;\n  simpleDiseaseName?: string;\n  diseaseExplanation?: string;
+  diseaseName?: string;
+  simpleDiseaseName?: string;
+  diseaseExplanation?: string;
   confidence: number;
   severity?: 'Low' | 'Moderate' | 'High';
   affectedPart?: string;
