@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
 
 interface Crop {
@@ -65,10 +66,14 @@ async function computeDiagnosis(
   photoDataUrl: string
 ): Promise<Diagnosis> {
   try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (sessionError || !accessToken) throw new Error('Please sign in again to check your crop.');
+
     // Stage 1: identify the plant
     const plantResponse = await fetch('/api/plant', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ imageDataUrl: photoDataUrl }),
     });
 
@@ -154,7 +159,7 @@ async function computeDiagnosis(
     // Stage 3: only after crop validation, request disease identification.
     const diseaseResponse = await fetch('/api/disease', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({
         imageDataUrl: photoDataUrl,
         cropId,
