@@ -10,7 +10,7 @@ import { loadFarms, saveFarms, createFarm } from './data/farms';
 import SkyHero from './components/SkyHero';
 import DistrictPicker from './components/DistrictPicker';
 import WeatherDashboard from './components/WeatherDashboard';
-import AIAdvisor from './components/AIAdvisor';
+import KatoChat from './components/KatoChat';
 import BottomNav, { Tab } from './components/BottomNav';
 import ComingSoon from './components/ComingSoon';
 import DiseaseDetection from './components/DiseaseDetection';
@@ -95,7 +95,6 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
-  const [katoOpen, setKatoOpen] = useState(false);
   const [districtPickerOpen, setDistrictPickerOpen] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(false);
@@ -163,17 +162,17 @@ function AuthenticatedApp({ userId }: { userId: string }) {
             
             {loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-[#e6dcc8] p-8 text-center"><Loader2 className="h-7 w-7 text-leaf-600 animate-spin mx-auto"/><p className="text-xs text-soil-600 mt-2">Loading your local forecast…</p></div>}
             {weatherError&&!loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-rose-100 p-5"><AlertCircle className="h-6 w-6 text-rose-600"/><p className="text-sm font-bold text-soil-900 mt-2">Weather unavailable</p><p className="text-xs text-soil-600 mt-1">{weatherError}</p><button onClick={()=>void fetchWeather(activeFarm.district)} className="mt-3 bg-leaf-700 text-white rounded-xl px-4 py-2 text-xs font-bold"><RefreshCw className="inline h-3 w-3 mr-1"/>Try again</button></div>}
-            {!loadingWeather&&!weatherError&&weatherData&&<><WeatherDashboard weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} onAskKato={()=>setKatoOpen(true)}/></>}
+            {!loadingWeather&&!weatherError&&weatherData&&<><WeatherDashboard weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} onAskKato={()=>setActiveTab('kato')}/></>}
           </div>
         </div>}
-        {activeTab==='disease'&&<div className="px-4 sm:px-6 py-5"><DiseaseDetection onGetTreatmentAdvice={question=>{setPendingKatoQuestion(question);setKatoOpen(true);}}/></div>}
+        {activeTab==='disease'&&<div className="px-4 sm:px-6 py-5"><DiseaseDetection onGetTreatmentAdvice={question=>{setPendingKatoQuestion(question);setActiveTab('kato');}}/></div>}
+        {activeTab==='kato'&&<KatoChat userId={userId} district={activeFarm.district} cropName={activeFarm.crop} weatherData={weatherData} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)}/>}
         {activeTab==='calendar'&&<div className="px-4 sm:px-6 py-5"><ComingSoon icon={CalendarDays} title="Farm calendar" description="Plan planting dates, farm activities and important reminders — coming soon." onBack={()=>setActiveTab('home')}/></div>}
         {activeTab==='account'&&<div className="px-4 sm:px-6 py-5"><AccountScreen/><div className="mt-5 grid grid-cols-2 gap-2">
           <button onClick={()=>setComingSoon({title:'Farm tools',description:'Soil calculator and practical farm tools are being prepared.'})} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Wrench className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Farm tools</span></button>
           <button onClick={()=>setComingSoon({title:'Livestock advisor',description:'Livestock care guidance is being prepared for a future Omulimi update.'})} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Sprout className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Livestock advisor</span></button>
         </div></div>}
       </main>
-      {katoOpen&&weatherData&&<div className="fixed inset-0 z-50 bg-soil-900/50 flex items-center justify-center p-3"><div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto relative rounded-2xl"><button onClick={()=>{setKatoOpen(false);setPendingKatoQuestion(null);}} className="absolute right-3 top-3 z-10 bg-white text-soil-900 rounded-full px-3 py-1.5 text-xs font-bold shadow">Close</button><AIAdvisor weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)}/></div></div>}
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       <BottomNav active={activeTab} onChange={setActiveTab}/>
       <DistrictPicker isOpen={districtPickerOpen} onClose={()=>setDistrictPickerOpen(false)} selectedDistrict={activeFarm.district} onSelect={d=>handleUpdateActiveFarm(d,d.mainCrops[0]||activeFarm.crop)} onUseMyLocation={detectLocationForActiveFarm} locationStatus={locationStatus}/>
