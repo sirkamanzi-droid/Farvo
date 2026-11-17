@@ -3,6 +3,7 @@ import { DISTRICTS } from './districts';
 import { Farm, District } from '../types';
 
 const legacyStorageKey = (userId: string) => `omulimi_farms:${userId}`;
+const temporaryFarmId = () => `farm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 type FarmRow = {
   id: string;
@@ -88,7 +89,7 @@ export function loadLegacyFarms(userId: string): Farm[] {
       const district = DISTRICTS.find((candidate) => candidate.id === districtId);
       if (!district || typeof legacy.crop !== 'string' || !legacy.crop.trim()) return [];
       return [{
-        id: crypto.randomUUID(),
+        id: temporaryFarmId(),
         label: typeof legacy.label === 'string' ? legacy.label : 'Farm',
         crop: legacy.crop.trim().slice(0, 80),
         district,
