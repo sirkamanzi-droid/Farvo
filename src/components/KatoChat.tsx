@@ -154,9 +154,8 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
         conversation_id: conversationId, user_id: userId, role: 'user', content: question,
       });
       if (saveUserError) throw saveUserError;
-      await supabase.from('kato_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId);
-      await loadConversations();
-
+      // Do not reload the entire chat list before the AI request. The farmer's
+      // message is already safely stored; update the list after the answer arrives.
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (sessionError || !token) throw new Error('Your session has expired. Please sign in again.');
@@ -185,8 +184,10 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
       if (saveAnswerError) throw saveAnswerError;
 
       setMessages(prev => [...prev, savedAnswer as ChatMessage]);
-      await supabase.from('kato_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId);
-      await loadConversations();
+      await Promise.all([
+        supabase.from('kato_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId),
+        loadConversations(),
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kato could not reply. Please try again.');
       // Restore the question in the composer so the farmer can retry or edit it.
