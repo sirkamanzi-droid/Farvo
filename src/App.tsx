@@ -16,6 +16,7 @@ import ComingSoon from './components/ComingSoon';
 import WeatherGlyph from './components/WeatherGlyph';
 import DiseaseDetection from './components/DiseaseDetection';
 import SoilCalculator from './components/SoilCalculator';
+import CommandCentre from './components/CommandCentre';
 import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, CalendarDays, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain } from 'lucide-react';
 
 const DEFAULT_DISTRICT = DISTRICTS[1];
@@ -108,6 +109,16 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [locationDetected, setLocationDetected] = useState(false);
   const [comingSoon, setComingSoon] = useState<{title:string;description:string}|null>(null);
   const [showSoilCalculator, setShowSoilCalculator] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/command?view=public-config', { cache: 'no-store' })
+      .then(response => response.ok ? response.json() : { announcement: '' })
+      .then(data => { if (!cancelled && typeof data.announcement === 'string') setAnnouncement(data.announcement); })
+      .catch(() => { if (!cancelled) setAnnouncement(''); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,6 +235,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   return (
     <div className="min-h-screen bg-[#f1ebdc] flex flex-col font-sans pb-24" id="app-root">
       <BrandHeader/>
+      {announcement && <div role="status" className="mx-auto mt-3 w-full max-w-3xl px-4 sm:px-6"><div className="rounded-xl border border-[#ead7a8] bg-[#fff3d5] px-4 py-3 text-sm text-soil-900">{announcement}</div></div>}
       <main className="flex-1 w-full max-w-3xl mx-auto">
         {farmSyncError&&<div className="mx-4 sm:mx-6 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{farmSyncError}</div>}
         {activeTab==='home' && <HomeDashboard farm={activeFarm} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenSoil={()=>setShowSoilCalculator(true)} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={()=>setDistrictPickerOpen(true)}/>}
@@ -262,6 +274,7 @@ export default function App() {
     return ()=>{mounted=false;subscription.unsubscribe();};
   },[]);
   if(checkingSession)return <div className="min-h-screen flex items-center justify-center bg-parchment-100 text-soil-700">Checking your Omulimi account…</div>;
+  if(window.location.pathname === '/command-centre') return <CommandCentre session={session}/>;
   if(!session)return <AuthScreen/>;
   return <AuthenticatedApp userId={session.user.id}/>;
 }
