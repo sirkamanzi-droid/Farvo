@@ -17,8 +17,8 @@ export interface CurrentWeather {
   windSpeed: number;
   windDirection: number;
   weatherCode: number;
-  soilTemperature: number;
-  soilMoisture: number;
+  soilTemperature?: number;
+  soilMoisture?: number;
   evapotranspiration: number;
   uvIndex?: number;
   time: string;
@@ -32,7 +32,7 @@ export interface DailyForecast {
   precipitationProbability: number;
   windSpeedMax: number;
   weatherCode: number;
-  soilTempAvg: number;
+  soilTempAvg?: number;
   evapotranspiration: number;
 }
 
