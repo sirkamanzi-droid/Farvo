@@ -160,16 +160,24 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
       const token = sessionData.session?.access_token;
       if (sessionError || !token) throw new Error('Your session has expired. Please sign in again.');
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          messages: history.slice(-12).map(({ role, content }) => ({ role, content })),
-          districtName: district.name,
-          cropName,
-          weatherContext: weatherData ? { current: weatherData.current, daily: weatherData.daily.slice(0, 5) } : null,
-        }),
-      });
+      const controller = new AbortController();
+      const requestTimeout = window.setTimeout(() => controller.abort(), 40000);
+      let response: Response;
+      try {
+        response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+          body: JSON.stringify({
+            messages: history.slice(-12).map(({ role, content }) => ({ role, content })),
+            districtName: district.name,
+            cropName,
+            weatherContext: weatherData ? { current: weatherData.current, daily: weatherData.daily.slice(0, 5) } : null,
+          }),
+        });
+      } finally {
+        window.clearTimeout(requestTimeout);
+      }
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Kato is temporarily unavailable. Try again.');
 
@@ -189,7 +197,10 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
         loadConversations(),
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kato could not reply. Please try again.');
+      const timedOut = err instanceof Error && (err.name === 'AbortError' || err.name.toLowerCase().includes('timeout'));
+      setError(timedOut
+        ? 'Kato is taking too long to respond. Your question is saved—please try again in a moment.'
+        : err instanceof Error ? err.message : 'Kato could not reply. Please try again.');
       // Restore the question in the composer so the farmer can retry or edit it.
       setInput(question);
     } finally {
