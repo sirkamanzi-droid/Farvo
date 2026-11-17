@@ -41,3 +41,31 @@ test('recognises generic provider labels as non-diagnoses', () => {
   assert.equal(isGenericDiseaseLabel('ZZXXZZ', 'Unknown pathogen'), true);
   assert.equal(isGenericDiseaseLabel('Some disease', 'Tomato leaf mould'), false);
 });
+
+
+test('matches the leading scientific-name candidate for each supported provider crop', () => {
+  const cases = [
+    ['maize', 'Zea mays L.'],
+    ['beans', 'Phaseolus vulgaris L.'],
+    ['coffee', 'Coffea arabica L.'],
+    ['banana', 'Musa acuminata Colla'],
+    ['tomato', 'Solanum lycopersicum L.'],
+    ['potato', 'Solanum tuberosum L.'],
+  ] as const;
+  for (const [crop, scientificName] of cases) {
+    assert.equal(matchesSelectedCropPlant(crop, scientificName), true, crop);
+  }
+});
+
+test('rejects a different crop and rejects unsupported crops without a mapping', () => {
+  assert.equal(matchesSelectedCropPlant('tomato', 'Solanum tuberosum L.'), false);
+  assert.equal(matchesSelectedCropPlant('maize', 'Oryza sativa L.'), false);
+  assert.equal(matchesSelectedCropPlant('cassava', 'Manihot esculenta Crantz'), true);
+  assert.equal(matchesSelectedCropPlant('rice', 'Oryza sativa L.'), true);
+});
+
+test('does not accept empty, missing or partial scientific names', () => {
+  assert.equal(matchesSelectedCropPlant('tomato', ''), false);
+  assert.equal(matchesSelectedCropPlant('tomato', null), false);
+  assert.equal(matchesSelectedCropPlant('tomato', 'Solanum'), false);
+});
