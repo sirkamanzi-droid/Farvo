@@ -21,9 +21,10 @@ To find the administrator UUID: open Supabase Dashboard → Authentication → U
 2. Set the two server-only Vercel variables above.
 3. Redeploy the application.
 4. Open `https://omulimi.vercel.app/command-centre` and sign in with that existing account.
-5. A different signed-in farmer account must receive HTTP 403 from every protected Command Centre API view and action.
+5. On first access, scan the displayed TOTP QR code with an authenticator app and enter its current code. Keep the secret private. Later sign-ins require the authenticator code again.
+6. A different signed-in farmer account must receive HTTP 403 from every protected Command Centre API view and action.
 
-There is no admin sign-up, admin role field in farmer metadata, or client-side service key.
+There is no admin sign-up, admin role field in farmer metadata, or client-side service key. The console also requires TOTP multi-factor authentication: the first authorised sign-in enrolls an authenticator, and subsequent sign-ins require a current one-time code. The server checks the signed JWT's `aal2` claim before any privileged operation.
 
 ## Current controls
 
