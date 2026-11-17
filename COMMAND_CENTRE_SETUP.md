@@ -20,7 +20,7 @@ To find the administrator UUID: open Supabase Dashboard → Authentication → U
 1. Confirm the intended administrator already has a normal Omulimi Auth account.
 2. Set the two server-only Vercel variables above.
 3. Redeploy the application.
-4. Open `https://omulimi.vercel.app/command-centre` and sign in with that existing account.
+4. Open `https://omulimiapp.vercel.app/command-centre` and sign in with that existing account.
 5. On first access, scan the displayed TOTP QR code with an authenticator app and enter its current code. Keep the secret private. Later sign-ins require the authenticator code again.
 6. A different signed-in farmer account must receive HTTP 403 from every protected Command Centre API view and action.
 
