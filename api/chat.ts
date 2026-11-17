@@ -130,6 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const requestStartedAt = Date.now();
   try {
     const authorization = req.headers.authorization || '';
     const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
@@ -243,9 +244,15 @@ Agricultural quality: suggestions are not confirmed diagnoses. Ask at most one s
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
+    let firstTokenLogged = false;
     const answer = await streamKatoAnswer(ai, contents, systemInstruction, (text) => {
+      if (!firstTokenLogged) {
+        firstTokenLogged = true;
+        console.info('Kato first token timing', { milliseconds: Date.now() - requestStartedAt });
+      }
       res.write(JSON.stringify({ text }) + '\n');
     });
+    console.info('Kato total response timing', { milliseconds: Date.now() - requestStartedAt, characters: answer.length });
     res.write(JSON.stringify({ done: true, content: answer }) + '\n');
     return res.end();
   } catch (error: unknown) {
