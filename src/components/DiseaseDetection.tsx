@@ -12,7 +12,7 @@ interface Crop {
 const CROPS: Crop[] = [
   { id: 'maize', name: 'Maize', emoji: '🌽', diseaseSupported: true },
   { id: 'beans', name: 'Beans', emoji: '🫘', diseaseSupported: true },
-  { id: 'coffee', name: 'Coffee', emoji: '☕', diseaseSupported: true },
+  { id: 'coffee', name: 'Coffee (Arabica)', emoji: '☕', diseaseSupported: true },
   { id: 'banana', name: 'Banana', emoji: '🍌', diseaseSupported: true },
   { id: 'tomato', name: 'Tomato', emoji: '🍅', diseaseSupported: true },
   { id: 'potato', name: 'Potato', emoji: '🥔', diseaseSupported: true },
