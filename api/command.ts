@@ -35,6 +35,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { data: authData, error: authError } = await auth.auth.getUser(token);
   if (authError || !authData.user) return fail(res, 401, 'Your session is invalid. Sign in again.');
   if (authData.user.id !== adminId) return fail(res, 403, 'This account is not authorised to use Command Centre.');
+  const { data: claimsData, error: claimsError } = await auth.auth.getClaims(token);
+  if (claimsError || claimsData?.claims?.aal !== 'aal2') {
+    return res.status(403).json({ error: 'Complete your authenticator verification to access Command Centre.', code: 'MFA_REQUIRED' });
+  }
 
   const db = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
   const audit = async (action: string, targetType: string, targetId: string | null, details: Record<string, unknown>) => {
