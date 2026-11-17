@@ -287,9 +287,8 @@ Answer the farmer's latest question directly. Use locally familiar crop names su
       : { name: 'UnknownError', message: 'Unknown server error' };
 
     console.error('Kato chat error details:', details);
-    const upstreamStatus = providerStatus(error);
-    if (upstreamStatus === 429 || upstreamStatus === 500 || upstreamStatus === 502 || upstreamStatus === 503 || upstreamStatus === 504) {
-      return res.status(503).json({ error: 'Kato’s AI service is busy right now. Your question is still in this chat. Please try again shortly.' });
+    if (isTemporaryProviderFailure(error)) {
+      return res.status(503).json({ error: 'Kato’s AI service is taking too long or is busy right now. Your question is saved—please try again shortly.' });
     }
     return res.status(500).json({ error: 'Kato could not answer just now. Please try again in a moment.' });
   }
