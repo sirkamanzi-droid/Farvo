@@ -69,7 +69,7 @@ export default function CommandCentre({ session }: { session: Session | null }) 
 
   const verifyMfa = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!mfaFactorId || !mfaChallengeId || !/^\\d{6,8}$/.test(mfaCode.trim())) {
+    if (!mfaFactorId || !mfaChallengeId || !/^\d{6,8}$/.test(mfaCode.trim())) {
       setError('Enter the current code from your authenticator app.'); return;
     }
     setBusy(true); setError('');
@@ -140,7 +140,7 @@ export default function CommandCentre({ session }: { session: Session | null }) 
     {mfaMode === 'challenge' && <><h2 className="font-bold">Verify it’s you</h2><p className="mt-1 text-sm text-[#52645a]">Enter the current code from your enrolled authenticator app.</p></>}
     {mfaMode === 'error' && <p className="text-sm text-[#52645a]">Two-step verification could not be prepared. Sign out and try again. If it continues, check the Supabase Auth MFA settings.</p>}
     {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-    {(mfaMode === 'enroll' || mfaMode === 'challenge') && <form onSubmit={verifyMfa} className="mt-4 space-y-3"><input required inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\\D/g, '').slice(0, 8))} placeholder="Authenticator code" className="w-full rounded-xl border border-[#ded5c3] bg-white px-4 py-3 text-center text-lg tracking-[.3em]"/><button disabled={busy} className="w-full rounded-xl bg-[#174432] py-3 font-bold text-white disabled:opacity-60">{busy ? 'Verifying…' : 'Verify and open Command Centre'}</button></form>}
+    {(mfaMode === 'enroll' || mfaMode === 'challenge') && <form onSubmit={verifyMfa} className="mt-4 space-y-3"><input required inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 8))} placeholder="Authenticator code" className="w-full rounded-xl border border-[#ded5c3] bg-white px-4 py-3 text-center text-lg tracking-[.3em]"/><button disabled={busy} className="w-full rounded-xl bg-[#174432] py-3 font-bold text-white disabled:opacity-60">{busy ? 'Verifying…' : 'Verify and open Command Centre'}</button></form>}
     <button onClick={signOut} className="mt-5 flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#52645a]"><LogOut className="h-4 w-4"/>Sign out</button>
   </section></div>;
 
