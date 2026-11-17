@@ -35,6 +35,41 @@ interface Diagnosis {
   whatObserved?: string;
 }
 
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+
+async function prepareDiseasePhoto(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Choose an image file from your camera or gallery.');
+  if (file.size > 15 * 1024 * 1024) throw new Error('This photo is larger than 15 MB. Choose a smaller image.');
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = objectUrl;
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('This photo format cannot be opened on this device. Try saving it as JPEG or PNG.'));
+    });
+    if (!image.naturalWidth || !image.naturalHeight) throw new Error('This photo could not be read. Please choose another image.');
+    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Your browser could not prepare this photo. Please try another browser.');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    for (const quality of [0.86, 0.76, 0.66, 0.56]) {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob && blob.size > 0 && blob.size <= MAX_UPLOAD_BYTES) {
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('The prepared photo could not be read.'));
+          reader.onerror = () => reject(new Error('The prepared photo could not be read.'));
+          reader.readAsDataURL(blob);
+        });
+      }
+    }
+    throw new Error('This photo is still too large after compression. Choose a smaller or lower-resolution photo.');
+  } finally { URL.revokeObjectURL(objectUrl); }
+}
 type PlainDiseaseInfo = { simpleName: string; explanation: string };
 
 function explainDisease(label: string): PlainDiseaseInfo {
@@ -293,24 +328,26 @@ export default function DiseaseDetection({
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [checkedSteps, setCheckedSteps] = useState<number>(0);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
+    setPhotoError(null);
+    try {
+      const dataUrl = await prepareDiseasePhoto(file);
       setPhotoDataUrl(dataUrl);
       setView('analyzing');
       setCheckedSteps(0);
       runAnalysisSequence(dataUrl);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : 'This photo could not be prepared. Please try another.');
+    }
   }
 
   async function runAnalysisSequence(dataUrl: string) {
@@ -405,6 +442,7 @@ export default function DiseaseDetection({
         </div>
         <p className="text-xs text-soil-400 -mt-3">Checking <span className="font-semibold text-leaf-700">{selectedCrop?.name}</span> for signs of disease.</p>
 
+        {photoError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{photoError}</div>}
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelected} className="hidden" />
         <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
 
