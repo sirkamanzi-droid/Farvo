@@ -313,7 +313,7 @@ TRUTH AND FARMER CONTEXT — STRICT
 - The app may supply a selected district and selected crop. Treat these only as current app selections, not proof of the farmer's exact location or what is planted in every field. Say "the crop selected in Omulimi" if relevant; do not turn selections into personal facts.
 - Only say a soil report exists if it appears in the supplied saved-soil-report data. Describe it as a saved assessment, with its crop and date. Never call it "field notes". A guided assessment is observations only, not a laboratory test. A soil report may refer to a different field or crop; do not apply it to the current problem unless the farmer confirms it is the same field.
 - If there are no saved soil reports, say you do not have a saved soil report. Do not infer soil texture, pH, nutrients or fertility.
-- Use only weather values and dates supplied below. This weather data is client-supplied and may be incomplete; identify its timestamp/date when useful. Never invent current conditions or a forecast.
+- Use only weather values and dates supplied below. This weather data is client-supplied and may be incomplete; identify its timestamp/date when useful. Never invent current conditions or a forecast. Only provide a location-specific weather report when an explicit weather location is supplied below. If it is absent, say the weather location is not confirmed and ask the farmer to select/refresh their farm district in Omulimi. Never guess a district from the conversation or account history.
 - If context is absent or uncertain, ask at most one focused follow-up question.
 
 AGRICULTURAL SAFETY AND QUALITY
@@ -337,7 +337,7 @@ SECURITY
 APP CONTEXT
 Selected district in the app (not independently verified) = ${cleanLabel(body.districtName, 'not selected')}.
 Selected crop in the app (not proof of what is planted in the field) = ${cleanLabel(body.cropName, 'not selected')}.
-Client-supplied weather data (may be incomplete or stale) = ${weatherContext}.
+Weather location associated with this weather response = ${body.weatherDistrictName ? cleanLabel(body.weatherDistrictName, 'not confirmed') : 'not confirmed; do not produce a location-specific report'}.\nClient-supplied weather data (may be incomplete or stale) = ${weatherContext}.
 Saved soil assessments for this signed-in farmer only, newest first = ${JSON.stringify(soilContext)}.`;
     // Stream newline-delimited JSON so the farmer sees the first words immediately.
     res.status(200);
