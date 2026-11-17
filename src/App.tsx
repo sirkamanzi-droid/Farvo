@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import AuthScreen from './components/AuthScreen';
 import AccountScreen from './components/AccountScreen';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DISTRICTS } from './data/districts';
 import { District, WeatherData, Farm } from './types';
 import { detectNearestDistrict, LocationStatus } from './data/geolocation';
@@ -99,6 +99,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
   const [districtPickerOpen, setDistrictPickerOpen] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherDistrictId, setWeatherDistrictId] = useState<string | null>(null);
+  const weatherRequestId = useRef(0);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
@@ -124,18 +126,25 @@ function AuthenticatedApp({ userId }: { userId: string }) {
 
   const activeFarm=farms.find(f=>f.id===activeFarmId)||farms[0];
   const fetchWeather=async(district:District)=>{
-    setLoadingWeather(true); setWeatherError(null);
+    const requestId=++weatherRequestId.current;
+    setLoadingWeather(true); setWeatherError(null); setWeatherData(null); setWeatherDistrictId(null);
     try {
       const {data:{session},error:sessionError}=await supabase.auth.getSession();
       if(sessionError||!session) throw new Error('Please sign in again to view weather.');
       const response=await fetch(`/api/weather?latitude=${district.latitude}&longitude=${district.longitude}`,{headers:{Authorization:`Bearer ${session.access_token}`}});
       if(response.status===401) throw new Error('Your session has expired. Please sign in again.');
       if(!response.ok) throw new Error('Failed to retrieve weather forecast.');
-      setWeatherData(await response.json());
+      const result=await response.json() as WeatherData;
+      if(requestId!==weatherRequestId.current) return;
+      setWeatherData(result);
+      setWeatherDistrictId(district.id);
     } catch(err:unknown) {
+      if(requestId!==weatherRequestId.current) return;
       console.error('Weather fetch error:',err);
       setWeatherError(err instanceof Error?err.message:'Unable to connect to weather services. Please try again.');
-    } finally { setLoadingWeather(false); }
+    } finally {
+      if(requestId===weatherRequestId.current) setLoadingWeather(false);
+    }
   };
   useEffect(()=>{if(activeFarm) void fetchWeather(activeFarm.district);},[activeFarm?.district.id]);
 
@@ -169,7 +178,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
           </div>
         </div>}
         {activeTab==='disease'&&<div className="px-4 sm:px-6 py-5"><DiseaseDetection onGetTreatmentAdvice={question=>{setPendingKatoQuestion(question);setActiveTab('kato');}}/></div>}
-        <div className={activeTab==='kato'?'':'hidden'}><KatoChat userId={userId} district={activeFarm.district} cropName={activeFarm.crop} weatherData={weatherData} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)}/></div>
+        <div className={activeTab==='kato'?'':'hidden'}><KatoChat userId={userId} district={activeFarm.district} cropName={activeFarm.crop} weatherData={weatherDistrictId===activeFarm.district.id?weatherData:null} weatherDistrictName={weatherDistrictId===activeFarm.district.id?activeFarm.district.name:null} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)}/></div>
         {activeTab==='calendar'&&<div className="px-4 sm:px-6 py-5"><ComingSoon icon={CalendarDays} title="Farm calendar" description="Plan planting dates, farm activities and important reminders — coming soon." onBack={()=>setActiveTab('home')}/></div>}
         {activeTab==='account'&&<div className="px-4 sm:px-6 py-5"><AccountScreen/><div className="mt-5 grid grid-cols-2 gap-2">
           <button onClick={()=>setShowSoilCalculator(true)} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Wrench className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Farm tools</span></button>
