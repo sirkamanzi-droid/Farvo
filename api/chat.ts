@@ -4,6 +4,72 @@ import { createClient } from '@supabase/supabase-js';
 
 type IncomingMessage = { role: 'user' | 'assistant'; content: string };
 
+
+function providerStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const value = error as { status?: number; statusCode?: number; message?: string };
+  const direct = value.status ?? value.statusCode;
+  if (typeof direct === 'number') return direct;
+  if (typeof value.message === 'string') {
+    try {
+      const parsed = JSON.parse(value.message);
+      const code = Number(parsed?.error?.code);
+      if (Number.isFinite(code)) return code;
+    } catch {
+      // The SDK may return a non-JSON message.
+    }
+  }
+  return undefined;
+}
+
+function isTemporaryProviderFailure(error: unknown): boolean {
+  const status = providerStatus(error);
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+async function generateKatoAnswer(
+  ai: GoogleGenAI,
+  contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>,
+  systemInstruction: string,
+) {
+  const primaryModel = 'gemini-3.8-flash';
+  const fallbackModel = 'gemini-3.5-flash-lite';
+  let lastError: unknown;
+
+  for (const model of [primaryModel, primaryModel, fallbackModel]) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+        config: { systemInstruction, temperature: 0.5 },
+      });
+      const answer = response.text;
+      if (!answer || !answer.trim()) {
+        throw new Error(`Kato received an empty response from ${model}.`);
+      }
+      if (model !== primaryModel) {
+        console.warn(`Kato answered using fallback model ${model}.`);
+      }
+      return answer.trim();
+    } catch (error) {
+      lastError = error;
+      if (!isTemporaryProviderFailure(error)) throw error;
+      console.error('Kato model request failed:', {
+        model,
+        status: providerStatus(error),
+        message: error instanceof Error ? error.message.slice(0, 300) : 'Unknown provider error',
+      });
+      if (model === fallbackModel) break;
+      if (model === primaryModel && lastError) {
+        // Give a transient capacity spike one brief chance to clear before fallback.
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 function cleanLabel(value: unknown, fallback: string) {
   return typeof value === 'string' && value.trim()
     ? value.trim().slice(0, 100)
@@ -98,11 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }));
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents,
-      config: {
-        systemInstruction: `You are Kato, a practical agricultural advisor for smallholder farmers in Uganda.
+    const systemInstruction = `You are Kato, a practical agricultural advisor for smallholder farmers in Uganda.
 The farmer's district is ${cleanLabel(body.districtName, 'Uganda')}.
 Their currently selected crop is ${cleanLabel(body.cropName, 'not specified')}.
 Recent weather context from the app: ${weatherContext}.
@@ -128,18 +190,10 @@ WEATHER ACCURACY RULES:
 - Do not describe the data as live or real-time unless that is established by the supplied context.
 - Explain uncertainty when the data is insufficient to make a confident planting recommendation.
 
-Give cautious, actionable farming guidance. Consider soil drainage, crop stage, local conditions and planting material where relevant. Do not invent diagnoses or pesticide labels. For crop disease questions, explain that photo-based suggestions are not definitive and recommend local agricultural extension support for serious or spreading problems. Do not claim to have inspected a plant unless the farmer supplied relevant observations. Ask one brief follow-up when key details are missing.`,
-        temperature: 0.5,
-      },
-    });
+Give cautious, actionable farming guidance. Consider soil drainage, crop stage, local conditions and planting material where relevant. Do not invent diagnoses or pesticide labels. For crop disease questions, explain that photo-based suggestions are not definitive and recommend local agricultural extension support for serious or spreading problems. Do not claim to have inspected a plant unless the farmer supplied relevant observations. Ask one brief follow-up when key details are missing.`;
+    const answer = await generateKatoAnswer(ai, contents, systemInstruction);
 
-    const answer = response.text;
-    if (!answer || !answer.trim()) {
-      console.error('Kato chat returned an empty answer.');
-      return res.status(502).json({ error: 'Kato could not prepare an answer. Please try again.' });
-    }
-
-    return res.status(200).json({ content: answer.trim() });
+    return res.status(200).json({ content: answer });
   } catch (error: unknown) {
     const details = error instanceof Error
       ? {
