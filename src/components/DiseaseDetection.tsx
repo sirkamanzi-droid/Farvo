@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { findMismatchedDiseaseHost, isGenericDiseaseLabel } from '../utils/diseaseValidation';
+import { findMismatchedDiseaseHost, isGenericDiseaseLabel, matchesSelectedCropPlant } from '../utils/diseaseValidation';
 import { supabase } from '../lib/supabase';
 import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
 
@@ -148,23 +148,12 @@ async function computeDiagnosis(
 
     // Stage 2: compare the identified species with the selected crop.
     // Keep this conservative: unsupported or unmatched crops are not diagnosed.
-    const cropMatches: Record<string, string[]> = {
-      maize: ['zea mays'],
-      beans: ['phaseolus vulgaris'],
-      coffee: ['coffea arabica'],
-      banana: ['musa × paradisiaca', 'musa x paradisiaca', 'musa acuminata', 'musa balbisiana'],
-      tomato: ['solanum lycopersicum'],
-      potato: ['solanum tuberosum'],
-    };
-
     // Only proceed when the provider's strongest species candidate matches
     // the crop the farmer selected. A weaker later candidate is not enough.
     const topPlant = plantResults[0];
-    const topPlantName = typeof topPlant?.scientificName === 'string'
-      ? topPlant.scientificName.toLowerCase().trim()
-      : '';
-    const cropMatchesPlant = (cropMatches[cropId] ?? []).some(
-      (name) => topPlantName === name || topPlantName.startsWith(`${name} `)
+    const cropMatchesPlant = matchesSelectedCropPlant(
+      cropId as 'maize' | 'beans' | 'coffee' | 'banana' | 'tomato' | 'potato',
+      topPlant?.scientificName,
     );
     const matchingPlant = cropMatchesPlant ? topPlant : null;
 
