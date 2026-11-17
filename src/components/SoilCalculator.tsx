@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import {
   ArrowLeft, Beaker, CheckCircle2, ChevronRight, CircleHelp, ClipboardCheck,
   Droplets, Leaf, Save, Sprout, TestTube2
@@ -19,7 +20,6 @@ type SavedAssessment = {
 };
 
 const CROPS = ['Maize', 'Beans', 'Coffee', 'Banana', 'Tomato', 'Potato', 'Cassava', 'Rice'];
-const STORAGE_KEY = (userId: string) => `omulimi_soil_assessments:${userId}`;
 
 function pHInterpretation(ph: number) {
   if (ph < 5.5) return { label: 'Strongly acidic', detail: 'This reading is strongly acidic. Some crops may struggle to access nutrients at this pH.', tone: 'amber' as const };
@@ -61,7 +61,32 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
   const [drainage, setDrainage] = useState<Drainage>('unknown');
   const [report, setReport] = useState<SavedAssessment | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedAssessments, setSavedAssessments] = useState<SavedAssessment[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    const loadSaved = async () => {
+      const { data, error: loadError } = await supabase
+        .from('soil_assessments')
+        .select('id, created_at, crop, mode, measured_ph, texture, drainage, findings')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (!active) return;
+      if (loadError) { console.error('Could not load saved soil assessments:', loadError); return; }
+      setSavedAssessments((data || []).map((item: any) => ({
+        id: item.id, createdAt: item.created_at, crop: item.crop, mode: item.mode,
+        ph: item.measured_ph === null ? null : Number(item.measured_ph),
+        texture: item.texture, drainage: item.drainage,
+        findings: Array.isArray(item.findings) ? item.findings : []
+      })));
+    };
+    void loadSaved();
+    return () => { active = false; };
+  }, [userId]);
 
   const ph = useMemo(() => {
     if (!phInput.trim()) return null;
@@ -96,16 +121,33 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
     });
   };
 
-  const saveReport = () => {
-    if (!report) return;
+  const saveReport = async () => {
+    if (!report || saving || saved) return;
+    setSaving(true);
+    setError('');
     try {
-      const existing = JSON.parse(localStorage.getItem(STORAGE_KEY(userId)) || '[]');
-      const list = Array.isArray(existing) ? existing : [];
-      localStorage.setItem(STORAGE_KEY(userId), JSON.stringify([report, ...list].slice(0, 50)));
+      const { data, error: saveError } = await supabase
+        .from('soil_assessments')
+        .insert({
+          id: report.id, user_id: userId, crop: report.crop, mode: report.mode,
+          measured_ph: report.ph, texture: report.texture, drainage: report.drainage,
+          findings: report.findings
+        })
+        .select('id, created_at, crop, mode, measured_ph, texture, drainage, findings')
+        .single();
+      if (saveError) throw saveError;
+      const savedItem: SavedAssessment = {
+        id: data.id, createdAt: data.created_at, crop: data.crop, mode: data.mode,
+        ph: data.measured_ph === null ? null : Number(data.measured_ph),
+        texture: data.texture, drainage: data.drainage,
+        findings: Array.isArray(data.findings) ? data.findings : []
+      };
+      setSavedAssessments(current => [savedItem, ...current.filter(item => item.id !== savedItem.id)].slice(0, 50));
       setSaved(true);
-    } catch {
-      setError('This device could not save the report. Check available browser storage and try again.');
-    }
+    } catch (saveError) {
+      console.error('Could not save soil assessment:', saveError);
+      setError('Could not save this report to your Omulimi account. Check your connection and try again.');
+    } finally { setSaving(false); }
   };
 
   const reset = () => {
@@ -116,10 +158,20 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
 
   return (
     <div className="px-4 sm:px-6 py-5 pb-8 space-y-5">
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} aria-label="Back" className="rounded-xl border border-[#e6dcc8] bg-[#fffdf8] p-2 text-soil-700"><ArrowLeft className="h-4 w-4"/></button>
-        <div><p className="text-[10px] font-bold uppercase tracking-wide text-leaf-700">Omulimi farm tools</p><h1 className="text-2xl font-bold text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>Soil calculator</h1></div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} aria-label="Back" className="rounded-xl border border-[#e6dcc8] bg-[#fffdf8] p-2 text-soil-700"><ArrowLeft className="h-4 w-4"/></button>
+          <div><p className="text-[10px] font-bold uppercase tracking-wide text-leaf-700">Omulimi farm tools</p><h1 className="text-2xl font-bold text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>Soil calculator</h1></div>
+        </div>
+        <button onClick={() => setShowHistory(value => !value)} className="rounded-xl border border-[#e6dcc8] bg-[#fffdf8] px-3 py-2 text-[11px] font-bold text-soil-800">Saved ({savedAssessments.length})</button>
       </div>
+      {showHistory && <section className="rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4 space-y-3">
+        <h2 className="text-sm font-bold text-soil-900">Your saved soil reports</h2>
+        {savedAssessments.length === 0 ? <p className="text-xs text-soil-600">You have no saved soil reports yet.</p> : savedAssessments.map(item => <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[#eee5d5] pb-2 last:border-0 last:pb-0">
+          <div><p className="text-xs font-bold text-soil-900">{item.crop} field</p><p className="text-[10px] text-soil-500">{item.mode === 'tested' ? 'Soil-test' : 'Guided'} · {new Date(item.createdAt).toLocaleDateString()}</p></div>
+          <span className="text-xs font-semibold text-soil-700">{item.ph === null ? 'No pH reading' : 'pH ' + item.ph.toFixed(1)}</span>
+        </div>)}
+      </section>}
 
       <section className="rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4">
         <div className="flex items-start gap-3"><div className="rounded-xl bg-leaf-100 p-2.5 text-leaf-700"><Sprout className="h-5 w-5"/></div><div><h2 className="text-sm font-bold text-soil-900">Understand your soil before planting</h2><p className="mt-1 text-xs leading-relaxed text-soil-600">Use a soil-test reading or describe what you observe in your field. The result is guidance, not a laboratory diagnosis.</p></div></div>
@@ -166,7 +218,7 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
         <div className="rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4"><h3 className="text-xs font-bold text-soil-900">Recommended next steps</h3><ul className="mt-2 list-disc space-y-2 pl-4 text-xs leading-relaxed text-soil-700"><li>For a reliable nutrient and pH picture, take a representative soil sample for laboratory testing.</li><li>Use the crop-specific advice from a local extension officer before applying lime or fertiliser.</li><li>Keep observing the field, especially drainage after rainfall.</li></ul></div>
         <div className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-[10px] leading-relaxed text-soil-600">This assessment uses the information you supplied. It does not measure nutrients, diagnose soil diseases or guarantee that a field is suitable for a crop.</div>
         {error&&<p role="alert" className="text-xs text-rose-700">{error}</p>}
-        <div className="grid grid-cols-2 gap-2"><button onClick={saveReport} disabled={saved} className="rounded-xl bg-leaf-700 px-3 py-3 text-xs font-bold text-white disabled:opacity-70">{saved?<><CheckCircle2 className="mr-1 inline h-4 w-4"/>Saved on this device</>:<><Save className="mr-1 inline h-4 w-4"/>Save report</>}</button><button onClick={reset} className="rounded-xl border border-[#d9cfbc] bg-[#fffdf8] px-3 py-3 text-xs font-bold text-soil-800">New assessment</button></div>
+        <div className="grid grid-cols-2 gap-2"><button onClick={() => void saveReport()} disabled={saved || saving} className="rounded-xl bg-leaf-700 px-3 py-3 text-xs font-bold text-white disabled:opacity-70">{saved?<><CheckCircle2 className="mr-1 inline h-4 w-4"/>Saved to account</>:saving?'Saving…':<><Save className="mr-1 inline h-4 w-4"/>Save report</>}</button><button onClick={reset} className="rounded-xl border border-[#d9cfbc] bg-[#fffdf8] px-3 py-3 text-xs font-bold text-soil-800">New assessment</button></div>
       </section>}
     </div>
   );
