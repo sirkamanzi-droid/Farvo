@@ -156,16 +156,16 @@ async function computeDiagnosis(
       potato: ['solanum tuberosum'],
     };
 
-    // Check all returned plant candidates, not only the first: the top
-    // candidate can be wrong even when a later candidate matches the crop.
-    const matchingPlant = plantResults.find((candidate: any) => {
-      if (typeof candidate.scientificName !== 'string' || typeof candidate.score !== 'number') return false;
-      const candidateName = candidate.scientificName.toLowerCase().trim();
-      return (cropMatches[cropId] ?? []).some(
-        (name) => candidateName === name || candidateName.startsWith(`${name} `)
-      );
-    });
-    const cropMatchesPlant = Boolean(matchingPlant);
+    // Only proceed when the provider's strongest species candidate matches
+    // the crop the farmer selected. A weaker later candidate is not enough.
+    const topPlant = plantResults[0];
+    const topPlantName = typeof topPlant?.scientificName === 'string'
+      ? topPlant.scientificName.toLowerCase().trim()
+      : '';
+    const cropMatchesPlant = (cropMatches[cropId] ?? []).some(
+      (name) => topPlantName === name || topPlantName.startsWith(`${name} `)
+    );
+    const matchingPlant = cropMatchesPlant ? topPlant : null;
 
     if (!cropMatchesPlant) {
       const selectedCrop =
@@ -196,7 +196,7 @@ async function computeDiagnosis(
       };
     }
 
-    // Use the strongest candidate that matches the farmer's selected crop.
+    // Use only the top candidate after it has passed the selected-crop check.
     const cropCandidate = matchingPlant as { scientificName: string; score: number };
 
     // Stage 3: only after crop validation, request disease identification.
@@ -272,11 +272,35 @@ async function computeDiagnosis(
 
     if (isGenericResult) {
       return {
-        outcome: 'uncertain',
+        outcome: 'no_match',
         confidence: 0,
         whatObserved:
-          'We identified the crop, but could not identify a specific disease from this photo. Try a clearer close-up of the affected area.',
+          'The crop was identified, but the scan did not return a specific disease match. This does not prove the plant is disease-free. Keep monitoring it and seek local advice if symptoms appear or spread.',
       };
+    }
+
+    // Reject provider labels that explicitly name a different host crop.
+    const hostAliases: Record<string, string[]> = {
+      maize: ['maize', 'corn'],
+      beans: ['bean', 'common bean'],
+      coffee: ['coffee'],
+      banana: ['banana', 'plantain'],
+      tomato: ['tomato'],
+      potato: ['potato'],
+    };
+    const namedHost = normalizedDiseaseLabel.match(/\bof\s+([a-z][a-z -]{1,35})$/)?.[1]?.trim();
+    if (namedHost) {
+      const hostMatchesSelectedCrop = (hostAliases[cropId] ?? []).some(
+        (alias) => namedHost === alias || namedHost.startsWith(`${alias} `)
+      );
+      if (!hostMatchesSelectedCrop) {
+        return {
+          outcome: 'no_match',
+          confidence: 0,
+          whatObserved:
+            `The provider's label refers to "${namedHost}", not the selected crop. We will not show it as a diagnosis for this plant. The scan did not return a verified crop-specific disease match.`,
+        };
+      }
     }
 
     const confidence = Math.round(match.score * 100);
@@ -284,10 +308,10 @@ async function computeDiagnosis(
     // Temporary conservative gate, not a clinically or scientifically validated threshold.
     if (confidence < 30) {
       return {
-        outcome: 'uncertain',
+        outcome: 'no_match',
         confidence,
         whatObserved:
-          'The plant was identified, but the service did not provide a strong enough match to show. This does not mean the plant is healthy. Try another clear photo or ask an agricultural extension officer.',
+          'The crop was identified, but the disease service did not return a strong enough match to name a disease. This does not prove the plant is disease-free. Keep monitoring it and seek local advice if symptoms appear or spread.',
       };
     }
 
