@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Activity, ArrowLeft, Building2, CheckCircle2, ClipboardList, Leaf, Loader2, LogOut, Megaphone, RefreshCw, ShieldCheck, Sprout, Users, CircleAlert } from 'lucide-react';
+import { Activity, ArrowLeft, Building2, CheckCircle2, ClipboardList, Loader2, LogOut, Megaphone, RefreshCw, ShieldCheck, Sprout, Users, CircleAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type View = 'overview' | 'farmers' | 'cooperatives' | 'settings' | 'activity';
