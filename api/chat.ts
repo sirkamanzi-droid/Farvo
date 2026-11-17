@@ -222,7 +222,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const ai = new GoogleGenAI({
       apiKey: process.env.GEMINI_API_KEY,
       httpOptions: {
-        timeout: 9000,
+        timeout: 22000,
         retryOptions: { attempts: 1 },
       },
     });
