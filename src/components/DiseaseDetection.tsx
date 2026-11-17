@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { findMismatchedDiseaseHost, isGenericDiseaseLabel } from '../utils/diseaseValidation';
 import { supabase } from '../lib/supabase';
 import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
 
@@ -266,9 +267,7 @@ async function computeDiagnosis(
       .trim();
 
     // Broad pathogen groups and unclassified labels are not specific diagnoses.
-    const isGenericResult =
-      match.name === 'ZZXXZZ' ||
-      /\bunclassified\b|\bunknown (?:parasitic )?pathogen\b|^viruses?$|^fungi?$|^bacteria?$|^pests?$/.test(normalizedDiseaseLabel);
+    const isGenericResult = isGenericDiseaseLabel(match.name, match.description);
 
     if (isGenericResult) {
       return {
@@ -279,28 +278,19 @@ async function computeDiagnosis(
       };
     }
 
-    // Reject provider labels that explicitly name a different host crop.
-    const hostAliases: Record<string, string[]> = {
-      maize: ['maize', 'corn'],
-      beans: ['bean', 'common bean'],
-      coffee: ['coffee'],
-      banana: ['banana', 'plantain'],
-      tomato: ['tomato'],
-      potato: ['potato'],
-    };
-    const namedHost = normalizedDiseaseLabel.match(/\bof\s+([a-z][a-z -]{1,35})$/)?.[1]?.trim();
-    if (namedHost) {
-      const hostMatchesSelectedCrop = (hostAliases[cropId] ?? []).some(
-        (alias) => namedHost === alias || namedHost.startsWith(`${alias} `)
-      );
-      if (!hostMatchesSelectedCrop) {
-        return {
-          outcome: 'no_match',
-          confidence: 0,
-          whatObserved:
-            `The provider's label refers to "${namedHost}", not the selected crop. We will not show it as a diagnosis for this plant. The scan did not return a verified crop-specific disease match.`,
-        };
-      }
+    // Scan the complete provider label for other crop hosts. Provider wording
+    // varies, so checking only a trailing "of <crop>" phrase is not sufficient.
+    const mismatchedHost = findMismatchedDiseaseHost(
+      cropId as 'maize' | 'beans' | 'coffee' | 'banana' | 'tomato' | 'potato',
+      normalizedDiseaseLabel,
+    );
+    if (mismatchedHost) {
+      return {
+        outcome: 'no_match',
+        confidence: 0,
+        whatObserved:
+          `The provider's label refers to "${mismatchedHost}", not the selected crop. We will not show it as a diagnosis for this plant. The scan did not return a verified crop-specific disease match.`,
+      };
     }
 
     const confidence = Math.round(match.score * 100);
