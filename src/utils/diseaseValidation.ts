@@ -57,3 +57,28 @@ export function isGenericDiseaseLabel(name: unknown, description: unknown): bool
     genericOnly.test(nameText) ||
     genericOnly.test(descriptionText);
 }
+
+
+const CROP_SPECIES: Record<SupportedDiseaseCrop, string[]> = {
+  maize: ['zea mays'],
+  beans: ['phaseolus vulgaris'],
+  coffee: ['coffea arabica'],
+  banana: ['musa × paradisiaca', 'musa x paradisiaca', 'musa acuminata', 'musa balbisiana'],
+  tomato: ['solanum lycopersicum'],
+  potato: ['solanum tuberosum'],
+  cassava: ['manihot esculenta'],
+  rice: ['oryza sativa'],
+};
+
+/** Accept only a leading species match for the crop selected by the farmer. */
+export function matchesSelectedCropPlant(
+  selectedCrop: SupportedDiseaseCrop,
+  scientificName: unknown,
+): boolean {
+  if (typeof scientificName !== 'string') return false;
+  const candidate = scientificName.toLowerCase().replace(/\\s+/g, ' ').trim();
+  if (!candidate) return false;
+  return CROP_SPECIES[selectedCrop].some(
+    (species) => candidate === species || candidate.startsWith(`${species} `),
+  );
+}
