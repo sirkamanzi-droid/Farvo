@@ -244,9 +244,9 @@ Agricultural quality: suggestions are not confirmed diagnoses. Ask at most one s
     res.flushHeaders();
 
     const answer = await streamKatoAnswer(ai, contents, systemInstruction, (text) => {
-      res.write(JSON.stringify({ text }) + '\\n');
+      res.write(JSON.stringify({ text }) + '\n');
     });
-    res.write(JSON.stringify({ done: true, content: answer }) + '\\n');
+    res.write(JSON.stringify({ done: true, content: answer }) + '\n');
     return res.end();
   } catch (error: unknown) {
     const details = error instanceof Error
@@ -264,7 +264,7 @@ Agricultural quality: suggestions are not confirmed diagnoses. Ask at most one s
       ? 'Kato’s AI service is taking too long or is busy right now. Please try again shortly.'
       : 'Kato could not answer just now. Please try again in a moment.';
     if (res.headersSent) {
-      res.write(JSON.stringify({ error: message }) + '\\n');
+      res.write(JSON.stringify({ error: message }) + '\n');
       return res.end();
     }
     return res.status(isTemporaryProviderFailure(error) ? 503 : 500).json({ error: message });
