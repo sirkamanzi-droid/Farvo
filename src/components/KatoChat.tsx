@@ -189,7 +189,8 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
       await loadConversations();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kato could not reply. Please try again.');
-      // Keep the farmer's unsent question visible so it is not lost.
+      // Restore the question in the composer so the farmer can retry or edit it.
+      setInput(question);
     } finally {
       setSending(false);
     }
