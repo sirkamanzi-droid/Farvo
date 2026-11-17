@@ -19,20 +19,18 @@ const CROP_ALIASES: Record<SupportedDiseaseCrop, string[]> = {
   rice: ['rice'],
 };
 
-// These are crop/host names, not disease names. Matching is deliberately
-// performed across the whole provider label because provider wording varies.
 const OTHER_HOST_ALIASES = ['eggplant', 'aubergine'];
 
 function includesWholePhrase(text: string, phrase: string): boolean {
-  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?:^|[^a-z])${escaped}(?:$|[^a-z])`, 'i').test(text);
+  const escaped = phrase.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
+  return new RegExp('(?:^|[^a-z])' + escaped + '(?:$|[^a-z])', 'i').test(text);
 }
 
 export function findMismatchedDiseaseHost(
   selectedCrop: SupportedDiseaseCrop,
   providerLabel: string,
 ): string | null {
-  const label = providerLabel.toLowerCase().replace(/\\s+/g, ' ').trim();
+  const label = providerLabel.toLowerCase().replace(/\s+/g, ' ').trim();
   if (!label) return null;
 
   for (const host of OTHER_HOST_ALIASES) {
@@ -50,12 +48,12 @@ export function findMismatchedDiseaseHost(
 }
 
 export function isGenericDiseaseLabel(name: unknown, description: unknown): boolean {
-  const label = `${typeof name === 'string' ? name : ''} ${typeof description === 'string' ? description : ''}`
-    .toLowerCase()
-    .replace(/\\s+/g, ' ')
-    .trim();
+  const nameText = typeof name === 'string' ? name.toLowerCase().trim() : '';
+  const descriptionText = typeof description === 'string' ? description.toLowerCase().trim() : '';
+  const genericOnly = /^(?:unclassified|unknown (?:parasitic )?pathogen|virus|viruses|fungus|fungi|bacterium|bacteria|pest|pests)$/;
 
-  return !label ||
-    label.includes('zzxxzz') ||
-    /\\bunclassified\\b|\\bunknown (?:parasitic )?pathogen\\b|\\bviruses?\\b|\\bfungi?\\b|\\bbacteria?\\b|\\bpests?\\b/.test(label);
+  return (!nameText && !descriptionText) ||
+    nameText === 'zzxxzz' ||
+    genericOnly.test(nameText) ||
+    genericOnly.test(descriptionText);
 }
