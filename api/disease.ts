@@ -128,10 +128,14 @@ export default async function handler(
 
     return res.status(200).json({
       results: Array.isArray(data.results)
-        ? data.results.map((item: any) => ({
-            name: item.name ?? null,
-            description: item.description ?? item.name ?? 'Unidentified condition',
-            score: typeof item.score === 'number' ? item.score : null
+        ? data.results.slice(0, 3).map((item: any) => ({
+            name: typeof item.name === 'string' ? item.name.slice(0, 160) : null,
+            description: typeof item.description === 'string'
+              ? item.description.slice(0, 500)
+              : (typeof item.name === 'string' ? item.name.slice(0, 160) : 'Unidentified condition'),
+            score: typeof item.score === 'number' && Number.isFinite(item.score)
+              ? item.score
+              : null
           }))
         : [],
       version: data.version ?? null,
