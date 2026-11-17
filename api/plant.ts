@@ -82,10 +82,18 @@ export default async function handler(
     url.searchParams.set('lang', 'en');
     url.searchParams.set('nb-results', '5');
 
-    const upstream = await fetch(url.toString(), {
-      method: 'POST',
-      body: form
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    let upstream: Response;
+    try {
+      upstream = await fetch(url.toString(), {
+        method: 'POST',
+        body: form,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!upstream.ok) {
       const upstreamError = await upstream.text();
@@ -127,9 +135,11 @@ export default async function handler(
         data.remainingIdentificationRequests ?? null
     });
   } catch (error) {
-    console.error('Plant identification API error:', error);
-
-    return res.status(500).json({
+    if (error instanceof Error && error.name === 'AbortError') {
+      return res.status(504).json({ error: 'Plant identification took too long. Please try again.' });
+    }
+    console.error('Plant identification API error:', error instanceof Error ? error.message : 'Unknown error');
+    return res.status(502).json({
       error: 'Something went wrong while identifying the plant.'
     });
   }
