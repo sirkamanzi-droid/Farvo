@@ -81,6 +81,16 @@ function cleanLabel(value: unknown, fallback: string) {
   return cleaned || fallback;
 }
 
+function cleanObservation(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const cleaned = value.normalize('NFKC')
+    .replace(/[^\\p{L}\\p{N} .,'()/-]/gu, '')
+    .replace(/\\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+  return cleaned || null;
+}
+
 function safeWeatherContext(value: unknown): string {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return 'No verified weather context supplied.';
   const source = value as Record<string, unknown>;
@@ -181,7 +191,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       measuredPH: row.measured_ph === null ? null : Number(row.measured_ph),
       texture: row.texture,
       drainage: row.drainage,
-      observations: Array.isArray(row.findings) ? row.findings.slice(0, 8) : [],
+      observations: Array.isArray(row.findings)
+        ? row.findings.slice(0, 8).map(cleanObservation).filter((item): item is string => Boolean(item))
+        : [],
       recordedAt: row.created_at,
     }));
 
