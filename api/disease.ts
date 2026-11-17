@@ -38,7 +38,7 @@ export default async function handler(
     const imageDataUrl = req.body?.imageDataUrl;
     const cropId = req.body?.cropId;
     const supportedCropIds = new Set([
-      'maize', 'beans', 'coffee', 'banana', 'tomato', 'potato', 'cassava', 'rice'
+      'maize', 'beans', 'coffee', 'banana', 'tomato', 'potato'
     ]);
 
     if (typeof cropId !== 'string' || !supportedCropIds.has(cropId)) {
