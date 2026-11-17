@@ -101,5 +101,5 @@ export default function CommandCentre({ session }: { session: Session | null }) 
           {view === 'activity' && <section className="rounded-2xl border border-[#ded5c3] bg-[#f8f4eb] p-4"><h3 className="font-bold">Administrative audit trail</h3><p className="mb-3 text-xs text-[#52645a]">Latest 100 actions performed through this console.</p>{activity.length ? activity.map(a => <div key={a.id} className="border-t border-[#e5dccb] py-3"><div className="flex flex-wrap justify-between gap-2"><p className="text-sm font-semibold">{a.action.replaceAll('_',' ')}</p><span className="text-xs text-[#52645a]">{date(a.created_at)}</span></div><p className="mt-1 text-xs text-[#52645a]">{a.target_type}{a.target_id ? ' · ' + a.target_id : ''}</p></div>) : <p className="py-6 text-center text-sm text-[#52645a]">No admin actions recorded yet.</p>}</section>}
         </>}
       </main>
-    </div></div><footer className="mx-auto max-w-7xl px-4 pb-6 text-xs text-[#52645a] sm:px-6"><ShieldCheck className="mr-1 inline h-3 w-3"/>Server-verified administrator access</footer></div>;
+    </div><footer className="mx-auto max-w-7xl px-4 pb-6 text-xs text-[#52645a] sm:px-6"><ShieldCheck className="mr-1 inline h-3 w-3"/>Server-verified administrator access</footer></div>;
 }
