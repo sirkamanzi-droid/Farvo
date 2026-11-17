@@ -26,6 +26,7 @@ interface KatoChatProps {
   district: District;
   cropName: string;
   weatherData: WeatherData | null;
+  weatherDistrictName?: string | null;
   initialQuestion?: string | null;
   onInitialQuestionHandled?: () => void;
 }
@@ -42,7 +43,7 @@ function dateLabel(value: string) {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
-export default function KatoChat({ userId, district, cropName, weatherData, initialQuestion, onInitialQuestionHandled }: KatoChatProps) {
+export default function KatoChat({ userId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled }: KatoChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -175,7 +176,8 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
             messages: history.slice(-12).map(({ role, content }) => ({ role, content })),
             districtName: district.name,
             cropName,
-            weatherContext: weatherData ? { current: weatherData.current, daily: weatherData.daily.slice(0, 5) } : null,
+            weatherDistrictName: weatherData && weatherDistrictName === district.name ? weatherDistrictName : null,
+            weatherContext: weatherData && weatherDistrictName === district.name ? { current: weatherData.current, daily: weatherData.daily.slice(0, 5) } : null,
           }),
         });
         if (!response.ok) {
