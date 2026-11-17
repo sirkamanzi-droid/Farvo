@@ -109,11 +109,6 @@ async function computeDiagnosis(
       };
     }
 
-    const scientificName = bestPlant.scientificName
-      .toLowerCase()
-      .trim();
-    const confirmedCropCandidate = matchingPlant;
-
     // Stage 2: compare the identified species with the selected crop.
     // Keep this conservative: unsupported or unmatched crops are not diagnosed.
     const cropMatches: Record<string, string[]> = {
@@ -168,7 +163,7 @@ async function computeDiagnosis(
     }
 
     // Use the strongest candidate that matches the farmer's selected crop.
-    const cropCandidate = confirmedCropCandidate as { scientificName: string; score: number };
+    const cropCandidate = matchingPlant as { scientificName: string; score: number };
 
     // Stage 3: only after crop validation, request disease identification.
     const diseaseResponse = await fetch('/api/disease', {
