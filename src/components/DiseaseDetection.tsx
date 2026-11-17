@@ -112,24 +112,31 @@ async function computeDiagnosis(
     const scientificName = bestPlant.scientificName
       .toLowerCase()
       .trim();
+    const confirmedCropCandidate = matchingPlant;
 
     // Stage 2: compare the identified species with the selected crop.
     // Keep this conservative: unsupported or unmatched crops are not diagnosed.
     const cropMatches: Record<string, string[]> = {
       maize: ['zea mays'],
       beans: ['phaseolus vulgaris'],
-      coffee: ['coffea arabica'],
+      coffee: ['coffea arabica', 'coffea canephora'],
       banana: ['musa × paradisiaca', 'musa x paradisiaca', 'musa acuminata', 'musa balbisiana'],
       tomato: ['solanum lycopersicum'],
       potato: ['solanum tuberosum'],
+      cassava: ['manihot esculenta'],
+      rice: ['oryza sativa'],
     };
 
-    const acceptedNames = cropMatches[cropId] ?? [];
-    const cropMatchesPlant = acceptedNames.some(
-      (name) =>
-        scientificName === name ||
-        scientificName.startsWith(`${name} `)
-    );
+    // Check all returned plant candidates, not only the first: the top
+    // candidate can be wrong even when a later candidate matches the crop.
+    const matchingPlant = plantResults.find((candidate: any) => {
+      if (typeof candidate.scientificName !== 'string' || typeof candidate.score !== 'number') return false;
+      const candidateName = candidate.scientificName.toLowerCase().trim();
+      return (cropMatches[cropId] ?? []).some(
+        (name) => candidateName === name || candidateName.startsWith(`${name} `)
+      );
+    });
+    const cropMatchesPlant = Boolean(matchingPlant);
 
     if (!cropMatchesPlant) {
       const selectedCrop =
@@ -159,6 +166,9 @@ async function computeDiagnosis(
           `The leading match was ${bestPlant.scientificName} (${Math.round(bestPlant.score * 100)}%), which does not match ${selectedCrop}. Other candidates: ${candidateSummary}. Please try a clearer photo.`,
       };
     }
+
+    // Use the strongest candidate that matches the farmer's selected crop.
+    const cropCandidate = confirmedCropCandidate as { scientificName: string; score: number };
 
     // Stage 3: only after crop validation, request disease identification.
     const diseaseResponse = await fetch('/api/disease', {
@@ -262,7 +272,7 @@ async function computeDiagnosis(
       diseaseExplanation: plainDiseaseInfo.explanation,
       confidence,
       whatObserved:
-        `The photo was identified as ${bestPlant.scientificName}. This is a possible disease match, not a confirmed diagnosis. Check the visible symptoms before taking action.`,
+        `The photo was identified as ${cropCandidate.scientificName}. This is a possible disease match, not a confirmed diagnosis. Check the visible symptoms before taking action.`,
     };
   } catch (error) {
     console.error('Disease detection failed:', error);
