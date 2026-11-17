@@ -273,8 +273,15 @@ export default function App() {
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,newSession)=>{if(!mounted)return;setSession(newSession);setCheckingSession(false);});
     return ()=>{mounted=false;subscription.unsubscribe();};
   },[]);
-  if(checkingSession)return <div className="min-h-screen flex items-center justify-center bg-parchment-100 text-soil-700">Checking your Omulimi account…</div>;
-  if(window.location.pathname === '/command-centre') return <CommandCentre session={session}/>;
-  if(!session)return <AuthScreen/>;
+  const currentPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const isCommandCentre = currentPath === '/command-centre';
+
+  if (checkingSession) {
+    return <div className="min-h-screen flex items-center justify-center bg-parchment-100 text-soil-700">
+      {isCommandCentre ? 'Opening Omulimi Command Centre…' : 'Checking your Omulimi account…'}
+    </div>;
+  }
+  if (isCommandCentre) return <CommandCentre session={session}/>;
+  if (!session) return <AuthScreen/>;
   return <AuthenticatedApp userId={session.user.id}/>;
 }
