@@ -43,21 +43,22 @@ export default function CommandCentre({ session }: { session: Session | null }) 
         if (listed.error) throw listed.error;
         const verified = listed.data.totp.find(factor => factor.status === 'verified');
         let factorId = verified?.id || '';
-        if (verified) {
-          if (!cancelled) setMfaMode('challenge');
-        } else {
+        if (!verified) {
           const enrolled = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Omulimi Command Centre' });
           if (enrolled.error) throw enrolled.error;
           factorId = enrolled.data.id;
           if (!cancelled) {
             setMfaQrCode(enrolled.data.totp.qr_code);
             setMfaSecret(enrolled.data.totp.secret);
-            setMfaMode('enroll');
           }
         }
         const challenge = await supabase.auth.mfa.challenge({ factorId });
         if (challenge.error) throw challenge.error;
-        if (!cancelled) { setMfaFactorId(factorId); setMfaChallengeId(challenge.data.id); }
+        if (!cancelled) {
+          setMfaFactorId(factorId);
+          setMfaChallengeId(challenge.data.id);
+          setMfaMode(verified ? 'challenge' : 'enroll');
+        }
       } catch (e) {
         if (!cancelled) { setMfaMode('error'); setError(e instanceof Error ? e.message : 'Could not prepare administrator verification.'); }
       }
