@@ -24,8 +24,11 @@ function providerStatus(error: unknown): number | undefined {
 
 function isTemporaryProviderFailure(error: unknown): boolean {
   const status = providerStatus(error);
-  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504 ||
-    (error instanceof Error && error.message.toLowerCase().includes('empty response'));
+  const name = error instanceof Error ? error.name.toLowerCase() : '';
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504 ||
+    name.includes('timeout') || name.includes('abort') ||
+    message.includes('timed out') || message.includes('aborted') || message.includes('empty response');
 }
 
 async function generateKatoAnswer(
@@ -37,7 +40,9 @@ async function generateKatoAnswer(
   const fallbackModel = 'gemini-3.5-flash-lite';
   let lastError: unknown;
 
-  for (const model of [primaryModel, primaryModel, fallbackModel]) {
+  // One bounded attempt on the primary model, then one bounded fallback attempt.
+  // The SDK-level timeout prevents a provider request from leaving the UI spinning forever.
+  for (const model of [primaryModel, fallbackModel]) {
     try {
       const response = await ai.models.generateContent({
         model,
@@ -61,10 +66,8 @@ async function generateKatoAnswer(
         message: error instanceof Error ? error.message.slice(0, 300) : 'Unknown provider error',
       });
       if (model === fallbackModel) break;
-      if (model === primaryModel && lastError) {
-        // Give a transient capacity spike one brief chance to clear before fallback.
-        await new Promise(resolve => setTimeout(resolve, 400));
-      }
+      // Move directly to the fallback after a transient error or timeout; do not
+      // spend another full timeout repeating the same unavailable model.
     }
   }
 
@@ -109,6 +112,9 @@ function safeWeatherContext(value: unknown): string {
   }).filter(Boolean);
   return JSON.stringify({ current, daily });
 }
+
+// Allow enough time for one bounded primary request and one bounded fallback.
+export const config = { maxDuration: 60 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -205,7 +211,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       parts: [{ text: message.content }],
     }));
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        timeout: 16000,
+        retryOptions: { attempts: 1 },
+      },
+    });
     const systemInstruction = `You are Kato, Omulimi's practical agricultural information assistant for smallholder farmers in Uganda.
 
 YOUR ROLE AND TONE:
