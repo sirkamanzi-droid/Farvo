@@ -76,7 +76,7 @@ export function matchesSelectedCropPlant(
   scientificName: unknown,
 ): boolean {
   if (typeof scientificName !== 'string') return false;
-  const candidate = scientificName.toLowerCase().replace(/\\s+/g, ' ').trim();
+  const candidate = scientificName.toLowerCase().replace(/\s+/g, ' ').trim();
   if (!candidate) return false;
   return CROP_SPECIES[selectedCrop].some(
     (species) => candidate === species || candidate.startsWith(`${species} `),
