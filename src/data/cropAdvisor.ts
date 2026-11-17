@@ -233,8 +233,11 @@ function getPestAdvisory(crop: CropProfile, risk: string, current: any): string 
 
 function getGrowthAdvisory(crop: CropProfile, current: any, et0: number): string {
   const tip = crop.growthTips[Math.floor(Math.random() * crop.growthTips.length)];
-  const etNote = et0 > 4 ? `High evapotranspiration of ${et0}mm/day means crops are losing water fast — mulch to conserve moisture. ` : '';
-  return `${etNote}${tip}. Soil temperature at ${current.soilTemperature}°C is ${current.soilTemperature < 15 ? 'too cold for active root growth — consider mulching' : current.soilTemperature > 35 ? 'dangerously hot — mulch immediately to protect roots' : 'suitable for active root growth'}.`;
+  const etNote = typeof et0 === 'number' && et0 > 4 ? `High evapotranspiration of ${et0}mm/day means crops are losing water fast — mulch to conserve moisture. ` : '';
+  const soilNote = typeof current.soilTemperature === 'number'
+    ? ` Soil temperature is ${current.soilTemperature}°C; ${current.soilTemperature < 15 ? 'this may slow active root growth' : current.soilTemperature > 35 ? 'this may increase heat stress around roots' : 'this reading is within a moderate range'}.`
+    : ' Soil temperature reading is unavailable.';
+  return `${etNote}${tip}.${soilNote}`;
 }
 
 function generateRiskAlerts(current: any, daily: any[]): string[] {
