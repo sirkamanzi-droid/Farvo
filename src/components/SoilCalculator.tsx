@@ -84,6 +84,53 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
   useEffect(() => {
     let active = true;
     const loadSaved = async () => {
+      // Import reports saved by the previous device-only version before loading cloud history.
+      const legacyKey = `omulimi_soil_assessments:${userId}`;
+      try {
+        const legacyRaw = localStorage.getItem(legacyKey);
+        if (legacyRaw) {
+          const legacy = JSON.parse(legacyRaw);
+          if (Array.isArray(legacy) && legacy.length > 0) {
+            const validLegacy = legacy.filter((item: any) =>
+              item && typeof item.id === 'string' &&
+              CROPS.includes(item.crop) &&
+              (item.mode === 'tested' || item.mode === 'guided') &&
+              ['sandy', 'loamy', 'clay', 'unknown'].includes(item.texture) &&
+              ['fast', 'moderate', 'slow', 'unknown'].includes(item.drainage) &&
+              Array.isArray(item.findings) &&
+              (item.mode === 'guided'
+                ? item.ph === null
+                : typeof item.ph === 'number' && Number.isFinite(item.ph) && item.ph >= 0 && item.ph <= 14)
+            ).slice(0, 50);
+            if (validLegacy.length > 0) {
+              const { error: importError } = await supabase.from('soil_assessments').insert(
+                validLegacy.map((item: any) => ({
+                  id: item.id,
+                  user_id: userId,
+                  crop: item.crop,
+                  mode: item.mode,
+                  measured_ph: item.mode === 'tested' ? item.ph : null,
+                  texture: item.texture,
+                  drainage: item.drainage,
+                  findings: item.findings,
+                  created_at: item.createdAt
+                }))
+              );
+              if (importError) {
+                console.error('Could not migrate older device-saved soil reports:', importError);
+              } else {
+                localStorage.removeItem(legacyKey);
+              }
+            } else {
+              console.warn('Older device soil reports were not imported because their saved data did not pass validation.');
+            }
+          } else if (Array.isArray(legacy)) {
+            localStorage.removeItem(legacyKey);
+          }
+        }
+      } catch (migrationError) {
+        console.error('Could not read older device-saved soil reports:', migrationError);
+      }
       const { data, error: loadError } = await supabase
         .from('soil_assessments')
         .select('id, created_at, crop, mode, measured_ph, texture, drainage, findings')
