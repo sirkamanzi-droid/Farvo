@@ -15,6 +15,7 @@ import BottomNav, { Tab } from './components/BottomNav';
 import ComingSoon from './components/ComingSoon';
 import WeatherGlyph from './components/WeatherGlyph';
 import DiseaseDetection from './components/DiseaseDetection';
+import SoilCalculator from './components/SoilCalculator';
 import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, CalendarDays, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain } from 'lucide-react';
 
 const DEFAULT_DISTRICT = DISTRICTS[1];
@@ -34,9 +35,9 @@ function BrandHeader() {
   );
 }
 
-function HomeDashboard({farm, weather, loading, onOpenWeather, onOpenDisease, onOpenComingSoon, onOpenDistrict}: {
+function HomeDashboard({farm, weather, loading, onOpenWeather, onOpenDisease, onOpenSoil, onOpenComingSoon, onOpenDistrict}: {
   farm: Farm; weather: WeatherData | null; loading: boolean;
-  onOpenWeather: () => void; onOpenDisease: () => void;
+  onOpenWeather: () => void; onOpenDisease: () => void; onOpenSoil: () => void;
   onOpenComingSoon: (title: string, description: string) => void; onOpenDistrict: () => void;
 }) {
   const hour = new Date().getHours();
@@ -83,7 +84,7 @@ function HomeDashboard({farm, weather, loading, onOpenWeather, onOpenDisease, on
         <div className="flex items-center justify-between mb-2"><h2 className="text-sm font-bold text-soil-900">More from Omulimi</h2><span className="text-[10px] text-soil-500">Explore tools</span></div>
         <div className="grid grid-cols-3 gap-2">
           <button onClick={() => onOpenComingSoon('Farm calendar','Plan planting dates, farm activities and important reminders.')} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 flex flex-col items-center gap-2"><CalendarDays className="h-5 w-5 text-leaf-700"/><span className="text-[10px] font-semibold text-soil-800">Calendar</span></button>
-          <button onClick={() => onOpenComingSoon('Farm tools','Soil calculator and practical farm tools are being prepared.')} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 flex flex-col items-center gap-2"><Wrench className="h-5 w-5 text-leaf-700"/><span className="text-[10px] font-semibold text-soil-800">Tools</span></button>
+          <button onClick={onOpenSoil} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 flex flex-col items-center gap-2"><Wrench className="h-5 w-5 text-leaf-700"/><span className="text-[10px] font-semibold text-soil-800">Soil calculator</span></button>
           <button onClick={() => onOpenComingSoon('Livestock advisor','Livestock care guidance is being prepared for a future Omulimi update.')} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 flex flex-col items-center gap-2"><Sprout className="h-5 w-5 text-leaf-700"/><span className="text-[10px] font-semibold text-soil-800">Livestock</span></button>
         </div>
       </section>
@@ -103,6 +104,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [locationDetected, setLocationDetected] = useState(false);
   const [comingSoon, setComingSoon] = useState<{title:string;description:string}|null>(null);
+  const [showSoilCalculator, setShowSoilCalculator] = useState(false);
 
   useEffect(() => {
     const saved = loadFarms(userId);
@@ -156,7 +158,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     <div className="min-h-screen bg-[#f1ebdc] flex flex-col font-sans pb-24" id="app-root">
       <BrandHeader/>
       <main className="flex-1 w-full max-w-3xl mx-auto">
-        {activeTab==='home' && <HomeDashboard farm={activeFarm} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={()=>setDistrictPickerOpen(true)}/>}
+        {activeTab==='home' && <HomeDashboard farm={activeFarm} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenSoil={()=>setShowSoilCalculator(true)} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={()=>setDistrictPickerOpen(true)}/>}
         {activeTab==='weather' && <div className="flex flex-col gap-4">
           <SkyHero farms={farms} activeFarm={activeFarm} onSelectFarm={handleSelectFarm} onAddFarm={handleAddFarm} onOpenDistrictPicker={()=>setDistrictPickerOpen(true)} onSelectCrop={c=>handleUpdateActiveFarm(activeFarm.district,c)} weatherCode={weatherData?.current.weatherCode??1} temperature={weatherData?.current.temperature??0} wasGeoDetected={locationStatus==='success'&&locationDetected}/>
           <div className="px-0 sm:px-0 flex flex-col gap-0 pb-4">
@@ -170,12 +172,13 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         {activeTab==='kato'&&<KatoChat userId={userId} district={activeFarm.district} cropName={activeFarm.crop} weatherData={weatherData} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)}/>}
         {activeTab==='calendar'&&<div className="px-4 sm:px-6 py-5"><ComingSoon icon={CalendarDays} title="Farm calendar" description="Plan planting dates, farm activities and important reminders — coming soon." onBack={()=>setActiveTab('home')}/></div>}
         {activeTab==='account'&&<div className="px-4 sm:px-6 py-5"><AccountScreen/><div className="mt-5 grid grid-cols-2 gap-2">
-          <button onClick={()=>setComingSoon({title:'Farm tools',description:'Soil calculator and practical farm tools are being prepared.'})} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Wrench className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Farm tools</span></button>
+          <button onClick={()=>setShowSoilCalculator(true)} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Wrench className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Farm tools</span></button>
           <button onClick={()=>setComingSoon({title:'Livestock advisor',description:'Livestock care guidance is being prepared for a future Omulimi update.'})} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Sprout className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Livestock advisor</span></button>
         </div></div>}
       </main>
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
-      <BottomNav active={activeTab} onChange={setActiveTab}/>
+      {!showSoilCalculator&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
+      {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} initialCrop={activeFarm.crop} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
       <DistrictPicker isOpen={districtPickerOpen} onClose={()=>setDistrictPickerOpen(false)} selectedDistrict={activeFarm.district} onSelect={d=>handleUpdateActiveFarm(d,d.mainCrops[0]||activeFarm.crop)} onUseMyLocation={detectLocationForActiveFarm} locationStatus={locationStatus}/>
     </div>
   );
