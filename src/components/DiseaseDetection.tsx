@@ -6,17 +6,18 @@ interface Crop {
   id: string;
   name: string;
   emoji: string;
+  diseaseSupported: boolean;
 }
 
 const CROPS: Crop[] = [
-  { id: 'maize', name: 'Maize', emoji: '🌽' },
-  { id: 'beans', name: 'Beans', emoji: '🫘' },
-  { id: 'coffee', name: 'Coffee', emoji: '☕' },
-  { id: 'banana', name: 'Banana', emoji: '🍌' },
-  { id: 'tomato', name: 'Tomato', emoji: '🍅' },
-  { id: 'potato', name: 'Potato', emoji: '🥔' },
-  { id: 'cassava', name: 'Cassava', emoji: '🥔' },
-  { id: 'rice', name: 'Rice', emoji: '🌾' },
+  { id: 'maize', name: 'Maize', emoji: '🌽', diseaseSupported: true },
+  { id: 'beans', name: 'Beans', emoji: '🫘', diseaseSupported: true },
+  { id: 'coffee', name: 'Coffee', emoji: '☕', diseaseSupported: true },
+  { id: 'banana', name: 'Banana', emoji: '🍌', diseaseSupported: true },
+  { id: 'tomato', name: 'Tomato', emoji: '🍅', diseaseSupported: true },
+  { id: 'potato', name: 'Potato', emoji: '🥔', diseaseSupported: true },
+  { id: 'cassava', name: 'Cassava', emoji: '🥔', diseaseSupported: false },
+  { id: 'rice', name: 'Rice', emoji: '🌾', diseaseSupported: false },
 ];
 
 
@@ -114,12 +115,10 @@ async function computeDiagnosis(
     const cropMatches: Record<string, string[]> = {
       maize: ['zea mays'],
       beans: ['phaseolus vulgaris'],
-      coffee: ['coffea arabica', 'coffea canephora'],
+      coffee: ['coffea arabica'],
       banana: ['musa × paradisiaca', 'musa x paradisiaca', 'musa acuminata', 'musa balbisiana'],
       tomato: ['solanum lycopersicum'],
       potato: ['solanum tuberosum'],
-      cassava: ['manihot esculenta'],
-      rice: ['oryza sativa'],
     };
 
     // Check all returned plant candidates, not only the first: the top
@@ -341,7 +340,7 @@ export default function DiseaseDetection({
           </button>
           <h2 className="text-base font-bold text-soil-900">What crop is this?</h2>
         </div>
-        <p className="text-xs text-soil-400 -mt-3">Select a crop currently covered by the preliminary disease-check service.</p>
+        <p className="text-xs text-soil-400 -mt-3">Select a crop covered by the preliminary disease-check service. Cassava and rice are not supported by the provider yet.</p>
 
         <div className="relative">
           <input
@@ -357,13 +356,16 @@ export default function DiseaseDetection({
         <div className="grid grid-cols-3 gap-2.5">
           {filteredCrops.map((crop) => {
             const isSelected = selectedCrop?.id === crop.id;
+            const unavailable = !crop.diseaseSupported;
             return (
               <button
                 key={crop.id}
                 onClick={() => {
+                  if (unavailable) return;
                   setSelectedCrop(crop);
                 }}
-                className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center ${isSelected ? 'border-leaf-600 bg-leaf-100/40' : 'border-parchment-100 bg-parchment-50'}`}
+                disabled={unavailable}
+                className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center ${unavailable ? 'border-parchment-100 bg-parchment-50 opacity-55 cursor-not-allowed' : isSelected ? 'border-leaf-600 bg-leaf-100/40' : 'border-parchment-100 bg-parchment-50'}`}
               >
                 {isSelected && (
                   <div className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-leaf-600 flex items-center justify-center">
@@ -372,6 +374,7 @@ export default function DiseaseDetection({
                 )}
                 <span className="text-xl">{crop.emoji}</span>
                 <span className="text-[11px] font-semibold text-soil-900">{crop.name}</span>
+                {unavailable && <span className="text-[9px] font-semibold text-soil-500">Not covered yet</span>}
               </button>
             );
           })}
@@ -487,13 +490,13 @@ export default function DiseaseDetection({
             {photoDataUrl && <img src={photoDataUrl} alt="Scanned crop" className="w-full h-full object-cover" />}
           </div>
           <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-5 text-center">
-            <p className="text-sm font-bold text-leaf-700 mb-1">✓ No visible disease signs detected</p>
-            <p className="text-2xl font-bold text-leaf-700 mb-2">Looks healthy</p>
+            <p className="text-sm font-bold text-leaf-700 mb-1">No disease match found</p>
+            <p className="text-2xl font-bold text-leaf-700 mb-2">No clear match in this scan</p>
             <p className="text-xs text-soil-700 max-w-xs mx-auto">
               {diagnosis.whatObserved}
             </p>
             <p className="text-[11px] text-soil-500 max-w-xs mx-auto mt-3">
-              This photo check cannot confirm that the whole plant is 100% disease-free. Keep monitoring your crop.
+              This scan did not find a disease match. It cannot confirm that the plant is disease-free. Keep monitoring your crop.
             </p>
           </div>
           <button onClick={resetAll} className="bg-leaf-600 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2">
