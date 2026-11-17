@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DISTRICTS } from './data/districts';
 import { District, WeatherData, Farm } from './types';
 import { detectNearestDistrict, LocationStatus } from './data/geolocation';
-import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, createFarm } from './data/farms';
+import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm } from './data/farms';
 import SkyHero from './components/SkyHero';
 import DistrictPicker from './components/DistrictPicker';
 import WeatherDashboard from './components/WeatherDashboard';
@@ -189,6 +189,20 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     }
   };
   const handleSelectFarm=(farm:Farm)=>setActiveFarmId(farm.id);
+  const handleDeleteActiveFarm=async()=>{
+    if(farms.length<=1) return;
+    if(!window.confirm(`Remove ${activeFarm.label} from your account? This cannot be undone.`)) return;
+    try {
+      await deleteFarm(userId,activeFarm.id);
+      const remaining=farms.filter(farm=>farm.id!==activeFarm.id);
+      setFarms(remaining);
+      setActiveFarmId(remaining[0].id);
+      setFarmSyncError(null);
+    } catch(error) {
+      console.error('Could not remove farm:',error);
+      setFarmSyncError('Could not remove this farm. Please try again.');
+    }
+  };
   const handleUpdateActiveFarm=async(district:District,crop:string)=>{
     const changed={...activeFarm,district,crop};
     try {
@@ -214,7 +228,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         {farmSyncError&&<div className="mx-4 sm:mx-6 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{farmSyncError}</div>}
         {activeTab==='home' && <HomeDashboard farm={activeFarm} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenSoil={()=>setShowSoilCalculator(true)} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={()=>setDistrictPickerOpen(true)}/>}
         {activeTab==='weather' && <div className="flex flex-col gap-4">
-          <SkyHero farms={farms} activeFarm={activeFarm} onSelectFarm={handleSelectFarm} onAddFarm={handleAddFarm} onOpenDistrictPicker={()=>setDistrictPickerOpen(true)} onSelectCrop={c=>handleUpdateActiveFarm(activeFarm.district,c)} weatherCode={weatherData?.current.weatherCode??1} temperature={weatherData?.current.temperature??0} wasGeoDetected={locationStatus==='success'&&locationDetected}/>
+          <SkyHero farms={farms} activeFarm={activeFarm} onSelectFarm={handleSelectFarm} onAddFarm={handleAddFarm} onOpenDistrictPicker={()=>setDistrictPickerOpen(true)} onSelectCrop={c=>handleUpdateActiveFarm(activeFarm.district,c)} onDeleteFarm={handleDeleteActiveFarm} weatherCode={weatherData?.current.weatherCode??1} temperature={weatherData?.current.temperature??0} wasGeoDetected={locationStatus==='success'&&locationDetected}/>
           <div className="px-0 sm:px-0 flex flex-col gap-0 pb-4">
             
             {loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-[#e6dcc8] p-8 text-center"><Loader2 className="h-7 w-7 text-leaf-600 animate-spin mx-auto"/><p className="text-xs text-soil-600 mt-2">Loading your local forecast…</p></div>}
