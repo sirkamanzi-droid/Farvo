@@ -122,3 +122,12 @@ export function createFarm(district: District, crop: string, existingCount: numb
     crop,
   };
 }
+
+export async function deleteFarm(userId: string, farmId: string): Promise<void> {
+  const { error } = await supabase
+    .from('farms')
+    .delete()
+    .eq('id', farmId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
