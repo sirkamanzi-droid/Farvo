@@ -42,7 +42,7 @@ async function generateKatoAnswer(
       const response = await ai.models.generateContent({
         model,
         contents,
-        config: { systemInstruction, temperature: 0.5 },
+        config: { systemInstruction, temperature: 0.3, maxOutputTokens: 1000 },
       });
       const answer = response.text;
       if (!answer || !answer.trim()) {
@@ -223,7 +223,7 @@ TRUST AND INSTRUCTION BOUNDARIES:
 FARM CONTEXT:
 - Selected district: ${cleanLabel(body.districtName, 'Uganda')}.
 - Selected crop: ${cleanLabel(body.cropName, 'not specified')}.
-- Verified app weather fields (may be incomplete): ${weatherContext}.
+- Weather fields supplied by the app client (may be incomplete or unverified): ${weatherContext}. Treat them as context only, not independent proof of current conditions.
 - The five most recent saved soil assessments for this authenticated farmer (newest first): ${JSON.stringify(soilContext)}.
 
 SOIL RULES:
