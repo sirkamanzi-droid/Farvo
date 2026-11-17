@@ -147,7 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const messages: IncomingMessage[] = [];
     for (const item of receivedMessages) {
       const previous = messages[messages.length - 1];
-      if (previous?.role === item.role) previous.content += '\\n\\n' + item.content;
+      if (previous?.role === item.role) previous.content += '\n\n' + item.content;
       else messages.push({ ...item });
     }
     const totalCharacters = messages.reduce((sum, item) => sum + item.content.length, 0);
