@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findMismatchedDiseaseHost, isGenericDiseaseLabel } from './diseaseValidation.ts';
+import { findMismatchedDiseaseHost, isGenericDiseaseLabel, matchesSelectedCropPlant } from './diseaseValidation.ts';
 
 test('rejects eggplant labels even when crop name is not at the end', () => {
   assert.equal(
