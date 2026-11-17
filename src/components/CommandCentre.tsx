@@ -23,9 +23,67 @@ export default function CommandCentre({ session }: { session: Session | null }) 
   const [farmers, setFarmers] = useState<Farmer[]>([]); const [recent, setRecent] = useState<Farmer[]>([]);
   const [coops, setCoops] = useState<Cooperative[]>([]); const [activity, setActivity] = useState<Audit[]>([]);
   const [announcement, setAnnouncement] = useState(''); const [draft, setDraft] = useState('');
+  const [mfaMode, setMfaMode] = useState<'checking' | 'enroll' | 'challenge' | 'verified' | 'error'>('checking');
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [mfaChallengeId, setMfaChallengeId] = useState('');
+  const [mfaQrCode, setMfaQrCode] = useState('');
+  const [mfaSecret, setMfaSecret] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
 
   useEffect(() => {
-    if (!session?.access_token) return;
+    if (!session?.access_token) { setMfaMode('checking'); return; }
+    let cancelled = false;
+    const prepareMfa = async () => {
+      setMfaMode('checking'); setError('');
+      try {
+        const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (assurance.error) throw assurance.error;
+        if (assurance.data.currentLevel === 'aal2') { if (!cancelled) setMfaMode('verified'); return; }
+        const listed = await supabase.auth.mfa.listFactors();
+        if (listed.error) throw listed.error;
+        const verified = listed.data.totp.find(factor => factor.status === 'verified');
+        let factorId = verified?.id || '';
+        if (verified) {
+          if (!cancelled) setMfaMode('challenge');
+        } else {
+          const enrolled = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Omulimi Command Centre' });
+          if (enrolled.error) throw enrolled.error;
+          factorId = enrolled.data.id;
+          if (!cancelled) {
+            setMfaQrCode(enrolled.data.totp.qr_code);
+            setMfaSecret(enrolled.data.totp.secret);
+            setMfaMode('enroll');
+          }
+        }
+        const challenge = await supabase.auth.mfa.challenge({ factorId });
+        if (challenge.error) throw challenge.error;
+        if (!cancelled) { setMfaFactorId(factorId); setMfaChallengeId(challenge.data.id); }
+      } catch (e) {
+        if (!cancelled) { setMfaMode('error'); setError(e instanceof Error ? e.message : 'Could not prepare administrator verification.'); }
+      }
+    };
+    void prepareMfa();
+    return () => { cancelled = true; };
+  }, [session?.access_token]);
+
+  const verifyMfa = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!mfaFactorId || !mfaChallengeId || !/^\\d{6,8}$/.test(mfaCode.trim())) {
+      setError('Enter the current code from your authenticator app.'); return;
+    }
+    setBusy(true); setError('');
+    try {
+      const verified = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: mfaChallengeId, code: mfaCode.trim() });
+      if (verified.error) throw verified.error;
+      const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assurance.error || assurance.data.currentLevel !== 'aal2') throw new Error('The second verification step did not complete. Try again.');
+      setMfaMode('verified'); setMfaCode(''); setRefresh(value => value + 1);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Authenticator verification failed.'); }
+    finally { setBusy(false); }
+  };
+
+  useEffect(() => {
+    if (!session?.access_token || mfaMode !== 'verified') return;
     let cancelled = false;
     (async () => {
       setLoading(true); setError(''); setNotice('');
@@ -43,7 +101,7 @@ export default function CommandCentre({ session }: { session: Session | null }) 
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [session?.access_token, view, refresh]);
+  }, [session?.access_token, mfaMode, view, refresh]);
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setBusy(true); setError('');
@@ -73,6 +131,17 @@ export default function CommandCentre({ session }: { session: Session | null }) 
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not update cooperative.'); }
     finally { setBusy(false); }
   };
+
+  if (session && mfaMode !== 'verified') return <div className="min-h-screen bg-[#172b22] flex items-center justify-center p-4"><section className="w-full max-w-md rounded-3xl bg-[#f8f4eb] p-7 shadow-2xl">
+    <div className="mb-6 flex items-center gap-3"><div className="rounded-2xl bg-[#174432] p-3 text-white"><ShieldCheck className="h-7 w-7"/></div><div><p className="text-xs font-bold tracking-[.2em] text-[#a94d2e]">OMULIMI</p><h1 className="text-2xl font-bold">Secure administrator check</h1></div></div>
+    {mfaMode === 'checking' && <div className="py-8 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-[#285b40]"/><p className="mt-3 text-sm text-[#52645a]">Preparing two-step verification…</p></div>}
+    {mfaMode === 'enroll' && <><h2 className="font-bold">Set up your authenticator</h2><p className="mt-1 text-sm text-[#52645a]">Scan this QR code with an authenticator app. Keep the setup secret private.</p>{mfaQrCode && <img src={mfaQrCode} alt="Authenticator setup QR code" className="mx-auto my-4 h-48 w-48 rounded-xl border border-[#ded5c3] bg-white p-2"/>}<p className="break-all rounded-xl bg-white p-3 text-xs font-mono">{mfaSecret}</p><p className="mt-3 text-xs text-[#52645a]">Enter the current six-digit code shown by your authenticator to finish setup.</p></>}
+    {mfaMode === 'challenge' && <><h2 className="font-bold">Verify it’s you</h2><p className="mt-1 text-sm text-[#52645a]">Enter the current code from your enrolled authenticator app.</p></>}
+    {mfaMode === 'error' && <p className="text-sm text-[#52645a]">Two-step verification could not be prepared. Sign out and try again. If it continues, check the Supabase Auth MFA settings.</p>}
+    {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+    {(mfaMode === 'enroll' || mfaMode === 'challenge') && <form onSubmit={verifyMfa} className="mt-4 space-y-3"><input required inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\\D/g, '').slice(0, 8))} placeholder="Authenticator code" className="w-full rounded-xl border border-[#ded5c3] bg-white px-4 py-3 text-center text-lg tracking-[.3em]"/><button disabled={busy} className="w-full rounded-xl bg-[#174432] py-3 font-bold text-white disabled:opacity-60">{busy ? 'Verifying…' : 'Verify and open Command Centre'}</button></form>}
+    <button onClick={signOut} className="mt-5 flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#52645a]"><LogOut className="h-4 w-4"/>Sign out</button>
+  </section></div>;
 
   if (!session) return <div className="min-h-screen bg-[#172b22] flex items-center justify-center p-4"><section className="w-full max-w-md rounded-3xl bg-[#f8f4eb] p-7 shadow-2xl">
     <div className="mb-8 flex items-center gap-3"><div className="rounded-2xl bg-[#174432] p-3 text-white"><ShieldCheck className="h-7 w-7"/></div><div><p className="text-xs font-bold tracking-[.2em] text-[#a94d2e]">OMULIMI</p><h1 className="text-2xl font-bold">Command Centre</h1></div></div>
