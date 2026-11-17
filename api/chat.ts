@@ -74,9 +74,8 @@ async function generateKatoAnswer(
 function cleanLabel(value: unknown, fallback: string) {
   if (typeof value !== 'string') return fallback;
   const cleaned = value.normalize('NFKC')
-    .replace(/[\\u0000-\\u001f\\u007f]/g, ' ')
-    .replace(/[<>\u0060{}]/g, '')
-    .replace(/\\s+/g, ' ')
+    .replace(/[^\p{L}\p{N} .(),'/-]/gu, '')
+    .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 80);
   return cleaned || fallback;
@@ -89,7 +88,7 @@ function safeWeatherContext(value: unknown): string {
   const currentSource = source.current && typeof source.current === 'object' && !Array.isArray(source.current) ? source.current as Record<string, unknown> : {};
   const current: Record<string, number | string> = {};
   for (const key of fields) if (typeof currentSource[key] === 'number' && Number.isFinite(currentSource[key])) current[key] = currentSource[key] as number;
-  if (typeof currentSource.time === 'string') current.time = currentSource.time.slice(0, 40).replace(/[^0-9T:+\\-.Z ]/g, '');
+  if (typeof currentSource.time === 'string') current.time = currentSource.time.slice(0, 40).replace(/[^0-9T:+\-.Z ]/g, '');
   const daily = (Array.isArray(source.daily) ? source.daily.slice(0, 5) : []).map(item => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
     const row = item as Record<string, unknown>;
