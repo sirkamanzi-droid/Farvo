@@ -132,20 +132,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Please send a valid question to Kato.' });
     }
 
-    const messages: IncomingMessage[] = [];
+    const receivedMessages: IncomingMessage[] = [];
     for (const item of rawMessages) {
       if (!item || (item.role !== 'user' && item.role !== 'assistant') ||
         typeof item.content !== 'string' || !item.content.trim() || item.content.length > 4000) {
         return res.status(400).json({ error: 'One of the chat messages is invalid or too long.' });
       }
-      messages.push({ role: item.role, content: item.content.trim() });
+      receivedMessages.push({ role: item.role, content: item.content.trim() });
     }
-    // A rolling 12-message window can start with an orphaned assistant reply.
-    while (messages[0]?.role === 'assistant') messages.shift();
+    // A rolling 12-message window may start with an orphaned assistant reply.
+    while (receivedMessages[0]?.role === 'assistant') receivedMessages.shift();
+    // Merge adjacent messages of the same role. This safely handles a farmer
+    // sending a new question after an earlier request failed before Kato replied.
+    const messages: IncomingMessage[] = [];
+    for (const item of receivedMessages) {
+      const previous = messages[messages.length - 1];
+      if (previous?.role === item.role) previous.content += '\\n\\n' + item.content;
+      else messages.push({ ...item });
+    }
     const totalCharacters = messages.reduce((sum, item) => sum + item.content.length, 0);
     if (!messages.length || messages[0].role !== 'user' ||
-      messages[messages.length - 1].role !== 'user' || totalCharacters > 12000 ||
-      messages.some((item, index) => index > 0 && item.role === messages[index - 1].role)) {
+      messages[messages.length - 1].role !== 'user' || totalCharacters > 12000) {
       return res.status(400).json({ error: 'Please send a valid chat history ending with your question.' });
     }
 
