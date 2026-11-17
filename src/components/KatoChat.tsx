@@ -49,6 +49,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
   const [input, setInput] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -130,6 +131,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
     setError('');
     setInput('');
     setSending(true);
+    let streamedAnswer = '';
 
     const now = new Date().toISOString();
     const optimisticUser: ChatMessage = { id: crypto.randomUUID(), role: 'user', content: question, created_at: now };
@@ -160,8 +162,9 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
       const token = sessionData.session?.access_token;
       if (sessionError || !token) throw new Error('Your session has expired. Please sign in again.');
 
+      setStreamingText('');
       const controller = new AbortController();
-      const requestTimeout = window.setTimeout(() => controller.abort(), 40000);
+      const requestTimeout = window.setTimeout(() => controller.abort(), 30000);
       let response: Response;
       try {
         response = await fetch('/api/chat', {
@@ -175,14 +178,51 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
             weatherContext: weatherData ? { current: weatherData.current, daily: weatherData.daily.slice(0, 5) } : null,
           }),
         });
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(typeof result.error === 'string' ? result.error : 'Kato is temporarily unavailable. Try again.');
+        }
+        if (!response.body) throw new Error('Your browser could not receive Kato’s live response. Please try again.');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let answer = '';
+        let completed = false;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line) as { text?: string; content?: string; done?: boolean; error?: string };
+            if (event.error) throw new Error(event.error);
+            if (typeof event.text === 'string' && event.text) {
+              answer += event.text;
+              streamedAnswer = answer;
+              setStreamingText(answer);
+            }
+            if (event.done) completed = true;
+          }
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) {
+          const event = JSON.parse(buffer) as { text?: string; content?: string; done?: boolean; error?: string };
+          if (event.error) throw new Error(event.error);
+          if (typeof event.text === 'string' && event.text) {
+            answer += event.text;
+            streamedAnswer = answer;
+            setStreamingText(answer);
+          }
+          if (event.done) completed = true;
+        }
+        if (!completed || !answer.trim()) throw new Error('Kato’s response was interrupted. Your question is saved—please retry.');
       } finally {
         window.clearTimeout(requestTimeout);
       }
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'Kato is temporarily unavailable. Try again.');
-
-      const answer = typeof result.content === 'string' ? result.content.trim() : '';
-      if (!answer) throw new Error('Kato returned an empty response. Please try again.');
+      const answer = streamedAnswer.trim();
 
       const { data: savedAnswer, error: saveAnswerError } = await supabase
         .from('kato_messages')
@@ -198,12 +238,14 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
       ]);
     } catch (err) {
       const timedOut = err instanceof Error && (err.name === 'AbortError' || err.name.toLowerCase().includes('timeout'));
+      setStreamingText('');
       setError(timedOut
         ? 'Kato is taking too long to respond. Your question is saved—please try again in a moment.'
         : err instanceof Error ? err.message : 'Kato could not reply. Please try again.');
       // Restore the question in the composer so the farmer can retry or edit it.
       setInput(question);
     } finally {
+      setStreamingText('');
       setSending(false);
     }
   };
@@ -287,7 +329,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, init
                 <p className="mt-1 px-1 text-[9px] text-[#879188]">{timeLabel(message.created_at)}</p>
               </div>
             </div>)}
-            {sending && <div className="flex items-center gap-2 text-xs text-[#52645a]"><div className="h-8 w-8 rounded-xl bg-[#174432] text-white flex items-center justify-center"><Sprout className="h-4 w-4"/></div><Loader2 className="h-4 w-4 animate-spin"/>Kato is preparing your answer…</div>}
+            {sending && <div className="flex gap-3 max-w-3xl mr-auto"><div className="h-8 w-8 rounded-xl bg-[#174432] text-white flex items-center justify-center shrink-0"><Sprout className="h-4 w-4"/></div><div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-white border border-[#e6dece] px-4 py-3 text-sm leading-7 text-[#1d2d27] whitespace-pre-wrap">{streamingText || <span className="inline-flex items-center gap-2 text-xs text-[#52645a]"><Loader2 className="h-4 w-4 animate-spin"/>Kato is thinking…</span>}{streamingText && <span className="inline-block ml-1 h-4 w-1 animate-pulse bg-[#719579] align-middle"/>}</div></div>}
             <div ref={bottomRef}/>
           </div>
 
