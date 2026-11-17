@@ -84,8 +84,8 @@ function cleanLabel(value: unknown, fallback: string) {
 function cleanObservation(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const cleaned = value.normalize('NFKC')
-    .replace(/[^\\p{L}\\p{N} .,'()/-]/gu, '')
-    .replace(/\\s+/g, ' ')
+    .replace(/[^\p{L}\p{N} .,'()/-]/gu, '')
+    .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 160);
   return cleaned || null;
