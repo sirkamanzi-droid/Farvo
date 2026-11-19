@@ -273,7 +273,7 @@ export default function App() {
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,newSession)=>{if(!mounted)return;setSession(newSession);setCheckingSession(false);});
     return ()=>{mounted=false;subscription.unsubscribe();};
   },[]);
-  const currentPath = window.location.pathname.replace(/\\/+$/, '') || '/';
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const isCommandCentre = currentPath === '/command-centre';
 
   if (checkingSession) {
