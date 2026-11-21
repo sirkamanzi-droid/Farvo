@@ -22,44 +22,44 @@ type SavedAssessment = {
 const CROPS = ['Maize', 'Beans', 'Coffee', 'Banana', 'Tomato', 'Potato', 'Cassava', 'Rice'];
 
 function pHInterpretation(ph: number) {
-  if (ph < 5.5) return { label: 'Strongly acidic', detail: 'This reading is strongly acidic. Some crops may struggle to access nutrients at this pH.', tone: 'amber' as const };
-  if (ph < 6.5) return { label: 'Moderately acidic', detail: 'This reading is moderately acidic. Crop response varies, so compare it with the selected crop and other soil information.', tone: 'amber' as const };
-  if (ph <= 7.5) return { label: 'Near neutral', detail: 'This reading is near neutral. It is generally a favourable pH range for many crops, but it does not prove the soil is fertile.', tone: 'green' as const };
-  if (ph <= 8.5) return { label: 'Moderately alkaline', detail: 'This reading is moderately alkaline. Some nutrients may become less available to plants.', tone: 'amber' as const };
-  return { label: 'Strongly alkaline', detail: 'This reading is strongly alkaline. A laboratory test can help identify the cause and suitable management.', tone: 'rose' as const };
+  if (ph < 5.5) return { label: 'Strongly acidic', detail: 'Some crops may struggle to access nutrients.', tone: 'amber' as const };
+  if (ph < 6.5) return { label: 'Moderately acidic', detail: 'Check the needs of your selected crop.', tone: 'amber' as const };
+  if (ph <= 7.5) return { label: 'Near neutral', detail: 'A useful range for many crops. It does not confirm soil fertility.', tone: 'green' as const };
+  if (ph <= 8.5) return { label: 'Moderately alkaline', detail: 'Some nutrients may be harder for plants to absorb.', tone: 'amber' as const };
+  return { label: 'Strongly alkaline', detail: 'A soil test can help identify the right treatment.', tone: 'rose' as const };
 }
 
 function textureText(texture: Texture) {
   const values: Record<Texture, string> = {
-    sandy: 'Sandy soil usually drains quickly and may need more frequent, careful water and organic-matter management.',
-    loamy: 'Loamy soil often balances drainage and water retention, but its fertility still needs to be assessed separately.',
-    clay: 'Clay soil can hold water and nutrients well, but may drain slowly and become difficult to work when wet.',
-    unknown: 'Soil texture has not been identified. A local extension worker can help assess it using a simple field test.'
+    sandy: 'Drains quickly. May need careful watering and organic matter.',
+    loamy: 'Often balances drainage and water retention. Fertility still needs testing.',
+    clay: 'Holds water well but may drain slowly.',
+    unknown: 'Texture not identified.'
   };
   return values[texture];
 }
 
 function drainageText(drainage: Drainage) {
   const values: Record<Drainage, string> = {
-    fast: 'Fast drainage can increase the chance of water stress, especially during dry periods.',
-    moderate: 'Moderate drainage is often manageable. Continue observing the field after heavy rain.',
-    slow: 'Slow drainage can leave roots in waterlogged soil. Check field drainage before planting.',
-    unknown: 'Drainage has not been assessed. Observe how long water remains after rainfall.'
+    fast: 'Water may drain too quickly during dry periods.',
+    moderate: 'Usually manageable. Keep observing after heavy rain.',
+    slow: 'Water may collect around roots. Check drainage before planting.',
+    unknown: 'Not assessed.'
   };
   return values[drainage];
 }
 
 function cropGuidance(crop: string, ph: number | null, texture: Texture, drainage: Drainage) {
   if (crop === 'Maize') {
-    const notes = ['Uganda’s Ministry of Agriculture maize extension manual describes deep, fertile, well-drained loam or sandy-loam soils and gives a pH range of 5.0–7.0.'];
-    if (ph !== null && (ph < 5 || ph > 7)) notes.push('Your measured pH is outside that manual’s stated range. Ask an extension worker or soil laboratory to interpret the result before changing the soil.');
-    else if (ph !== null) notes.push('Your measured pH falls within that stated range, but pH alone does not confirm that the field is suitable or fertile.');
-    if (texture === 'sandy') notes.push('Your sandy-soil observation may be a concern for maize; the manual advises avoiding very sandy soils.');
-    if (drainage === 'slow') notes.push('Your slow-drainage observation may be a concern because the manual advises avoiding waterlogged fields for maize.');
+    const notes = ['Uganda's maize guidance recommends well-drained loam soil and pH 5.0–7.0.'];
+    if (ph !== null && (ph < 5 || ph > 7)) notes.push('Your pH is outside this range. Ask an extension worker before changing the soil.');
+    else if (ph !== null) notes.push('Your pH is within this range. A pH reading alone does not prove soil fertility.');
+    if (texture === 'sandy') notes.push('Very sandy soil may not suit maize.');
+    if (drainage === 'slow') notes.push('Poor drainage may be a concern for maize.');
     return { text: notes.join(' '), source: 'https://www.agriculture.go.ug/wp-content/uploads/2019/09/Maize-training-manual-for-extension-workers-in-Uganda.pdf' };
   }
   return {
-    text: 'Omulimi does not yet have a locally verified crop-specific pH and soil-requirement profile for ' + crop + '. This report therefore shows your measured pH and field observations separately instead of claiming a crop-suitability score. Ask a local extension worker for crop-specific interpretation.',
+    text: 'Crop-specific soil guidance is not yet available for ' + crop + '. This report shows your readings and observations. Ask an extension worker for crop-specific advice.',
     source: null as string | null
   };
 }
@@ -235,10 +235,6 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
         </div>)}
       </section>}
 
-      <section className="rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4">
-        <div className="flex items-start gap-3"><div className="rounded-xl bg-leaf-100 p-2.5 text-leaf-700"><Sprout className="h-5 w-5"/></div><div><h2 className="text-sm font-bold text-soil-900">Soil check</h2><p className="mt-1 text-xs leading-relaxed text-soil-600">Use a soil-test reading or describe what you observe in your field. The result is guidance, not a laboratory diagnosis.</p></div></div>
-      </section>
-
       {!report ? <>
         <section className="space-y-2">
           <label className="block text-xs font-bold text-soil-800">Crop</label>
@@ -273,7 +269,7 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
         <div className="rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4">
           <div className="flex items-center justify-between"><div className="flex items-center gap-2 text-leaf-700"><ClipboardCheck className="h-5 w-5"/><span className="text-xs font-bold">Your soil assessment</span></div><span className="rounded-full bg-[#f0eadb] px-2 py-1 text-[9px] font-semibold text-soil-600">{report.mode==='tested'?'Soil-test mode':'Guided mode'}</span></div>
           <h2 className="mt-3 text-2xl font-bold text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>{report.crop} field</h2>
-          <p className="mt-1 text-[10px] text-soil-500">Created {new Date(report.createdAt).toLocaleString()}</p>
+          <p className="mt-1 text-[10px] text-soil-500">{new Date(report.createdAt).toLocaleDateString()}</p>
           {report.ph!==null && <div className="mt-4 rounded-xl bg-[#f7f1e5] p-3"><div className="flex items-center justify-between"><span className="text-xs font-bold text-soil-800">Measured soil pH</span><span className="text-xl font-bold text-soil-900">{report.ph.toFixed(1)}</span></div><p className="mt-1 text-xs font-bold text-soil-800">{pHInterpretation(report.ph).label}</p><p className="mt-1 text-xs leading-relaxed text-soil-600">{pHInterpretation(report.ph).detail}</p></div>}
           <div className="mt-4 space-y-3"><h3 className="text-xs font-bold text-soil-900">What your observations suggest</h3>
             <div className="rounded-xl bg-[#f7f1e5] p-3"><h3 className="text-xs font-bold text-soil-900">Crop guidance: {report.crop}</h3><p className="mt-1 text-xs leading-relaxed text-soil-700">{cropGuidance(report.crop, report.ph, report.texture, report.drainage).text}</p>{cropGuidance(report.crop, report.ph, report.texture, report.drainage).source && <a className="mt-2 inline-block text-[10px] font-semibold text-leaf-700 underline" href={cropGuidance(report.crop, report.ph, report.texture, report.drainage).source!} target="_blank" rel="noreferrer">Source: Uganda Ministry of Agriculture maize extension manual</a>}</div>{report.texture!=='unknown'&&<div className="flex gap-2"><Leaf className="mt-0.5 h-4 w-4 shrink-0 text-leaf-700"/><p className="text-xs leading-relaxed text-soil-700">{textureText(report.texture)}</p></div>}{report.drainage!=='unknown'&&<div className="flex gap-2"><Droplets className="mt-0.5 h-4 w-4 shrink-0 text-blue-700"/><p className="text-xs leading-relaxed text-soil-700">{drainageText(report.drainage)}</p></div>}{report.mode==='guided'&&<p className="text-xs leading-relaxed text-soil-700">This is a preliminary field assessment. It cannot determine soil pH, nutrient levels or exact crop suitability.</p>}</div>
