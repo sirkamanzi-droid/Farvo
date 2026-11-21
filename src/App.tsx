@@ -23,10 +23,12 @@ const DEFAULT_DISTRICT = DISTRICTS[1];
 
 function BrandHeader() {
   return (
-    <header className="bg-[#faf7ef] px-4 py-4 sm:px-6">
-      <div className="mx-auto flex max-w-3xl items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7eddf]"><Sprout className="h-6 w-6 text-leaf-700"/></div>
-        <span className="text-2xl font-bold text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>Omulimi</span>
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center border-b border-[#e4dac7]/70 bg-[#f1ebdc]/95 px-4 backdrop-blur-md sm:px-6">
+      <div className="mx-auto flex w-full max-w-3xl items-center gap-2.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e7eddf]">
+          <Sprout className="h-5 w-5 text-leaf-700"/>
+        </div>
+        <span className="text-xl font-bold tracking-tight text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>Omulimi</span>
       </div>
     </header>
   );
