@@ -32,12 +32,16 @@ export default function DiagnosisKatoPanel(props: Props) {
       if (!alive) return;
       if (readError) setError('Could not load this plant’s saved Kato conversation.');
       else {
-        const saved = (data?.care_plan as Record<string, unknown> | null)?.kato_conversation;
+        const carePlan = (data?.care_plan || {}) as Record<string, unknown>;
+        const saved = carePlan.kato_conversation;
         if (Array.isArray(saved)) setMessages(saved.filter((m): m is Message =>
           !!m && typeof m === 'object' &&
           ((m as Message).role === 'user' || (m as Message).role === 'assistant') &&
           typeof (m as Message).content === 'string'
         ));
+        else if (typeof carePlan.kato_guidance === 'string' && carePlan.kato_guidance.trim()) {
+          setMessages([{ role: 'assistant', content: carePlan.kato_guidance }]);
+        }
       }
       setLoading(false);
     })();
