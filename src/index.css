@@ -19,28 +19,31 @@
 }
 
 :root {
-  --farvo-cream: #f2ecdf;
-  --farvo-green: #174432;
-  --farvo-green-light: #285b40;
-  --farvo-text: #1d2d27;
-  --farvo-muted: #52645a;
-  --farvo-card: #faf7ef;
-  --farvo-border: #ded5c3;
   color-scheme: light;
+  --omulimi-cream: #f2ecdf;
+  --omulimi-green: #174432;
+  --omulimi-text: #1d2d27;
+  --omulimi-muted: #52645a;
+  --omulimi-surface: #faf7ef;
+  --omulimi-border: #ded5c3;
 }
 
 * { -webkit-tap-highlight-color: transparent; }
+html { background: var(--omulimi-cream); }
 body {
-  background: #f2ecdf;
-  color: #1d2d27;
+  background: var(--omulimi-cream);
+  color: var(--omulimi-text);
   font-family: 'Work Sans', sans-serif;
   margin: 0;
+  -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; }
 button, input, select, textarea { font: inherit; }
+button { touch-action: manipulation; }
+:focus-visible { outline: 2px solid #719579; outline-offset: 3px; }
 .furrow-divider {
-  height: 5px;
+  height: 4px;
   background-image: repeating-linear-gradient(90deg, #b5653b 0px, #b5653b 9px, transparent 9px, transparent 15px);
-  opacity: .45;
+  opacity: .4;
   border-radius: 3px;
 }
