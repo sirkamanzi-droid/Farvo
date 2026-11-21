@@ -363,8 +363,10 @@ async function computeDiagnosis(
 
 export default function DiseaseDetection({
   onGetTreatmentAdvice,
+  onCreateCarePlan,
 }: {
   onGetTreatmentAdvice: (question: string) => void;
+  onCreateCarePlan: (input: { cropName: string; diagnosis: Diagnosis }) => Promise<void>;
 }) {
   const [view, setView] = useState<DiseaseView>('home');
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
@@ -372,7 +374,7 @@ export default function DiseaseDetection({
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [checkedSteps, setCheckedSteps] = useState<number>(0);
-  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
+  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);\n  const [carePlanStatus, setCarePlanStatus] = useState<'idle'|'creating'|'created'|'error'>('idle');
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -405,6 +407,12 @@ export default function DiseaseDetection({
     setTimeout(() => {
       setDiagnosis(result);
       setView('result');
+      if (result.outcome === 'disease' && selectedCrop) {
+        setCarePlanStatus('creating');
+        void onCreateCarePlan({ cropName: selectedCrop.name, diagnosis: result })
+          .then(() => setCarePlanStatus('created'))
+          .catch((error) => { console.error('Automatic crop-care plan creation failed:', error); setCarePlanStatus('error'); });
+      }
     }, minimumDisplayTime);
   }
 
@@ -557,12 +565,12 @@ export default function DiseaseDetection({
         <button
           onClick={() => {
             if (!selectedCrop || !diagnosis || diagnosis.outcome !== 'disease') return;
-            const question = `I scanned a ${selectedCrop.name} plant in Omulimi. The image service suggested ${diagnosis.simpleDiseaseName || diagnosis.diseaseName || 'a possible disease'} with a ${diagnosis.confidence}% provider match score (not diagnostic accuracy). Scan notes: ${diagnosis.whatObserved ?? 'No additional observations recorded'}. Help me build a practical crop-care plan for a smallholder farmer in Uganda. First explain what symptoms to verify and ask any essential questions. Then separate safe immediate actions from treatment options. Do not claim the scan confirms the disease, invent local product names, or recommend a pesticide unless the active ingredient, crop use, label directions and local approval can be verified. Explain when to contact an agricultural extension officer.`;
+            const question = `I scanned a ${selectedCrop.name} plant in Omulimi. The image service suggested ${diagnosis.simpleDiseaseName || diagnosis.diseaseName || 'a possible disease'} with a ${diagnosis.confidence}% provider match score (not diagnostic accuracy). Scan notes: ${diagnosis.whatObserved ?? 'No additional observations recorded'}. Omulimi has already created a crop-care plan and follow-up tasks from this scan. Act as its agricultural intelligence layer: review the scan and help the farmer verify symptoms, ask only essential questions, explain safe immediate actions, and provide locally appropriate treatment guidance only when crop use, active ingredient, label directions and local approval can be verified. Explain what information should update the saved plan. Do not invent product names or claim the scan confirms the disease. Do not claim the scan confirms the disease, invent local product names, or recommend a pesticide unless the active ingredient, crop use, label directions and local approval can be verified. Explain when to contact an agricultural extension officer.`;
             onGetTreatmentAdvice(question);
           }}
           className="bg-leaf-700 hover:bg-leaf-800 text-white font-bold text-sm py-3 rounded-xl transition"
         >
-          Build my crop-care plan with Kato →
+          Ask Kato to review my crop-care plan →
         </button>
         <button onClick={resetAll} className="text-xs font-semibold text-soil-400 py-1">Scan another</button>
       </div>
