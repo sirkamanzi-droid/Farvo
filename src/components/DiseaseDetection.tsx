@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import DiagnosisKatoPanel from './DiagnosisKatoPanel';
+import DiagnosisCarePanel from './DiagnosisCarePanel';
 import type { WeatherData } from '../types';
 import { findMismatchedDiseaseHost, isGenericDiseaseLabel, matchesSelectedCropPlant } from '../utils/diseaseValidation';
 import { supabase } from '../lib/supabase';
@@ -25,7 +26,7 @@ const CROPS: Crop[] = [
 
 
 
-type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'result';
+type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'result' | 'saved';
 
 interface Diagnosis {
   outcome: 'disease' | 'healthy' | 'no_match' | 'uncertain';
@@ -37,6 +38,8 @@ interface Diagnosis {
   affectedPart?: string;
   whatObserved?: string;
 }
+
+type SavedDiagnosis = { id: string; crop_name: string; district_name: string; issue_name: string; started_at: string; source_scan: Record<string, unknown> | null; care_plan: Record<string, unknown> | null };
 
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
@@ -386,8 +389,20 @@ export default function DiseaseDetection({
   const [carePlanStatus, setCarePlanStatus] = useState<'idle'|'creating'|'created'|'error'>('idle');
   const [carePlanId, setCarePlanId] = useState<string | null>(null);
   const [scannedAt, setScannedAt] = useState<string | null>(null);
+  const [savedDiagnoses, setSavedDiagnoses] = useState<SavedDiagnosis[]>([]);
+  const [activeSavedDiagnosis, setActiveSavedDiagnosis] = useState<SavedDiagnosis | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const loadSavedDiagnoses = async () => {
+    const { data, error } = await supabase.from('crop_care_plans')
+      .select('id,crop_name,district_name,issue_name,started_at,source_scan,care_plan')
+      .eq('user_id', userId).order('started_at', { ascending: false }).limit(30);
+    if (error) console.warn('Could not load saved crop diagnoses:', error.message);
+    else setSavedDiagnoses((data || []) as SavedDiagnosis[]);
+  };
+
+  useEffect(() => { void loadSavedDiagnoses(); }, [userId]);
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -424,7 +439,7 @@ export default function DiseaseDetection({
       if (result.outcome === 'disease' && selectedCrop) {
         setCarePlanStatus('creating');
         void onCreateCarePlan({ cropName: selectedCrop.name, diagnosis: result })
-          .then((id) => { setCarePlanId(id); setCarePlanStatus('created'); })
+          .then(async (id) => { setCarePlanId(id); setCarePlanStatus('created'); await loadSavedDiagnoses(); })
           .catch((error) => { console.error('Automatic crop-care plan creation failed:', error); setCarePlanStatus('error'); });
       }
     }, minimumDisplayTime);
@@ -508,6 +523,25 @@ export default function DiseaseDetection({
     );
   }
 
+  if (view === 'saved' && activeSavedDiagnosis) {
+    const scan = activeSavedDiagnosis.source_scan || {};
+    const scanned = typeof scan.scanned_at === 'string' ? scan.scanned_at : activeSavedDiagnosis.started_at;
+    const observations = typeof scan.observations === 'string' ? scan.observations : 'No scan observations were saved.';
+    const matchScore = typeof scan.match_score === 'number' ? scan.match_score : 0;
+    return <section className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <button onClick={() => { setActiveSavedDiagnosis(null); setView('home'); }} className="flex items-center gap-2 self-start text-sm font-semibold text-[#315640]"><ChevronLeft className="h-4 w-4"/> All crop checks</button>
+      <div className="rounded-3xl bg-[#1d4b35] p-5 text-white">
+        <p className="text-xs text-white/70">{activeSavedDiagnosis.crop_name} · {activeSavedDiagnosis.district_name}</p>
+        <h2 className="mt-2 text-2xl font-semibold">{activeSavedDiagnosis.issue_name}</h2>
+        <p className="mt-2 text-xs text-white/70">Scanned {new Date(scanned).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+        <p className="mt-2 text-[11px] text-white/65">Image-service match score: {matchScore}% · Not diagnostic accuracy</p>
+      </div>
+      <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e6e9df]"><h3 className="text-sm font-semibold text-[#24392b]">Original scan notes</h3><p className="mt-2 text-sm leading-relaxed text-[#718074]">{observations}</p></div>
+      <DiagnosisCarePanel planId={activeSavedDiagnosis.id} userId={userId}/>
+      <DiagnosisKatoPanel planId={activeSavedDiagnosis.id} userId={userId} cropName={activeSavedDiagnosis.crop_name} districtName={activeSavedDiagnosis.district_name} issueName={activeSavedDiagnosis.issue_name} observations={observations} confidence={matchScore} weatherData={null} weatherDistrictName={null}/>
+    </section>;
+  }
+
   if (view === 'result' && diagnosis) {
     const resetAll = () => { setView('home'); setSelectedCrop(null); setPhotoDataUrl(null); setDiagnosis(null); setCarePlanStatus('idle'); setCarePlanId(null); setScannedAt(null); };
 
@@ -577,6 +611,7 @@ export default function DiseaseDetection({
         </div>
 
         <div className="rounded-2xl bg-[#e7eddf] p-4 text-sm text-[#174432]" role="status">{carePlanStatus==='creating'?'Omulimi is creating your crop-care plan…':carePlanStatus==='created'?'Your crop-care plan and follow-up checks have been saved.':carePlanStatus==='error'?'The scan is ready, but the care plan could not be saved. Please try again later.':'Omulimi will prepare a care plan from this scan.'}</div>
+        {carePlanId && <DiagnosisCarePanel planId={carePlanId} userId={userId}/>}
         {scannedAt && <p className="px-1 text-xs text-[#829084]">Scanned {new Date(scannedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · {districtName} District</p>}
         {carePlanId && selectedCrop && <DiagnosisKatoPanel planId={carePlanId} userId={userId} cropName={selectedCrop.name} districtName={districtName} issueName={diagnosis.simpleDiseaseName || diagnosis.diseaseName || 'Possible crop issue'} observations={diagnosis.whatObserved || 'No scan observations recorded'} confidence={diagnosis.confidence} weatherData={weatherData} weatherDistrictName={weatherDistrictName}/>}
 
@@ -603,6 +638,14 @@ export default function DiseaseDetection({
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e8e9e1]"><Camera className="h-5 w-5 text-[#477653]" /><p className="mt-3 text-sm font-semibold text-[#24382b]">Use a clear photo</p><p className="mt-1 text-xs leading-relaxed text-[#829084]">Focus on one affected part in good daylight.</p></div>
         <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e8e9e1]"><Lightbulb className="h-5 w-5 text-[#9a7a3d]" /><p className="mt-3 text-sm font-semibold text-[#24382b]">Check before acting</p><p className="mt-1 text-xs leading-relaxed text-[#829084]">Use results as guidance, not a confirmed diagnosis.</p></div>
+      </div>
+      <div className="rounded-2xl border border-[#e6e9df] bg-white p-4">
+        <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-[#24392b]">Previous crop checks</h3><span className="text-[11px] text-[#879087]">{savedDiagnoses.length} saved</span></div>
+        {savedDiagnoses.length === 0 ? <p className="text-xs text-[#829084]">Your saved crop checks will appear here.</p> :
+          <div className="space-y-2">{savedDiagnoses.map(item => <button key={item.id} onClick={() => { setActiveSavedDiagnosis(item); setView('saved'); }} className="flex w-full items-center gap-3 rounded-xl bg-[#f4f6f0] p-3 text-left">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e7eddf] text-[#285b40]"><Sprout className="h-4 w-4"/></span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[#263b2d]">{item.issue_name}</span><span className="mt-1 block text-[11px] text-[#718074]">{item.crop_name} · {new Date(item.started_at).toLocaleDateString()}</span></span><ChevronLeft className="h-4 w-4 rotate-180 text-[#879087]"/>
+          </button>)}</div>}
       </div>
       <p className="text-center text-xs leading-relaxed text-[#879087]">Currently supported: maize, beans, coffee, banana, tomato and potato.</p>
     </section>
