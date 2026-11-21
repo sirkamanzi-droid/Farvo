@@ -12,13 +12,12 @@ import DistrictPicker from './components/DistrictPicker';
 import WeatherDashboard from './components/WeatherDashboard';
 import KatoChat from './components/KatoChat';
 import BottomNav, { Tab } from './components/BottomNav';
-import ComingSoon from './components/ComingSoon';
 import WeatherGlyph from './components/WeatherGlyph';
 import DiseaseDetection from './components/DiseaseDetection';
 import SoilCalculator from './components/SoilCalculator';
 import CommandCentre from './components/CommandCentre';
 import CropCare from './components/CropCare';
-import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, CalendarDays, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain } from 'lucide-react';
 
 const DEFAULT_DISTRICT = DISTRICTS[1];
 
