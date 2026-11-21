@@ -1,5 +1,6 @@
 import React from 'react';
 import { Farm } from '../types';
+import { DISTRICTS } from '../data/districts';
 import { MapPin, Plus, ChevronDown, Trash2 } from 'lucide-react';
 
 interface SkyHeroProps {
@@ -41,7 +42,7 @@ export default function SkyHero({ farms, activeFarm, onSelectFarm, onAddFarm, on
           onChange={event => onSelectCrop(event.target.value)}
           className="max-w-[65%] rounded-lg border-0 bg-transparent py-1 text-right text-sm font-semibold text-soil-900 focus:outline-none focus:ring-2 focus:ring-leaf-600"
         >
-          {[...new Set([activeFarm.crop, ...activeFarm.district.mainCrops])].map(crop => (
+          {[...new Set([activeFarm.crop, ...DISTRICTS.flatMap(district => district.mainCrops)])].sort((a, b) => a.localeCompare(b)).map(crop => (
             <option key={crop} value={crop}>{crop}</option>
           ))}
         </select>
