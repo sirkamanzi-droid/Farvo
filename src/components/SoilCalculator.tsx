@@ -5,9 +5,19 @@ import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Compass, Droplets, Fl
 type Mode = 'tested' | 'guided';
 type Texture = 'sandy' | 'loamy' | 'clay' | 'unknown';
 type Drainage = 'fast' | 'moderate' | 'slow' | 'unknown';
+type IsdaSoilProfile = { provider: string; depth: string; resolution: string; classification: string; properties: Record<string, { value: number; unit: string | null; lowerBound: number | null; upperBound: number | null }> };
 type WeatherSnapshot = {
   current?: { soilTemperature?: number | null; soilMoisture?: number | null; rainfall?: number | null; temperature?: number | null; time?: string };
   daily?: Array<{ date: string; precipitation?: number | null; maxTemp?: number | null; minTemp?: number | null }>;
+  isdaSoil?: IsdaSoilProfile | null;
+};
+
+const SOIL_PROPERTY_LABELS: Record<string, string> = {
+  ph: 'Soil pH', nitrogen: 'Nitrogen', total_nitrogen: 'Total nitrogen',
+  phosphorus: 'Phosphorus', extractable_phosphorus: 'Extractable phosphorus',
+  potassium: 'Potassium', extractable_potassium: 'Extractable potassium',
+  carbon_organic: 'Organic carbon', organic_carbon: 'Organic carbon',
+  clay: 'Clay', sand: 'Sand', silt: 'Silt', cec: 'Cation exchange capacity',
 };
 type SavedAssessment = {
   id: string; createdAt: string; crop: string; mode: Mode; ph: number | null;
@@ -29,7 +39,7 @@ function pHLabel(ph: number) {
 
 async function streamKatoReport(input: {
   token: string; crop: string; location: string; weather: WeatherSnapshot;
-  ph: number | null; texture: Texture; drainage: Drainage; locationPrecision: string;
+  ph: number | null; texture: Texture; drainage: Drainage; locationPrecision: string; soilProfile: IsdaSoilProfile | null;
 }) {
   const prompt = [
     'Create a concise, practical Soil Intelligence report for a smallholder farmer in Uganda.',
@@ -44,7 +54,8 @@ async function streamKatoReport(input: {
     `Selected crop: ${input.crop}. Farm location entered by farmer: ${input.location}. Coordinate precision: ${input.locationPrecision}. Do not describe district-centre weather as plot-level weather.`,
     `Measured pH entered by farmer: ${input.ph === null ? 'not supplied' : input.ph}.`,
     `Farmer-observed texture: ${textureLabels[input.texture]}; drainage: ${drainageLabels[input.drainage]}.`,
-    `Weather and soil model response: ${JSON.stringify(input.weather)}.`,
+    `iSDAsoil mapped soil profile (machine-learning estimates, not lab measurements): ${input.soilProfile ? JSON.stringify(input.soilProfile) : 'Unavailable for this report; do not invent soil properties.'}.`,
+    `Weather and soil moisture model response: ${JSON.stringify(input.weather)}.`,
   ].join('\n');
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -178,10 +189,23 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
         throw new Error(body.error || 'Weather and soil conditions are unavailable right now.');
       }
       const weatherData = await weatherResponse.json() as WeatherSnapshot;
-      setWeather(weatherData);
+      let soilProfile: IsdaSoilProfile | null = null;
+      const soilResponse = await fetch(`/api/soil?latitude=${latitude}&longitude=${longitude}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (soilResponse.ok) {
+        const soilPayload = await soilResponse.json() as IsdaSoilProfile;
+        soilProfile = soilPayload;
+      } else {
+        const soilPayload = await soilResponse.json().catch(() => ({}));
+        console.warn('iSDAsoil lookup unavailable:', soilPayload.error || soilResponse.status);
+        setError(soilPayload.error || 'iSDAsoil data is not connected yet. This report will use weather and field observations only.');
+      }
+      const combinedWeather: WeatherSnapshot = { ...weatherData, isdaSoil: soilProfile };
+      setWeather(combinedWeather);
       const report = await streamKatoReport({
         token, crop, location: locationLabel.trim(), weather: weatherData,
-        ph: measuredPH, texture, drainage,
+        ph: measuredPH, texture, drainage, soilProfile,
         locationPrecision: usingExactLocation ? 'farmer-approved device GPS coordinates' : 'selected district-centre coordinates; village name is a text label only',
       });
       setAiReport(report);
@@ -294,7 +318,17 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
             <div className="rounded-xl bg-[#f7f1e5] p-3"><div className="flex items-center gap-2 text-soil-600"><FlaskConical className="h-4 w-4"/><span className="text-[10px]">Soil pH</span></div><p className="mt-1 text-lg font-bold text-soil-900">{reportPH === null ? 'Needs a soil test' : `pH ${reportPH.toFixed(1)}`}</p><p className="text-[9px] text-soil-500">{reportPH === null ? 'Not estimated from weather' : 'Farmer-entered test reading'}</p></div>
             <div className="rounded-xl bg-[#f7f1e5] p-3"><div className="flex items-center gap-2 text-soil-600"><CloudRain className="h-4 w-4"/><span className="text-[10px]">Rain today</span></div><p className="mt-1 text-lg font-bold text-soil-900">{reportWeather?.current?.rainfall == null ? '—' : `${reportWeather.current.rainfall.toFixed(1)} mm`}</p><p className="text-[9px] text-soil-500">Weather model</p></div>
           </div>
-          <div className="mt-3 rounded-xl border border-[#eadfca] bg-[#faf7ef] p-3 text-[10px] leading-relaxed text-soil-600">Weather-based soil conditions are model estimates for the selected coordinates, not a sensor reading from this exact field. Soil pH and nutrient levels require a proper soil test.</div>
+          {reportWeather?.isdaSoil ? <div className="mt-3 rounded-xl border border-[#d8e5d9] bg-[#f4f8f1] p-3">
+            <div className="mb-2 flex items-center justify-between gap-2"><span className="text-xs font-bold text-leaf-800">iSDAsoil mapped profile</span><span className="text-[9px] text-soil-500">{reportWeather.isdaSoil.depth} · {reportWeather.isdaSoil.resolution}</span></div>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(SOIL_PROPERTY_LABELS).filter(([key]) => reportWeather.isdaSoil?.properties[key]).map(([key, label]) => {
+                const item = reportWeather.isdaSoil!.properties[key];
+                return <div key={key} className="rounded-lg bg-white/80 p-2"><p className="text-[9px] text-soil-500">{label}</p><p className="text-sm font-bold text-soil-900">{item.value.toFixed(2)}{item.unit ? ` ${item.unit}` : ''}</p>{item.lowerBound !== null && item.upperBound !== null && <p className="text-[9px] text-soil-500">Model range: {item.lowerBound.toFixed(2)}–{item.upperBound.toFixed(2)}</p>}</div>;
+              })}
+            </div>
+            <p className="mt-2 text-[9px] leading-relaxed text-soil-600">These are iSDAsoil machine-learning estimates at mapped resolution, not laboratory measurements. Model uncertainty varies by property.</p>
+          </div> : <div className="mt-3 rounded-xl border border-[#eadfca] bg-[#faf7ef] p-3 text-[10px] leading-relaxed text-soil-600">iSDAsoil mapped data is not available for this report yet. Weather-based soil conditions are model estimates, not field sensor readings. Do not use them as a substitute for a soil test.</div>}
+          <div className="mt-3 rounded-xl border border-[#eadfca] bg-[#faf7ef] p-3 text-[10px] leading-relaxed text-soil-600">Weather-based soil conditions are model estimates for the selected coordinates, not a sensor reading from this exact field. Confirm important decisions with a local soil test or extension officer.</div>
         </section>
 
         <article className="mb-4 whitespace-pre-wrap rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4 text-xs leading-relaxed text-soil-800">{aiReport}</article>
