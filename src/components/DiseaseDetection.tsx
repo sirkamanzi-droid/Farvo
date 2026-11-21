@@ -612,56 +612,25 @@ export default function DiseaseDetection({
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-2xl font-bold text-soil-900" style={{ fontFamily: 'Fraunces, serif' }}>Disease Detection</h2>
-        <p className="text-sm text-soil-400 mt-2">Check selected crops for possible disease signs. Results are preliminary and may be wrong.</p>
+    <section className="mx-auto flex w-full max-w-xl flex-col gap-5">
+      <div className="pt-1">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#66806c]">OMULIMI · CROP CARE</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#24382b]" style={{fontFamily:'Fraunces, Georgia, serif'}}>Check your crop</h2>
+        <p className="mt-2 max-w-sm text-sm leading-relaxed text-[#718074]">Take a photo of a plant to check for possible disease signs.</p>
       </div>
-
-      <div
-        className="relative overflow-hidden rounded-3xl h-48 bg-cover bg-center"
-        style={{ backgroundImage: 'url(/disease-hero.jpg)', backgroundColor: '#4A6B3A' }}
-      >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-16 w-16 border-2 border-white/80 rounded-2xl flex items-center justify-center">
-            <Scan className="h-7 w-7 text-white" />
-          </div>
+      <div className="rounded-3xl bg-[#174432] p-5 text-white">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10"><Scan className="h-5 w-5 text-[#e5d6a8]" /></div>
+          <div><p className="text-base font-semibold">Crop health check</p><p className="mt-0.5 text-xs text-white/70">Photo-based · Preliminary guidance</p></div>
         </div>
+        <p className="mt-4 text-sm leading-relaxed text-white/80">Choose your crop, then take a clear photo of the affected leaf or plant part.</p>
+        <button onClick={() => setView('cropSelect')} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#f3f0e5] py-3.5 text-sm font-semibold text-[#174432]"><Camera className="h-4 w-4" /> Start crop check</button>
       </div>
-
-      <div className="flex flex-col gap-3 bg-parchment-50 rounded-3xl shadow-md border border-leaf-100 p-4">
-        <button onClick={() => setView('cropSelect')} className="flex items-center gap-3.5 text-left p-2">
-          <div className="h-14 w-14 rounded-2xl bg-leaf-600 flex items-center justify-center shrink-0">
-            <Camera className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <div className="text-base font-bold text-soil-900">Take a photo</div>
-            <div className="text-xs text-soil-400 mt-0.5">Use your camera to capture the affected part of your plant.</div>
-          </div>
-        </button>
-
-        <div className="h-px bg-parchment-100" />
-
-        <button onClick={() => setView('cropSelect')} className="flex items-center gap-3.5 text-left p-2">
-          <div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center shrink-0">
-            <ImageIcon className="h-6 w-6 text-leaf-700" />
-          </div>
-          <div>
-            <div className="text-base font-bold text-soil-900">Upload from gallery</div>
-            <div className="text-xs text-soil-400 mt-0.5">Choose a photo from your phone.</div>
-          </div>
-        </button>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e8e9e1]"><Camera className="h-5 w-5 text-[#477653]" /><p className="mt-3 text-sm font-semibold text-[#24382b]">Use a clear photo</p><p className="mt-1 text-xs leading-relaxed text-[#829084]">Focus on one affected part in good daylight.</p></div>
+        <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e8e9e1]"><Lightbulb className="h-5 w-5 text-[#9a7a3d]" /><p className="mt-3 text-sm font-semibold text-[#24382b]">Check before acting</p><p className="mt-1 text-xs leading-relaxed text-[#829084]">Use results as guidance, not a confirmed diagnosis.</p></div>
       </div>
-
-      <div className="bg-leaf-100/40 border border-leaf-100 rounded-2xl p-4 flex gap-3">
-        <Lightbulb className="h-5 w-5 text-leaf-700 shrink-0 mt-0.5" />
-        <div>
-          <div className="text-sm font-bold text-soil-900 mb-1">For best results:</div>
-          <div className="text-xs text-soil-700 leading-relaxed">Capture the affected part clearly, use good lighting and avoid blurry photos.</div>
-        </div>
-      </div>
-
-
-    </div>
+      <p className="text-center text-xs leading-relaxed text-[#879087]">Currently supported: maize, beans, coffee, banana, tomato and potato.</p>
+    </section>
   );
 }
