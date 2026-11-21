@@ -1,9 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CalendarDays, CheckCircle2, Circle, Loader2, RefreshCw } from 'lucide-react';
+import { Bell, BellOff, CalendarDays, CheckCircle2, Circle, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type Task = { id: string; title: string; instructions: string | null; task_type: string; due_at: string; status: 'pending' | 'done' | 'skipped' };
 type PlanData = { care_plan: Record<string, unknown> };
+
+const VAPID_PUBLIC_KEY = 'BKRGK6AoyiYx5scKhOXz-hSuTXtjIdHweieOB2QaTvYg5aHowqlrmEw2R8NInD42AMiKpawqZXcnU2N0I2zTcKk';
+
+function applicationServerKey(value: string) {
+  const padding = '='.repeat((4 - value.length % 4) % 4);
+  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(base64), char => char.charCodeAt(0));
+}
 
 export default function DiagnosisCarePanel({ planId, userId }: { planId: string; userId: string }) {
   const [plan, setPlan] = useState<PlanData | null>(null);
@@ -11,6 +19,9 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -26,6 +37,122 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
   }, [planId, userId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    const loadReminderState = async () => {
+      const { data: preference } = await supabase.from('crop_care_reminder_preferences')
+        .select('reminders_enabled')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!active || !preference?.reminders_enabled || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        if (active) setRemindersEnabled(false);
+        return;
+      }
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (!active || !subscription) {
+          if (active) setRemindersEnabled(false);
+          return;
+        }
+        const { data } = await supabase.from('crop_care_push_subscriptions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('endpoint', subscription.endpoint)
+          .maybeSingle();
+        if (active) setRemindersEnabled(Boolean(data));
+      } catch {
+        if (active) setRemindersEnabled(false);
+      }
+    };
+    void loadReminderState();
+    return () => { active = false; };
+  }, [userId]);
+
+  const toggleReminders = async () => {
+    setReminderBusy(true);
+    setReminderMessage('');
+    setError('');
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        setReminderMessage('This browser does not support background push reminders. Try installing Omulimi and opening it in Chrome.');
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const current = await registration.pushManager.getSubscription();
+
+      if (current) {
+        const json = current.toJSON();
+        if (json.endpoint) {
+          const { error: deleteError } = await supabase.from('crop_care_push_subscriptions')
+            .delete().eq('user_id', userId).eq('endpoint', json.endpoint);
+          if (deleteError) throw deleteError;
+        }
+        await current.unsubscribe();
+        const { error: prefError } = await supabase.from('crop_care_reminder_preferences')
+          .upsert({ user_id: userId, reminders_enabled: false, browser_permission: Notification.permission, updated_at: new Date().toISOString() });
+        if (prefError) throw prefError;
+        setRemindersEnabled(false);
+        setReminderMessage('Background reminders are turned off on this device.');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setReminderMessage(permission === 'denied'
+          ? 'Notifications are blocked. Allow them in your browser settings, then try again.'
+          : 'Allow notifications to receive crop reminders.');
+        return;
+      }
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey(VAPID_PUBLIC_KEY),
+      });
+      const payload = subscription.toJSON();
+      if (!payload.endpoint || !payload.keys?.p256dh || !payload.keys?.auth) {
+        await subscription.unsubscribe();
+        throw new Error('Your browser did not provide a complete push subscription.');
+      }
+
+      const { error: subscriptionError } = await supabase.from('crop_care_push_subscriptions')
+        .upsert({
+          user_id: userId,
+          endpoint: payload.endpoint,
+          p256dh: payload.keys.p256dh,
+          auth: payload.keys.auth,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'endpoint' });
+      if (subscriptionError) {
+        await subscription.unsubscribe();
+        throw subscriptionError;
+      }
+
+      const { error: prefError } = await supabase.from('crop_care_reminder_preferences')
+        .upsert({
+          user_id: userId,
+          reminders_enabled: true,
+          browser_permission: permission,
+          consented_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      if (prefError) throw prefError;
+
+      setRemindersEnabled(true);
+      setReminderMessage('You’re set. Omulimi can now send crop reminders even when the app is closed.');
+      await registration.showNotification('Omulimi reminders enabled', {
+        body: 'You will receive a notification when a crop-care activity is due.',
+        icon: '/pwa-icon-192.png',
+      });
+    } catch (err) {
+      console.error('Crop reminder setup failed:', err);
+      setReminderMessage(err instanceof Error ? err.message : 'Could not set up reminders. Please try again.');
+    } finally {
+      setReminderBusy(false);
+    }
+  };
 
   const updateTask = async (task: Task, status: 'done' | 'skipped') => {
     setBusyId(task.id); setError('');
@@ -46,6 +173,21 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
   const dateText = (value: string) => new Date(value).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
   return <section className="space-y-3">
+    <div className="rounded-2xl border border-[#dce5d8] bg-[#f8f8f1] p-4">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7eddf] text-[#285b40]">
+          {remindersEnabled ? <Bell className="h-5 w-5"/> : <BellOff className="h-5 w-5"/>}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-[#1d2d27]">Crop reminders</h3>
+          <p className="mt-0.5 text-xs text-[#718074]">{remindersEnabled ? 'Background reminders are enabled on this device.' : 'Get notified when a crop-care activity is due, even when Omulimi is closed.'}</p>
+        </div>
+        <button type="button" onClick={() => void toggleReminders()} disabled={reminderBusy} className="rounded-xl bg-[#174432] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
+          {reminderBusy ? 'Please wait…' : remindersEnabled ? 'Turn off' : 'Enable'}
+        </button>
+      </div>
+      {reminderMessage && <p role="status" className="mt-3 text-xs leading-relaxed text-[#526653]">{reminderMessage}</p>}
+    </div>
     <div className="rounded-2xl border border-[#dce5d8] bg-white p-4">
       <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e7eddf] text-[#285b40]"><CalendarDays className="h-4 w-4"/></span><div className="min-w-0 flex-1"><h3 className="text-sm font-semibold text-[#1d2d27]">Treatment and care plan</h3><p className="text-xs text-[#718074]">{pending.length} activities still to do</p></div><button onClick={() => void load()} aria-label="Refresh care plan" className="rounded-lg p-2 text-[#718074]"><RefreshCw className="h-4 w-4"/></button></div>
       {loading ? <div className="flex justify-center py-5"><Loader2 className="h-5 w-5 animate-spin text-[#285b40]"/></div> :

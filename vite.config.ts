@@ -13,6 +13,7 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['pwa-icon-192.png', 'pwa-icon-512.png'],
         workbox: {
+          importScripts: ['push-sw.js'],
         },
         manifest: {
           name: 'Omulimi',
