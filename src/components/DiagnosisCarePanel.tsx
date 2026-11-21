@@ -40,13 +40,33 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
 
   useEffect(() => {
     let active = true;
-    void supabase.from('crop_care_reminder_preferences')
-      .select('reminders_enabled')
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (active) setRemindersEnabled(Boolean(data?.reminders_enabled));
-      });
+    const loadReminderState = async () => {
+      const { data: preference } = await supabase.from('crop_care_reminder_preferences')
+        .select('reminders_enabled')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!active || !preference?.reminders_enabled || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        if (active) setRemindersEnabled(false);
+        return;
+      }
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (!active || !subscription) {
+          if (active) setRemindersEnabled(false);
+          return;
+        }
+        const { data } = await supabase.from('crop_care_push_subscriptions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('endpoint', subscription.endpoint)
+          .maybeSingle();
+        if (active) setRemindersEnabled(Boolean(data));
+      } catch {
+        if (active) setRemindersEnabled(false);
+      }
+    };
+    void loadReminderState();
     return () => { active = false; };
   }, [userId]);
 
