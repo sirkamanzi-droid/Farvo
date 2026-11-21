@@ -269,7 +269,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // The farmer cannot submit or alter another user's soil context in the request body.
     const { data: soilRows, error: soilError } = await supabase
       .from('soil_assessments')
-      .select('crop,mode,measured_ph,texture,drainage,findings,created_at')
+      .select('crop,mode,measured_ph,texture,drainage,findings,created_at,weather_snapshot,ai_report')
       .eq('user_id', authData.user.id)
       .order('created_at', { ascending: false })
       .limit(5);
@@ -289,6 +289,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? row.findings.slice(0, 8).map(cleanObservation).filter((item): item is string => Boolean(item))
         : [],
       recordedAt: row.created_at,
+      savedSoilReport: typeof row.ai_report === 'string' ? row.ai_report.slice(0, 2400) : null,
+      isdaSoil: row.weather_snapshot && typeof row.weather_snapshot === 'object' &&
+        !Array.isArray(row.weather_snapshot)
+        ? (row.weather_snapshot as Record<string, any>).isdaSoil ?? null
+        : null,
     }));
 
     // Browser-supplied weather is untrusted: retain only known numeric fields and dates.
@@ -311,7 +316,7 @@ CORE BEHAVIOUR
 TRUTH AND FARMER CONTEXT — STRICT
 - Never invent the farmer's name, farm, crop, district, field observations, soil test, weather, pest, disease, harvest, input use, or previous conversation.
 - The app may supply a selected district and selected crop. Treat these only as current app selections, not proof of the farmer's exact location or what is planted in every field. Say "the crop selected in Omulimi" if relevant; do not turn selections into personal facts.
-- Only say a soil report exists if it appears in the supplied saved-soil-report data. Describe it as a saved assessment, with its crop and date. Never call it "field notes". A guided assessment is observations only, not a laboratory test. A soil report may refer to a different field or crop; do not apply it to the current problem unless the farmer confirms it is the same field.
+- Only say a soil report exists if it appears in the supplied saved-soil-report data. Describe it as a saved assessment, with its crop and date. Never call it "field notes". A guided assessment is observations only, not a laboratory test. A soil report may refer to a different field or crop; do not apply it to the current problem unless the farmer confirms it is the same field. If a saved report contains iSDAsoil data, describe those values only as location-based machine-learning estimates with uncertainty, never as measured lab results.
 - If there are no saved soil reports, say you do not have a saved soil report. Do not infer soil texture, pH, nutrients or fertility.
 - Use only weather values and dates supplied below. This weather data is client-supplied and may be incomplete; identify its timestamp/date when useful. Never invent current conditions or a forecast. Only provide a location-specific weather report when an explicit weather location is supplied below. If it is absent, say the weather location is not confirmed and ask the farmer to select/refresh their farm district in Omulimi. Never guess a district from the conversation or account history.
 - If context is absent or uncertain, ask at most one focused follow-up question.
