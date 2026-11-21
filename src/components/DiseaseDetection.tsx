@@ -4,7 +4,7 @@ import DiagnosisCarePanel from './DiagnosisCarePanel';
 import type { WeatherData } from '../types';
 import { findMismatchedDiseaseHost, isGenericDiseaseLabel, matchesSelectedCropPlant } from '../utils/diseaseValidation';
 import { supabase } from '../lib/supabase';
-import { Camera, Image as ImageIcon, Lightbulb, Sprout, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
+import { Camera, Image as ImageIcon, Lightbulb, Sprout, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw, MoreVertical } from 'lucide-react';
 
 interface Crop {
   id: string;
@@ -391,6 +391,9 @@ export default function DiseaseDetection({
   const [scannedAt, setScannedAt] = useState<string | null>(null);
   const [savedDiagnoses, setSavedDiagnoses] = useState<SavedDiagnosis[]>([]);
   const [activeSavedDiagnosis, setActiveSavedDiagnosis] = useState<SavedDiagnosis | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -403,6 +406,34 @@ export default function DiseaseDetection({
   };
 
   useEffect(() => { void loadSavedDiagnoses(); }, [userId]);
+
+  async function handleDeleteDiagnosis(item: SavedDiagnosis) {
+    const confirmed = window.confirm(`Delete this ${item.crop_name} crop check? Its care plan, activities and check-ins will also be deleted. This cannot be undone.`);
+    if (!confirmed) {
+      setOpenMenuId(null);
+      return;
+    }
+
+    setDeletingId(item.id);
+    setDeleteError(null);
+    const { error } = await supabase.from('crop_care_plans')
+      .delete()
+      .eq('id', item.id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Could not delete crop check:', error);
+      setDeleteError('This crop check could not be deleted. Please try again.');
+    } else {
+      setSavedDiagnoses(current => current.filter(check => check.id !== item.id));
+      if (activeSavedDiagnosis?.id === item.id) {
+        setActiveSavedDiagnosis(null);
+        setView('home');
+      }
+    }
+    setDeletingId(null);
+    setOpenMenuId(null);
+  }
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -641,11 +672,23 @@ export default function DiseaseDetection({
       </div>
       <div className="rounded-2xl border border-[#e6e9df] bg-white p-4">
         <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-[#24392b]">Previous crop checks</h3><span className="text-[11px] text-[#879087]">{savedDiagnoses.length} saved</span></div>
+        {deleteError && <p role="alert" className="mb-3 text-xs text-red-700">{deleteError}</p>}
         {savedDiagnoses.length === 0 ? <p className="text-xs text-[#829084]">Your saved crop checks will appear here.</p> :
-          <div className="space-y-2">{savedDiagnoses.map(item => <button key={item.id} onClick={() => { setActiveSavedDiagnosis(item); setView('saved'); }} className="flex w-full items-center gap-3 rounded-xl bg-[#f4f6f0] p-3 text-left">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e7eddf] text-[#285b40]"><Sprout className="h-4 w-4"/></span>
-            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[#263b2d]">{item.issue_name}</span><span className="mt-1 block text-[11px] text-[#718074]">{item.crop_name} · {new Date(item.started_at).toLocaleDateString()}</span></span><ChevronLeft className="h-4 w-4 rotate-180 text-[#879087]"/>
-          </button>)}</div>}
+          <div className="space-y-2">{savedDiagnoses.map(item => <div key={item.id} className="relative flex items-center gap-2 rounded-xl bg-[#f4f6f0] p-3">
+            <button type="button" onClick={() => { setActiveSavedDiagnosis(item); setView('saved'); setOpenMenuId(null); }} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e7eddf] text-[#285b40]"><Sprout className="h-4 w-4"/></span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[#263b2d]">{item.issue_name}</span><span className="mt-1 block text-[11px] text-[#718074]">{item.crop_name} · {new Date(item.started_at).toLocaleDateString()}</span></span>
+              <ChevronLeft className="h-4 w-4 rotate-180 shrink-0 text-[#879087]"/>
+            </button>
+            <div className="relative shrink-0">
+              <button type="button" aria-label={`Options for ${item.issue_name}`} aria-haspopup="menu" aria-expanded={openMenuId === item.id} disabled={deletingId === item.id} onClick={() => setOpenMenuId(current => current === item.id ? null : item.id)} className="flex h-9 w-9 items-center justify-center rounded-full text-[#718074] hover:bg-[#e7eddf] disabled:opacity-50">
+                {deletingId === item.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <MoreVertical className="h-5 w-5"/>}
+              </button>
+              {openMenuId === item.id && <div role="menu" className="absolute right-0 top-10 z-20 min-w-32 rounded-xl border border-[#e6e9df] bg-white p-1 shadow-lg">
+                <button type="button" role="menuitem" onClick={() => void handleDeleteDiagnosis(item)} className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50">Delete</button>
+              </div>}
+            </div>
+          </div>)}</div>}
       </div>
       <p className="text-center text-xs leading-relaxed text-[#879087]">Currently supported: maize, beans, coffee, banana, tomato and potato.</p>
     </section>
