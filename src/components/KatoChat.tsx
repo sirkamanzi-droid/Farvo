@@ -29,6 +29,7 @@ interface KatoChatProps {
   weatherDistrictName?: string | null;
   initialQuestion?: string | null;
   onInitialQuestionHandled?: () => void;
+  farmerName?: string;
 }
 
 function timeLabel(value: string) {
@@ -43,7 +44,7 @@ function dateLabel(value: string) {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
-export default function KatoChat({ userId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled }: KatoChatProps) {
+export default function KatoChat({ userId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -89,13 +90,9 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
       try {
         const rows = await loadConversations();
         if (cancelled) return;
-        if (rows.length && !initialQuestion?.trim()) {
-          setActiveId(rows[0].id);
-          await loadMessages(rows[0].id);
-        } else {
-          setActiveId(null);
-          setMessages([]);
-        }
+        // Always open on a fresh chat. Older conversations remain in the menu.
+        setActiveId(null);
+        setMessages([]);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load saved chats.');
       } finally {
@@ -280,14 +277,14 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
 
   return (
     <div className="min-h-[calc(100vh-138px)] bg-[#f2ecdf] flex flex-col">
-      <header className="sticky top-0 z-20 border-b border-[#ded5c3] bg-[#faf7ef]/95 backdrop-blur px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button onClick={() => setHistoryOpen(v => !v)} className="lg:hidden rounded-xl p-2 text-[#285b40] hover:bg-[#e7eddf]" aria-label="Open chat history"><Menu className="h-5 w-5"/></button>
-            <div className="h-10 w-10 rounded-2xl bg-[#174432] flex items-center justify-center text-white"><Sprout className="h-5 w-5"/></div>
-            <div className="min-w-0"><h1 className="font-bold text-lg text-[#1d2d27]" style={{fontFamily:'Fraunces, Georgia, serif'}}>Kato</h1><p className="text-[10px] text-[#52645a] truncate">Your Omulimi farm advisor · {district.name}</p></div>
-          </div>
-          <button onClick={startNewChat} className="inline-flex items-center gap-2 rounded-xl bg-[#174432] px-3.5 py-2.5 text-xs font-bold text-white hover:bg-[#285b40]"><Plus className="h-4 w-4"/>New chat</button>
+      <header className="sticky top-0 z-20 border-b border-[#ded5c3] bg-[#faf7ef]/95 backdrop-blur px-4 py-2.5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <button onClick={() => setHistoryOpen(v => !v)} className="rounded-xl p-2.5 text-[#285b40] hover:bg-[#e7eddf]" aria-label="Open chat menu">
+            <Menu className="h-5 w-5"/>
+          </button>
+          <button onClick={startNewChat} className="inline-flex items-center gap-2 rounded-xl bg-[#174432] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#285b40]">
+            <Plus className="h-4 w-4"/>New chat
+          </button>
         </div>
       </header>
 
@@ -309,20 +306,18 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
         </aside>
 
         <section className="min-w-0 flex flex-col min-h-[calc(100vh-138px)] lg:min-h-0 lg:h-[calc(100vh-170px)] lg:rounded-2xl lg:border lg:border-[#ded5c3] lg:bg-[#faf7ef] overflow-hidden">
-          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#e6dece] bg-[#faf7ef]">
-            <div className="min-w-0"><p className="text-xs font-bold text-[#1d2d27] truncate">{activeConversation?.title || 'New conversation'}</p><p className="text-[10px] text-[#879188] mt-0.5">{cropName} · {district.name} District</p></div>
-            <div className="flex items-center gap-1 text-[10px] text-[#52645a]"><span className="h-2 w-2 rounded-full bg-[#719579]"/>Ready to help</div>
-          </div>
-
           <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 space-y-5">
-            {messages.length === 0 && !loadingHistory && <div className="max-w-xl mx-auto pt-8 sm:pt-16 text-center">
-              <div className="mx-auto h-16 w-16 rounded-[22px] bg-[#e7eddf] flex items-center justify-center"><Sprout className="h-8 w-8 text-[#174432]"/></div>
-              <p className="mt-5 text-xs font-bold uppercase tracking-[.18em] text-[#719579]">Omulimi farm intelligence</p>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-bold text-[#1d2d27]" style={{fontFamily:'Fraunces, Georgia, serif'}}>What’s happening on your farm?</h2>
-              <p className="mt-2 text-sm leading-relaxed text-[#52645a]">Ask Kato about crop care, pests, soil, planting, harvesting or the weather in your district.</p>
-              <div className="mt-6 grid sm:grid-cols-2 gap-2 text-left">
-                {[`How should I care for my ${cropName} this week?`,'How can I recognise common crop diseases?','When is a good time to plant?','How can I improve my soil?'].map(prompt => <button key={prompt} onClick={() => void sendMessage(undefined,prompt)} className="rounded-xl border border-[#e6dece] bg-white p-3 text-xs text-[#285b40] hover:border-[#719579] hover:bg-[#f7f4eb]">{prompt}<ArrowUp className="inline h-3.5 w-3.5 ml-1 rotate-45"/></button>)}
+            {messages.length === 0 && !loadingHistory && <div className="mx-auto flex max-w-xl flex-col items-center px-3 pt-16 text-center sm:pt-24">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e7eddf] text-[#174432]">
+                <Sprout className="h-7 w-7"/>
               </div>
+              <h2 className="mt-6 text-2xl font-semibold tracking-tight text-[#1d2d27]" style={{fontFamily:'Fraunces, Georgia, serif'}}>
+                Hello{farmerName?.trim() ? `, ${farmerName.trim()}` : ''}.
+              </h2>
+              <p className="mt-2 max-w-sm text-sm leading-7 text-[#52645a]">
+                I’m Kato, your farm assistant. I’m here to help you care for your crops, understand your soil and make better decisions on your farm.
+              </p>
+              <p className="mt-5 text-xs text-[#879188]">Whenever you’re ready, just send me a message.</p>
             </div>}
             {messages.map(message => <div key={message.id} className={`flex gap-3 max-w-3xl ${message.role==='user'?'ml-auto flex-row-reverse':'mr-auto'}`}>
               <div className={`h-8 w-8 rounded-xl shrink-0 flex items-center justify-center ${message.role==='user'?'bg-[#d7a442] text-[#1d2d27]':'bg-[#174432] text-white'}`}>{message.role==='user'?<MessageCircle className="h-4 w-4"/>:<Sprout className="h-4 w-4"/>}</div>
