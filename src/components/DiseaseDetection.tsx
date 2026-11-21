@@ -373,131 +373,77 @@ export default function DiseaseDetection({
 
   if (view === 'cropSelect') {
     return (
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setView('home')} className="text-soil-400 hover:text-soil-900">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <h2 className="text-base font-bold text-soil-900">What crop is this?</h2>
+      <section className="mx-auto flex w-full max-w-xl flex-col gap-5">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setView('home')} aria-label="Back" className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8eee2] text-[#28583d]"><ChevronLeft className="h-5 w-5" /></button>
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7b916e]">FIELD SCAN · 01</p><h2 className="text-xl font-bold text-[#24392b]">Choose your crop</h2></div>
         </div>
-        <p className="text-xs text-soil-400 -mt-3">Select a crop covered by the preliminary disease-check service. Cassava and rice are not supported by the provider yet.</p>
-
+        <div className="rounded-3xl bg-[#1d4b35] p-4 text-white">
+          <div className="flex items-center gap-2"><Sprout className="h-5 w-5 text-[#d8c58c]" /><span className="text-sm font-semibold">What are you growing?</span></div>
+          <p className="mt-1 text-xs leading-relaxed text-white/75">Select the crop shown in your photo. The scan checks supported crops only.</p>
+        </div>
         <div className="relative">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search for a crop..."
-            className="w-full pl-9 pr-4 py-2.5 border border-parchment-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-leaf-600 bg-parchment-50"
-          />
-          <Search className="absolute left-3 top-3 h-4 w-4 text-soil-400" />
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#829084]" />
+          <input type="search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search crops" className="w-full rounded-2xl border-0 bg-white py-3.5 pl-11 pr-4 text-sm text-[#24392b] shadow-sm outline-none ring-1 ring-[#e5e9df] focus:ring-2 focus:ring-[#527a55]" />
         </div>
-
-        <div className="grid grid-cols-3 gap-2.5">
-          {filteredCrops.map((crop) => {
-            const isSelected = selectedCrop?.id === crop.id;
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {filteredCrops.map(crop => {
+            const active = selectedCrop?.id === crop.id;
             const unavailable = !crop.diseaseSupported;
-            return (
-              <button
-                key={crop.id}
-                onClick={() => {
-                  if (unavailable) return;
-                  setSelectedCrop(crop);
-                }}
-                disabled={unavailable}
-                className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl border text-center ${unavailable ? 'border-parchment-100 bg-parchment-50 opacity-55 cursor-not-allowed' : isSelected ? 'border-leaf-600 bg-leaf-100/40' : 'border-parchment-100 bg-parchment-50'}`}
-              >
-                {isSelected && (
-                  <div className="absolute top-1.5 right-1.5 h-4 w-4 rounded-full bg-leaf-600 flex items-center justify-center">
-                    <Check className="h-2.5 w-2.5 text-white" />
-                  </div>
-                )}
-                <span className="text-xl">{crop.emoji}</span>
-                <span className="text-[11px] font-semibold text-soil-900">{crop.name}</span>
-                {unavailable && <span className="text-[9px] font-semibold text-soil-500">Not covered yet</span>}
-              </button>
-            );
+            return <button key={crop.id} disabled={unavailable} onClick={() => setSelectedCrop(crop)} className={`relative flex min-h-28 flex-col items-start justify-between rounded-2xl p-4 text-left transition ${unavailable ? 'cursor-not-allowed bg-[#f0f0e9] opacity-55' : active ? 'bg-[#e8eee2] ring-2 ring-[#527a55]' : 'bg-white ring-1 ring-[#e6e9df] hover:ring-[#a9b9a3]'}`}>
+              <span className="text-2xl">{crop.emoji}</span><span className="text-sm font-semibold text-[#263b2d]">{crop.name}</span>
+              {unavailable ? <span className="text-[10px] text-[#879087]">Not supported yet</span> : active && <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#527a55]"><Check className="h-3 w-3 text-white" /></span>}
+            </button>;
           })}
         </div>
-
-        <button
-          onClick={() => {
-            if (!selectedCrop) return;
-            setView('capture');
-          }}
-          disabled={!selectedCrop}
-          className="mt-2 bg-leaf-600 disabled:bg-parchment-200 disabled:text-soil-400 hover:bg-leaf-700 text-white font-bold text-sm py-3 rounded-xl transition"
-        >
-          Continue →
-        </button>
-      </div>
+        <button onClick={() => selectedCrop && setView('capture')} disabled={!selectedCrop} className="w-full rounded-2xl bg-[#1d4b35] py-4 text-sm font-semibold text-white shadow-sm transition disabled:bg-[#c9d0c5]">Continue to photo <span aria-hidden="true">→</span></button>
+      </section>
     );
   }
 
   if (view === 'capture') {
     return (
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setView('cropSelect')} className="text-soil-400 hover:text-soil-900">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <h2 className="text-base font-bold text-soil-900">Add a photo</h2>
+      <section className="mx-auto flex w-full max-w-xl flex-col gap-5">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setView('cropSelect')} aria-label="Back" className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8eee2] text-[#28583d]"><ChevronLeft className="h-5 w-5" /></button>
+          <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7b916e]">FIELD SCAN · 02</p><h2 className="text-xl font-bold text-[#24392b]">Capture a plant photo</h2></div>
         </div>
-        <p className="text-xs text-soil-400 -mt-3">Checking <span className="font-semibold text-leaf-700">{selectedCrop?.name}</span> for signs of disease.</p>
-
-        {photoError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{photoError}</div>}
+        <div className="flex items-center gap-3 rounded-2xl bg-[#e8eee2] p-4">
+          <span className="text-3xl">{selectedCrop?.emoji}</span><div><p className="text-[10px] font-bold uppercase tracking-wide text-[#71866e]">Selected crop</p><p className="text-sm font-semibold text-[#263b2d]">{selectedCrop?.name}</p></div>
+        </div>
+        {photoError && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{photoError}</div>}
         <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelected} className="hidden" />
         <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleFileSelected} className="hidden" />
-
-        <div className="flex flex-col gap-3">
-          <button onClick={() => cameraInputRef.current?.click()} className="flex items-center gap-3.5 bg-parchment-50 border border-parchment-100 rounded-2xl p-4 text-left">
-            <div className="h-12 w-12 rounded-xl bg-leaf-600 flex items-center justify-center shrink-0">
-              <Camera className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-soil-900">Take a photo</div>
-              <div className="text-xs text-soil-400">Opens your camera</div>
-            </div>
-          </button>
-          <button onClick={() => galleryInputRef.current?.click()} className="flex items-center gap-3.5 bg-parchment-50 border border-parchment-100 rounded-2xl p-4 text-left">
-            <div className="h-12 w-12 rounded-xl bg-leaf-100 flex items-center justify-center shrink-0">
-              <ImageIcon className="h-5 w-5 text-leaf-700" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-soil-900">Upload from gallery</div>
-              <div className="text-xs text-soil-400">Choose an existing photo</div>
-            </div>
-          </button>
+        <div className="rounded-3xl bg-white p-5 ring-1 ring-[#e6e9df]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e8eee2] text-[#356445]"><Camera className="h-7 w-7" /></div>
+          <h3 className="mt-4 text-center text-lg font-semibold text-[#263b2d]">Show us the affected part</h3>
+          <p className="mx-auto mt-2 max-w-xs text-center text-sm leading-relaxed text-[#718074]">Use daylight. Keep the leaf or plant part in focus and avoid blurry photos.</p>
+          <button onClick={() => cameraInputRef.current?.click()} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1d4b35] py-4 text-sm font-semibold text-white"><Camera className="h-4 w-4" /> Take a photo</button>
+          <button onClick={() => galleryInputRef.current?.click()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#f0f3eb] py-4 text-sm font-semibold text-[#315640]"><ImageIcon className="h-4 w-4" /> Choose from gallery</button>
         </div>
-      </div>
+      </section>
     );
   }
 
   if (view === 'analyzing') {
-    const steps = ['Checking for visible symptoms', 'Comparing with known diseases', 'Estimating confidence level'];
+    const steps = ['Checking visible crop symptoms', 'Comparing possible disease matches', 'Preparing your scan result'];
     return (
-      <div className="flex flex-col gap-5">
-        <div className="relative rounded-3xl overflow-hidden h-64">
-          {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
-          <div className="absolute inset-0 bg-soil-900/50 flex flex-col items-center justify-center gap-3 text-center px-6">
-            <Loader2 className="h-8 w-8 text-white animate-spin" />
-            <p className="text-sm font-bold text-white">Analyzing your photo...</p>
-            <p className="text-xs text-parchment-100">This may take a few seconds.</p>
+      <section className="mx-auto flex w-full max-w-xl flex-col gap-4">
+        <div className="overflow-hidden rounded-3xl bg-[#1d4b35]">
+          {photoDataUrl && <img src={photoDataUrl} alt="Crop being checked" className="h-64 w-full object-cover" />}
+          <div className="p-6 text-center text-white">
+            <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#e3d5a6]" />
+            <h2 className="mt-3 text-lg font-semibold">Checking your crop</h2>
+            <p className="mt-1 text-xs text-white/70">Looking for possible signs. This may take a moment.</p>
           </div>
         </div>
-        <div className="bg-parchment-50 border border-parchment-100 rounded-2xl p-4 flex flex-col gap-2.5">
-          {steps.map((step, idx) => (
-            <div key={step} className="flex items-center gap-2.5">
-              {checkedSteps > idx ? (
-                <Check className="h-4 w-4 text-leaf-600 shrink-0" />
-              ) : (
-                <div className="h-4 w-4 rounded-full border-2 border-parchment-200 shrink-0" />
-              )}
-              <span className={`text-xs ${checkedSteps > idx ? 'text-soil-900 font-semibold' : 'text-soil-400'}`}>{step}</span>
-            </div>
-          ))}
+        <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e6e9df]">
+          {steps.map((step, idx) => <div key={step} className="flex items-center gap-3 py-2">
+            {checkedSteps > idx ? <Check className="h-4 w-4 shrink-0 text-[#527a55]" /> : <span className="h-4 w-4 shrink-0 rounded-full border-2 border-[#dce3d8]" />}
+            <span className={`text-sm ${checkedSteps > idx ? 'font-semibold text-[#263b2d]' : 'text-[#829084]'}`}>{step}</span>
+          </div>)}
         </div>
-      </div>
+      </section>
     );
   }
 
