@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { CalendarDays, CheckCircle2, Circle, Plus, Sprout, ClipboardCheck, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Circle, Sprout, ClipboardCheck, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 type Plan = { id:string; crop_name:string; district_name:string; issue_name:string; status:'active'|'recovered'|'paused'; diagnosis_status:string; care_plan:Record<string,unknown>; started_at:string; next_review_at:string|null };
 type Task = { id:string; plan_id:string; title:string; instructions:string|null; task_type:string; due_at:string; status:'pending'|'done'|'skipped' };
@@ -9,7 +9,7 @@ type Checkin = { id:string; plan_id:string; health_status:string; notes:string|n
 const field = 'w-full rounded-xl border border-[#e4dac7] bg-white px-3 py-3 text-sm text-[#1d2d27] outline-none focus:border-[#719579]';
 const button = 'rounded-xl bg-[#174432] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50';
 
-export default function CropCare({userId,farmId,cropName,districtName}:{userId:string;farmId:string;cropName:string;districtName:string}) {
+export default function CropCare({userId}:{userId:string}) {
   const [plans,setPlans]=useState<Plan[]>([]);
   const [tasks,setTasks]=useState<Task[]>([]);
   const [checkins,setCheckins]=useState<Checkin[]>([]);
@@ -46,9 +46,9 @@ export default function CropCare({userId,farmId,cropName,districtName}:{userId:s
 
   useEffect(()=>{let alive=true;void (async()=>{const {data}=await supabase.from('crop_care_reminder_preferences').select('reminders_enabled,browser_permission').eq('user_id',userId).maybeSingle();if(alive&&data){setRemindersEnabled(data.reminders_enabled);setReminderPermission(data.browser_permission);}})();return()=>{alive=false;};},[userId]);
 
-  const enableReminders=async()=>{setReminderBusy(true);setError('');let permission='unsupported';if('Notification' in window)permission=await Notification.requestPermission();const enabled=permission==='granted';const {error:saveError}=await supabase.from('crop_care_reminder_preferences').upsert({user_id:userId,reminders_enabled:enabled,browser_permission:permission,consented_at:enabled?new Date().toISOString():null,updated_at:new Date().toISOString()});if(saveError)setError('Your reminder preference could not be saved. Please try again.');else{setRemindersEnabled(enabled);setReminderPermission(permission);if(enabled)new Notification('Omulimi reminders are on',{body:'Crop reminders will appear when Omulimi is open on this device.'});}setReminderBusy(false);};
+  const enableReminders=async()=>{setReminderBusy(true);setError('');let permission='unsupported';if('Notification' in window)permission=await Notification.requestPermission();const enabled=permission==='granted';const {error:saveError}=await supabase.from('crop_care_reminder_preferences').upsert({user_id:userId,reminders_enabled:enabled,browser_permission:permission,consented_at:enabled?new Date().toISOString():null,updated_at:new Date().toISOString()});if(saveError)setError('Your reminder preference could not be saved. Please try again.');else{setRemindersEnabled(enabled);setReminderPermission(permission);if(enabled){void navigator.serviceWorker?.ready.then(registration=>registration.showNotification('Omulimi reminders are on',{body:'Crop reminders will appear when Omulimi is open on this device.'})).catch(()=>new Notification('Omulimi reminders are on',{body:'Crop reminders are enabled.'}));}}setReminderBusy(false);};
 
-  useEffect(()=>{if(!remindersEnabled||!('Notification' in window)||Notification.permission!=='granted')return;const notifyDue=()=>{tasks.filter(t=>t.status==='pending'&&new Date(t.due_at).getTime()<=Date.now()).forEach(task=>{const key='omulimi-reminder-'+task.id;if(localStorage.getItem(key))return;new Notification('Crop check due',{body:task.title,tag:key});localStorage.setItem(key,'sent');});};notifyDue();const timer=window.setInterval(notifyDue,5*60*1000);return()=>window.clearInterval(timer);},[tasks,remindersEnabled]);
+  useEffect(()=>{if(!remindersEnabled||!('Notification' in window)||Notification.permission!=='granted')return;const notifyDue=()=>{tasks.filter(t=>t.status==='pending'&&new Date(t.due_at).getTime()<=Date.now()).forEach(task=>{const key='omulimi-reminder-'+task.id;if(localStorage.getItem(key))return;void navigator.serviceWorker?.ready.then(registration=>registration.showNotification('Crop check due',{body:task.title,tag:key})).catch(()=>new Notification('Crop check due',{body:task.title,tag:key}));localStorage.setItem(key,'sent');});};notifyDue();const timer=window.setInterval(notifyDue,5*60*1000);return()=>window.clearInterval(timer);},[tasks,remindersEnabled]);
 
   const addTask=async(e:React.FormEvent)=>{
     e.preventDefault(); if(!showTask||!taskTitle.trim())return;setBusy(true);setError('');
