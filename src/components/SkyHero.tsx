@@ -15,7 +15,7 @@ interface SkyHeroProps {
   wasGeoDetected: boolean;
 }
 
-export default function SkyHero({ farms, activeFarm, onSelectFarm, onAddFarm, onOpenDistrictPicker, onDeleteFarm, wasGeoDetected }: SkyHeroProps) {
+export default function SkyHero({ farms, activeFarm, onSelectFarm, onAddFarm, onOpenDistrictPicker, onSelectCrop, onDeleteFarm, wasGeoDetected }: SkyHeroProps) {
   return (
     <section className="px-4 sm:px-6 pt-5 pb-3">
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -33,6 +33,19 @@ export default function SkyHero({ farms, activeFarm, onSelectFarm, onAddFarm, on
         <span className="flex items-center gap-3"><MapPin className="h-5 w-5 text-leaf-700"/><span><span className="block text-xs text-soil-500">Farm location</span><span className="block text-sm font-semibold text-soil-900">{activeFarm.district.name} District{wasGeoDetected?' · GPS':''}</span></span></span>
         <ChevronDown className="h-4 w-4 text-soil-500"/>
       </button>
+      <label className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-[#faf7ef] px-4 py-3">
+        <span className="text-xs font-medium text-soil-600">Your crop</span>
+        <select
+          aria-label="Select your crop"
+          value={activeFarm.crop}
+          onChange={event => onSelectCrop(event.target.value)}
+          className="max-w-[65%] rounded-lg border-0 bg-transparent py-1 text-right text-sm font-semibold text-soil-900 focus:outline-none focus:ring-2 focus:ring-leaf-600"
+        >
+          {[...new Set([activeFarm.crop, ...activeFarm.district.mainCrops])].map(crop => (
+            <option key={crop} value={crop}>{crop}</option>
+          ))}
+        </select>
+      </label>
     </section>
   );
 }
