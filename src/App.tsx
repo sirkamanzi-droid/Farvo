@@ -19,7 +19,61 @@ import CommandCentre from './components/CommandCentre';
 import CropCare from './components/CropCare';
 import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain } from 'lucide-react';
 
+
 const DEFAULT_DISTRICT = DISTRICTS[1];
+
+async function generateKatoCareGuidance(input: { cropName: string; districtName: string; issueName: string; confidence: number; observations: string }) {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (error || !token) return null;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 25000);
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: `Create the initial Omulimi crop-care guidance for this scan. Crop: ${input.cropName}. Selected district: ${input.districtName}. Possible issue: ${input.issueName}. Image-service match score: ${input.confidence}% (not diagnostic accuracy). Scan observations: ${input.observations}. Provide the structured crop-care plan using your required headings. Prioritise symptom verification, safe immediate actions, locally verifiable treatment options, justified soil/fertiliser guidance only, and a practical inspection timeline. Do not claim the diagnosis is confirmed or invent chemical products, rates or label directions.` }],
+          cropName: input.cropName,
+          districtName: input.districtName,
+          weatherContext: null,
+          weatherDistrictName: null
+        })
+      });
+      if (!response.ok || !response.body) return null;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let answer = '';
+      let completed = false;
+      const consume = (line: string) => {
+        if (!line.trim()) return;
+        const event = JSON.parse(line) as { text?: string; done?: boolean; error?: string };
+        if (event.error) throw new Error(event.error);
+        if (typeof event.text === 'string') answer += event.text;
+        if (event.done) completed = true;
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split(/\\r?\\n/);
+        buffer = lines.pop() || '';
+        for (const line of lines) consume(line);
+      }
+      buffer += decoder.decode();
+      if (buffer.trim()) consume(buffer);
+      return completed && answer.trim() ? answer.trim() : null;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  } catch (error) {
+    console.warn('Kato could not generate the initial saved care guidance:', error);
+    return null;
+  }
+}
 
 function BrandHeader() { return (<header className="sticky top-0 z-20 flex h-14 items-center bg-[#f2ecdf]/95 px-4 backdrop-blur-md sm:px-6"><div className="mx-auto flex w-full max-w-3xl items-center gap-2.5"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e4eadc]"><Sprout className="h-5 w-5 text-[#174432]"/></div><span className="text-xl font-bold tracking-tight text-[#1d2d27]" style={{fontFamily:'Fraunces, Georgia, serif'}}>Omulimi</span><span className="ml-auto rounded-full bg-[#e4eadc] px-3 py-1 text-[11px] font-semibold text-[#285b40]">Your farm companion</span></div></header>); }
 function HomeDashboard({farm, farmerName, weather, loading, onOpenWeather, onOpenDisease, onOpenSoil, onOpenComingSoon, onOpenDistrict}: { farm: Farm; farmerName: string; weather: WeatherData | null; loading: boolean; onOpenWeather: () => void; onOpenDisease: () => void; onOpenSoil: () => void; onOpenComingSoon: (title: string, description: string) => void; onOpenDistrict: () => void; }) {
@@ -202,7 +256,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
             {!loadingWeather&&!weatherError&&weatherData&&<><WeatherDashboard weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} onAskKato={()=>setActiveTab('kato')}/></>}
           </div>
         </div>}
-        {activeTab==='disease'&&<div className="px-4 sm:px-6 py-5"><DiseaseDetection onGetTreatmentAdvice={question=>{setPendingKatoQuestion(question);setActiveTab('kato');}} onCreateCarePlan={async ({cropName,diagnosis})=>{const now=new Date();const {data:plan,error:planError}=await supabase.from('crop_care_plans').insert({user_id:userId,farm_id:activeFarm.id,crop_name:cropName,district_name:activeFarm.district.name,issue_name:diagnosis.simpleDiseaseName||diagnosis.diseaseName||'Possible crop issue',diagnosis_status:'unconfirmed',status:'active',care_plan:{summary:`Monitor ${cropName}: ${diagnosis.simpleDiseaseName||diagnosis.diseaseName||'possible crop issue'}`,source:'disease_scan',provider_match_score:diagnosis.confidence,observations:diagnosis.whatObserved},source_scan:{outcome:diagnosis.outcome,disease_name:diagnosis.diseaseName||null,simple_disease_name:diagnosis.simpleDiseaseName||null,match_score:diagnosis.confidence,observations:diagnosis.whatObserved,scanned_at:now.toISOString()}}).select('id').single();if(planError||!plan)throw planError||new Error('Could not create crop-care plan');const specs=[{days:0,title:'Check the symptoms on the affected plant',instructions:'Compare the visible signs with the scan notes. Do not apply a treatment until the problem is better verified.',task_type:'inspect'},{days:2,title:'Inspect nearby plants',instructions:'Look for similar signs on nearby plants and record what you find.',task_type:'inspect'},{days:5,title:'Review the crop condition',instructions:'Check whether the affected area is spreading, staying the same or improving. Record your observations.',task_type:'follow_up'},{days:7,title:'Follow up with a new crop photo',instructions:'Take a clear photo from a similar angle so the crop can be reviewed again.',task_type:'follow_up'}];const {error:taskError}=await supabase.from('crop_care_tasks').insert(specs.map(t=>({plan_id:plan.id,user_id:userId,title:t.title,instructions:t.instructions,task_type:t.task_type,due_at:new Date(now.getTime()+t.days*86400000+3600000).toISOString(),status:'pending'})));if(taskError)throw taskError;}}/></div>}
+        {activeTab==='disease'&&<div className="px-4 sm:px-6 py-5"><DiseaseDetection onGetTreatmentAdvice={question=>{setPendingKatoQuestion(question);setActiveTab('kato');}} onCreateCarePlan={async ({cropName,diagnosis})=>{const now=new Date();const {data:plan,error:planError}=await supabase.from('crop_care_plans').insert({user_id:userId,farm_id:activeFarm.id,crop_name:cropName,district_name:activeFarm.district.name,issue_name:diagnosis.simpleDiseaseName||diagnosis.diseaseName||'Possible crop issue',diagnosis_status:'unconfirmed',status:'active',care_plan:{summary:`Monitor ${cropName}: ${diagnosis.simpleDiseaseName||diagnosis.diseaseName||'possible crop issue'}`,source:'disease_scan',provider_match_score:diagnosis.confidence,observations:diagnosis.whatObserved},source_scan:{outcome:diagnosis.outcome,disease_name:diagnosis.diseaseName||null,simple_disease_name:diagnosis.simpleDiseaseName||null,match_score:diagnosis.confidence,observations:diagnosis.whatObserved,scanned_at:now.toISOString()}}).select('id').single();if(planError||!plan)throw planError||new Error('Could not create crop-care plan');const specs=[{days:0,title:'Check the symptoms on the affected plant',instructions:'Compare the visible signs with the scan notes. Do not apply a treatment until the problem is better verified.',task_type:'inspect'},{days:2,title:'Inspect nearby plants',instructions:'Look for similar signs on nearby plants and record what you find.',task_type:'inspect'},{days:5,title:'Review the crop condition',instructions:'Check whether the affected area is spreading, staying the same or improving. Record your observations.',task_type:'follow_up'},{days:7,title:'Follow up with a new crop photo',instructions:'Take a clear photo from a similar angle so the crop can be reviewed again.',task_type:'follow_up'}];const {error:taskError}=await supabase.from('crop_care_tasks').insert(specs.map(t=>({plan_id:plan.id,user_id:userId,title:t.title,instructions:t.instructions,task_type:t.task_type,due_at:new Date(now.getTime()+t.days*86400000+3600000).toISOString(),status:'pending'})));if(taskError)throw taskError;const katoGuidance=await generateKatoCareGuidance({cropName,districtName:activeFarm.district.name,issueName:diagnosis.simpleDiseaseName||diagnosis.diseaseName||'Possible crop issue',confidence:diagnosis.confidence,observations:diagnosis.whatObserved||'No scan observations available'});if(katoGuidance){const {error:guidanceError}=await supabase.from('crop_care_plans').update({care_plan:{summary:`Monitor ${cropName}: ${diagnosis.simpleDiseaseName||diagnosis.diseaseName||'possible crop issue'}`,source:'disease_scan',provider_match_score:diagnosis.confidence,observations:diagnosis.whatObserved,kato_guidance:katoGuidance,kato_generated_at:new Date().toISOString()}}).eq('id',plan.id).eq('user_id',userId);if(guidanceError)console.warn('Could not save Kato guidance to crop-care plan:',guidanceError);}}}/></div>}
         <div className={activeTab==='kato'?'':'hidden'}><KatoChat userId={userId} district={activeFarm.district} cropName={activeFarm.crop} weatherData={weatherDistrictId===activeFarm.district.id?weatherData:null} weatherDistrictName={weatherDistrictId===activeFarm.district.id?activeFarm.district.name:null} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)}/></div>
         {activeTab==='account'&&<div className="px-4 sm:px-6 py-5"><AccountScreen/><div className="mt-5 grid grid-cols-2 gap-2">
           <button onClick={()=>setShowSoilCalculator(true)} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Wrench className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Farm tools</span></button>
