@@ -15,7 +15,7 @@ const TABS: {id:Tab;label:string;icon:React.ElementType}[] = [
 
 export default function BottomNav({active,onChange}:BottomNavProps) {
   return (
-    <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#e4dac7] bg-[#faf7ef]/95 backdrop-blur-md px-2 pt-2 pb-[max(env(safe-area-inset-bottom),10px)]">
+    <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#e4dac7]/80 bg-[#faf7ef]/96 shadow-[0_-8px_28px_rgba(29,45,39,0.05)] backdrop-blur-xl px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),10px)]">
       <div className="mx-auto flex max-w-3xl items-center justify-around">
         {TABS.map(tab=>{
           const selected=active===tab.id; const Icon=tab.icon;
