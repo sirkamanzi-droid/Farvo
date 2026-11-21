@@ -313,10 +313,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
               <h2 className="mt-6 text-2xl font-semibold tracking-tight text-[#1d2d27]" style={{fontFamily:'Fraunces, Georgia, serif'}}>
                 Hello{farmerName?.trim() ? `, ${farmerName.trim()}` : ''}.
               </h2>
-              <p className="mt-2 max-w-sm text-sm leading-7 text-[#52645a]">
-                I’m Kato, your farm assistant. I’m here to help you care for your crops, understand your soil and make better decisions on your farm.
-              </p>
-              <p className="mt-5 text-xs text-[#879188]">Whenever you’re ready, just send me a message.</p>
+              <p className="mt-2 text-sm text-[#52645a]">How can I help on your farm today?</p>
             </div>}
             {messages.map(message => <div key={message.id} className={`flex gap-3 max-w-3xl ${message.role==='user'?'ml-auto flex-row-reverse':'mr-auto'}`}>
               <div className={`h-8 w-8 rounded-xl shrink-0 flex items-center justify-center ${message.role==='user'?'bg-[#d7a442] text-[#1d2d27]':'bg-[#174432] text-white'}`}>{message.role==='user'?<MessageCircle className="h-4 w-4"/>:<Sprout className="h-4 w-4"/>}</div>
