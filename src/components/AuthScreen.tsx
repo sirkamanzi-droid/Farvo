@@ -97,17 +97,17 @@ export default function AuthScreen() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-soil-900">Omulimi</h1>
-            <p className="text-sm text-soil-500">Practical advice for every farm.</p>
+            <p className="text-sm text-soil-500">Farm guidance, made simple.</p>
           </div>
         </div>
 
         <h2 className="text-xl font-bold text-soil-900">
-          {mode === 'register' ? 'Create your farmer account' : 'Welcome back'}
+          {mode === 'register' ? 'Join Omulimi' : 'Welcome back'}
         </h2>
         <p className="text-sm text-soil-500 mt-2 mb-6">
           {mode === 'register'
-            ? 'Register using the access code provided by your cooperative.'
-            : 'Sign in to continue to your farm dashboard.'}
+            ? 'Use your cooperative code to register.'
+            : 'Sign in to open your farm.'}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -115,7 +115,7 @@ export default function AuthScreen() {
             <>
               <div>
                 <label htmlFor="fullName" className="block text-sm font-medium text-soil-800 mb-1">
-                  Full name
+                  Your name
                 </label>
                 <input
                   id="fullName"
@@ -130,7 +130,7 @@ export default function AuthScreen() {
 
               <div>
                 <label htmlFor="cooperativeCode" className="block text-sm font-medium text-soil-800 mb-1">
-                  Cooperative access code
+                  Cooperative code
                 </label>
                 <input
                   id="cooperativeCode"
@@ -147,7 +147,7 @@ export default function AuthScreen() {
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-soil-800 mb-1">
-              Email address
+              Email
             </label>
             <input
               id="email"
@@ -215,7 +215,7 @@ export default function AuthScreen() {
         </form>
 
         <p className="text-center text-sm text-soil-600 mt-6">
-          {mode === 'register' ? 'Already registered?' : 'New to Omulimi?'}{' '}
+          {mode === 'register' ? 'Have an account?' : 'New to Omulimi?'}{' '}
           <button
             type="button"
             onClick={() => {
@@ -225,7 +225,7 @@ export default function AuthScreen() {
             }}
             className="font-bold text-leaf-700 hover:underline"
           >
-            {mode === 'register' ? 'Sign in' : 'Create an account'}
+            {mode === 'register' ? 'Sign in' : 'Register'}
           </button>
         </p>
       </div>
