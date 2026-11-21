@@ -384,6 +384,7 @@ export default function DiseaseDetection({
     e.target.value = '';
     if (!file) return;
     setPhotoError(null);
+    setCarePlanStatus('idle');
     try {
       const dataUrl = await prepareDiseasePhoto(file);
       setPhotoDataUrl(dataUrl);
@@ -496,7 +497,7 @@ export default function DiseaseDetection({
   }
 
   if (view === 'result' && diagnosis) {
-    const resetAll = () => { setView('home'); setSelectedCrop(null); setPhotoDataUrl(null); setDiagnosis(null); };
+    const resetAll = () => { setView('home'); setSelectedCrop(null); setPhotoDataUrl(null); setDiagnosis(null); setCarePlanStatus('idle'); };
 
     if (diagnosis.outcome === 'uncertain') {
       return (
