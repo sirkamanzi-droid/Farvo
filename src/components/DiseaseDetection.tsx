@@ -39,37 +39,76 @@ interface Diagnosis {
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
 async function prepareDiseasePhoto(file: File): Promise<string> {
-  if (!file.type.startsWith('image/')) throw new Error('Choose an image file from your camera or gallery.');
+  // Do not whitelist formats here. Let the device's image decoders open the
+  // selected image, then normalize it to JPEG before it reaches our APIs.
+  if (file.size === 0) throw new Error('This image is empty. Please choose another photo.');
   if (file.size > 15 * 1024 * 1024) throw new Error('This photo is larger than 15 MB. Choose a smaller image.');
-  const objectUrl = URL.createObjectURL(file);
+
+  let bitmap: ImageBitmap | null = null;
+  let objectUrl: string | null = null;
+  let source: CanvasImageSource;
+  let width = 0;
+  let height = 0;
+
   try {
-    const image = new Image();
-    image.src = objectUrl;
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error('This photo format cannot be opened on this device. Try saving it as JPEG or PNG.'));
-    });
-    if (!image.naturalWidth || !image.naturalHeight) throw new Error('This photo could not be read. Please choose another image.');
-    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    // createImageBitmap supports more browser-native image formats than a
+    // MIME-type allowlist and avoids relying on the filename extension.
+    if (typeof createImageBitmap === 'function') {
+      try {
+        bitmap = await createImageBitmap(file);
+        source = bitmap;
+        width = bitmap.width;
+        height = bitmap.height;
+      } catch {
+        // Fall back to the browser's standard image element decoder.
+      }
+    }
+
+    if (!bitmap) {
+      objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.src = objectUrl;
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error(
+          'This device could not read the selected image. Try opening it in your gallery and sharing or saving a compatible copy.'
+        ));
+      });
+      source = image;
+      width = image.naturalWidth;
+      height = image.naturalHeight;
+    }
+
+    if (!width || !height) throw new Error('This image could not be read. Please choose another photo.');
+
+    const scale = Math.min(1, 1600 / Math.max(width, height));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
     const context = canvas.getContext('2d');
-    if (!context) throw new Error('Your browser could not prepare this photo. Please try another browser.');
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    if (!context) throw new Error('Your browser could not prepare this image. Please try again.');
+
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+
     for (const quality of [0.86, 0.76, 0.66, 0.56]) {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
       if (blob && blob.size > 0 && blob.size <= MAX_UPLOAD_BYTES) {
         return await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('The prepared photo could not be read.'));
-          reader.onerror = () => reject(new Error('The prepared photo could not be read.'));
+          reader.onload = () => typeof reader.result === 'string'
+            ? resolve(reader.result)
+            : reject(new Error('The prepared image could not be read.'));
+          reader.onerror = () => reject(new Error('The prepared image could not be read.'));
           reader.readAsDataURL(blob);
         });
       }
     }
+
     throw new Error('This photo is still too large after compression. Choose a smaller or lower-resolution photo.');
-  } finally { URL.revokeObjectURL(objectUrl); }
+  } finally {
+    bitmap?.close();
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
 }
 type PlainDiseaseInfo = { simpleName: string; explanation: string };
 
