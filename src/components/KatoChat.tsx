@@ -273,7 +273,6 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
   };
 
   const filteredConversations = useMemo(() => conversations.filter(item => item.title.toLowerCase().includes(search.toLowerCase())), [conversations, search]);
-  const activeConversation = conversations.find(item => item.id === activeId);
 
   return (
     <div className="min-h-[calc(100vh-138px)] bg-[#f2ecdf] flex flex-col">
