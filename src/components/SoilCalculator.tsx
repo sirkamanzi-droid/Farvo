@@ -223,7 +223,7 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button onClick={onBack} aria-label="Back" className="rounded-xl border border-[#e6dcc8] bg-[#fffdf8] p-2 text-soil-700"><ArrowLeft className="h-4 w-4"/></button>
-          <div><p className="text-[10px] font-bold uppercase tracking-wide text-leaf-700">Omulimi farm tools</p><h1 className="text-2xl font-bold text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>Soil calculator</h1></div>
+          <div><h1 className="text-2xl font-bold text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>Soil check</h1></div>
         </div>
         <button onClick={() => setShowHistory(value => !value)} className="rounded-xl border border-[#e6dcc8] bg-[#fffdf8] px-3 py-2 text-[11px] font-bold text-soil-800">Saved ({savedAssessments.length})</button>
       </div>
@@ -236,35 +236,35 @@ export default function SoilCalculator({ userId, initialCrop, onBack }: {
       </section>}
 
       <section className="rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4">
-        <div className="flex items-start gap-3"><div className="rounded-xl bg-leaf-100 p-2.5 text-leaf-700"><Sprout className="h-5 w-5"/></div><div><h2 className="text-sm font-bold text-soil-900">Understand your soil before planting</h2><p className="mt-1 text-xs leading-relaxed text-soil-600">Use a soil-test reading or describe what you observe in your field. The result is guidance, not a laboratory diagnosis.</p></div></div>
+        <div className="flex items-start gap-3"><div className="rounded-xl bg-leaf-100 p-2.5 text-leaf-700"><Sprout className="h-5 w-5"/></div><div><h2 className="text-sm font-bold text-soil-900">Soil check</h2><p className="mt-1 text-xs leading-relaxed text-soil-600">Use a soil-test reading or describe what you observe in your field. The result is guidance, not a laboratory diagnosis.</p></div></div>
       </section>
 
       {!report ? <>
         <section className="space-y-2">
-          <label className="block text-xs font-bold text-soil-800">1. What crop are you planning to grow?</label>
+          <label className="block text-xs font-bold text-soil-800">Crop</label>
           <select value={crop} onChange={e=>setCrop(e.target.value)} className="w-full rounded-xl border border-[#ded3bf] bg-[#fffdf8] p-3 text-sm text-soil-900 focus:outline-none focus:ring-2 focus:ring-leaf-600">{CROPS.map(item=><option key={item}>{item}</option>)}</select>
         </section>
 
         <section className="space-y-3">
-          <div><label className="block text-xs font-bold text-soil-800">2. Choose your assessment method</label><p className="mt-1 text-[11px] text-soil-500">You can create an assessment with or without a pH test.</p></div>
+          <div><label className="block text-xs font-bold text-soil-800">How will you assess your soil?</label><p className="mt-1 text-[11px] text-soil-500">Choose a soil test or describe your field.</p></div>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={()=>{setMode('tested');setError('');}} className={`rounded-xl border p-3 text-left ${mode==='tested'?'border-leaf-700 bg-leaf-50':'border-[#e6dcc8] bg-[#fffdf8]'}`}><TestTube2 className="h-5 w-5 text-leaf-700"/><span className="mt-2 block text-xs font-bold text-soil-900">I have a soil test</span><span className="mt-1 block text-[10px] text-soil-600">Enter measured pH and observations</span></button>
-            <button onClick={()=>{setMode('guided');setError('');}} className={`rounded-xl border p-3 text-left ${mode==='guided'?'border-leaf-700 bg-leaf-50':'border-[#e6dcc8] bg-[#fffdf8]'}`}><CircleHelp className="h-5 w-5 text-leaf-700"/><span className="mt-2 block text-xs font-bold text-soil-900">Guide me</span><span className="mt-1 block text-[10px] text-soil-600">Use field observations only</span></button>
+            <button onClick={()=>{setMode('tested');setError('');}} className={`rounded-xl border p-3 text-left ${mode==='tested'?'border-leaf-700 bg-leaf-100':'border-[#e6dcc8] bg-white'}`}><TestTube2 className="h-5 w-5 text-leaf-700"/><span className="mt-2 block text-xs font-bold text-soil-900">I have a pH reading</span><span className="mt-1 block text-[10px] text-soil-600">Enter your pH and observations</span></button>
+            <button onClick={()=>{setMode('guided');setError('');}} className={`rounded-xl border p-3 text-left ${mode==='guided'?'border-leaf-700 bg-leaf-100':'border-[#e6dcc8] bg-white'}`}><CircleHelp className="h-5 w-5 text-leaf-700"/><span className="mt-2 block text-xs font-bold text-soil-900">No pH test</span><span className="mt-1 block text-[10px] text-soil-600">Use what you observe</span></button>
           </div>
         </section>
 
-        {mode==='tested' && <section className="rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4 space-y-2">
+        {mode==='tested' && <section className="rounded-2xl bg-[#faf7ef] p-4 space-y-2">
           <label className="block text-xs font-bold text-soil-800" htmlFor="soil-ph">Soil pH reading</label>
-          <p className="text-[11px] text-soil-500">Enter the number shown by your soil test or pH meter. Do not guess.</p>
+          <p className="text-[11px] text-soil-500">Enter the pH from your test.</p>
           <div className="flex items-center gap-2"><input id="soil-ph" type="number" min="0" max="14" step="0.1" inputMode="decimal" value={phInput} onChange={e=>setPhInput(e.target.value)} placeholder="e.g. 5.8" className="min-w-0 flex-1 rounded-xl border border-[#ded3bf] bg-[#faf7ef] p-3 text-lg font-bold text-soil-900 outline-none focus:ring-2 focus:ring-leaf-600"/><span className="text-xs text-soil-500">pH / 14</span></div>
-          <p className="text-[10px] text-soil-500">pH describes acidity or alkalinity. It does not measure all soil nutrients.</p>
+          <p className="text-[10px] text-soil-500">pH does not measure all nutrients.</p>
         </section>}
 
-        <section className="rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4 space-y-4">
-          <div><label className="block text-xs font-bold text-soil-800">3. What does your soil feel like?</label><p className="mt-1 text-[10px] text-soil-500">Choose the closest description. Select “Not sure” if you cannot tell.</p>
-            <div className="mt-2 grid grid-cols-2 gap-2">{([{value:'sandy',label:'Sandy'},{value:'loamy',label:'Loamy'},{value:'clay',label:'Clay'},{value:'unknown',label:'Not sure'}] as const).map(item=><button key={item.value} onClick={()=>setTexture(item.value)} className={`rounded-lg border px-3 py-2.5 text-left text-xs font-semibold ${texture===item.value?'border-leaf-700 bg-leaf-50 text-leaf-800':'border-[#e6dcc8] text-soil-700'}`}>{item.label}</button>)}</div>
+        <section className="rounded-2xl bg-[#faf7ef] p-4 space-y-4">
+          <div><label className="block text-xs font-bold text-soil-800">Soil texture</label><p className="mt-1 text-[10px] text-soil-500">Choose the closest match.</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">{([{value:'sandy',label:'Sandy'},{value:'loamy',label:'Loamy'},{value:'clay',label:'Clay'},{value:'unknown',label:'Not sure'}] as const).map(item=><button key={item.value} onClick={()=>setTexture(item.value)} className={`rounded-lg border px-3 py-3 text-left text-sm font-medium ${texture===item.value?'border-leaf-700 bg-leaf-100 text-leaf-800':'border-[#e6dcc8] bg-white text-soil-700'}`}>{item.label}</button>)}</div>
           </div>
-          <div><label className="block text-xs font-bold text-soil-800">4. What happens after heavy rain?</label><div className="mt-2 space-y-2">{([{value:'fast',label:'Water drains away quickly'},{value:'moderate',label:'Water drains at a moderate rate'},{value:'slow',label:'Water remains for a long time'},{value:'unknown',label:'I have not observed'}] as const).map(item=><button key={item.value} onClick={()=>setDrainage(item.value)} className={`w-full rounded-lg border px-3 py-2.5 text-left text-xs ${drainage===item.value?'border-leaf-700 bg-leaf-50 text-leaf-800':'border-[#e6dcc8] text-soil-700'}`}>{item.label}</button>)}</div></div>
+          <div><label className="block text-xs font-bold text-soil-800">Drainage</label><div className="mt-2 space-y-2">{([{value:'fast',label:'Water drains away quickly'},{value:'moderate',label:'Water drains at a moderate rate'},{value:'slow',label:'Water remains for a long time'},{value:'unknown',label:'I have not observed'}] as const).map(item=><button key={item.value} onClick={()=>setDrainage(item.value)} className={`w-full rounded-lg border px-3 py-3 text-left text-sm ${drainage===item.value?'border-leaf-700 bg-leaf-100 text-leaf-800':'border-[#e6dcc8] bg-white text-soil-700'}`}>{item.label}</button>)}</div></div>
         </section>
 
         {error&&<p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
