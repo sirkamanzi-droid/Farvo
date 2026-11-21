@@ -255,7 +255,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
       const findings = [
         texture !== 'unknown' ? `Farmer-observed texture: ${textureLabels[texture]}.` : 'Texture not assessed.',
         drainage !== 'unknown' ? `Farmer-observed drainage: ${drainageLabels[drainage]}.` : 'Drainage not assessed.',
-        `Soil photo visual observations: ${photoObservations}`
+        `Soil photo visual observations: ${photoObservations}`,
         usingExactLocation ? 'Location source: farmer-approved device GPS.' : 'Location source: selected farm district coordinates.',
       ];
       const { data, error: saveError } = await supabase.from('soil_assessments').insert({
