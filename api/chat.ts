@@ -67,7 +67,7 @@ async function streamGroqModel(
         temperature: 0.2,
         reasoning_effort: 'low',
         include_reasoning: false,
-        max_completion_tokens: 450,
+        max_completion_tokens: 700,
       }),
       signal: controller.signal,
     });
