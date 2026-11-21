@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { findMismatchedDiseaseHost, isGenericDiseaseLabel, matchesSelectedCropPlant } from '../utils/diseaseValidation';
 import { supabase } from '../lib/supabase';
-import { Camera, Image as ImageIcon, Lightbulb, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
+import { Camera, Image as ImageIcon, Lightbulb, Sprout, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
 
 interface Crop {
   id: string;
