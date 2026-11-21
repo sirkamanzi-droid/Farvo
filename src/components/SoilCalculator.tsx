@@ -51,7 +51,7 @@ function drainageText(drainage: Drainage) {
 
 function cropGuidance(crop: string, ph: number | null, texture: Texture, drainage: Drainage) {
   if (crop === 'Maize') {
-    const notes = ['Uganda's maize guidance recommends well-drained loam soil and pH 5.0–7.0.'];
+    const notes = ["Uganda's maize guidance recommends well-drained loam soil and pH 5.0–7.0."];
     if (ph !== null && (ph < 5 || ph > 7)) notes.push('Your pH is outside this range. Ask an extension worker before changing the soil.');
     else if (ph !== null) notes.push('Your pH is within this range. A pH reading alone does not prove soil fertility.');
     if (texture === 'sandy') notes.push('Very sandy soil may not suit maize.');
