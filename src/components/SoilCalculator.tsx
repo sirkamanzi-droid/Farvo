@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Compass, Droplets, FlaskConical, MapPin, Save, Sprout, Thermometer, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Compass, Droplets, FlaskConical, MapPin, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera, ImagePlus } from 'lucide-react';
 
 type Mode = 'tested' | 'guided';
 type Texture = 'sandy' | 'loamy' | 'clay' | 'unknown';
@@ -39,13 +39,14 @@ function pHLabel(ph: number) {
 
 async function streamKatoReport(input: {
   token: string; crop: string; location: string; weather: WeatherSnapshot;
-  ph: number | null; texture: Texture; drainage: Drainage; locationPrecision: string; soilProfile: IsdaSoilProfile | null;
+  ph: number | null; texture: Texture; drainage: Drainage; locationPrecision: string; soilProfile: IsdaSoilProfile | null; photoObservations: string;
 }) {
   const prompt = [
     'Create a concise, practical Soil Intelligence report for a smallholder farmer in Uganda.',
     'Separate confirmed farmer-provided information from weather-model estimates.',
     'Never infer or invent pH, nitrogen, phosphorus, potassium, organic matter, soil type or nutrient levels from coordinates or weather.',
     'If a measured pH is supplied, label it as farmer-entered test reading, not independently verified.',
+    'The photo analysis describes visible clues only. Never claim it can measure pH, NPK or organic carbon.',
     'Texture and drainage are farmer observations, not laboratory measurements.',
     'Open-Meteo soil temperature and soil moisture are regional model estimates, not direct measurements at the plot. Explain this limitation.',
     'Give cautious crop and soil-management guidance for the selected crop. Do not prescribe fertiliser, lime or chemical rates without soil-test evidence.',
@@ -53,6 +54,7 @@ async function streamKatoReport(input: {
     'Use simple English and short bullets. Never promise yield or profit.',
     `Selected crop: ${input.crop}. Farm location entered by farmer: ${input.location}. Coordinate precision: ${input.locationPrecision}. Do not describe district-centre weather as plot-level weather.`,
     `Measured pH entered by farmer: ${input.ph === null ? 'not supplied' : input.ph}.`,
+    `Visible soil-photo observations (visual clues only): ${input.photoObservations}.`,
     `Farmer-observed texture: ${textureLabels[input.texture]}; drainage: ${drainageLabels[input.drainage]}.`,
     `iSDAsoil mapped soil profile (machine-learning estimates, not lab measurements): ${input.soilProfile ? JSON.stringify(input.soilProfile) : 'Unavailable for this report; do not invent soil properties.'}.`,
     `Weather and soil moisture model response: ${JSON.stringify(input.weather)}.`,
@@ -108,6 +110,11 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
   const [longitude, setLongitude] = useState(initialLongitude);
   const [usingExactLocation, setUsingExactLocation] = useState(false);
   const [phInput, setPhInput] = useState('');
+  const [soilPhoto, setSoilPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [photoObservations, setPhotoObservations] = useState('');
+  const [analysingPhoto, setAnalysingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [texture, setTexture] = useState<Texture>('unknown');
   const [drainage, setDrainage] = useState<Drainage>('unknown');
   const [weather, setWeather] = useState<WeatherSnapshot | null>(null);
@@ -167,12 +174,34 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
     );
   };
 
+  const analyseSoilPhoto = async () => {
+    if (!soilPhoto) { setError('Take or upload a clear soil photo first.'); return; }
+    setError(''); setAnalysingPhoto(true);
+    try {
+      const image = new Image(); const source = URL.createObjectURL(soilPhoto);
+      try {
+        await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not read this photo.')); image.src = source; });
+        const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement('canvas'); canvas.width = Math.round(image.naturalWidth * scale); canvas.height = Math.round(image.naturalHeight * scale);
+        const context = canvas.getContext('2d'); if (!context) throw new Error('Photo processing is not supported on this device.');
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.78);
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token; if (sessionError || !token) throw new Error('Please sign in again to analyse this soil photo.');
+        const response = await fetch('/api/soil-image', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ image: imageData }) });
+        const payload = await response.json().catch(() => ({})); if (!response.ok) throw new Error(payload.error || 'Could not analyse this soil photo.');
+        setPhotoObservations(String(payload.observations || 'No clear visual clues could be identified.').slice(0, 1800));
+      } finally { URL.revokeObjectURL(source); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not analyse this soil photo.'); }
+    finally { setAnalysingPhoto(false); }
+  };
   const createReport = async () => {
     setError('');
     setSaved(false);
     setAiReport('');
     setWeather(null);
     setSelectedSaved(null);
+    if (!soilPhoto || !photoObservations) { setError('Take a soil photo and analyse it before continuing.'); return; }
     if (!locationLabel.trim()) { setError('Enter the farm village, parish or area.'); return; }
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) { setError('Farm coordinates are not valid.'); return; }
     if (phInput.trim() && measuredPH === null) { setError('Enter a valid pH reading between 0 and 14.'); return; }
@@ -207,6 +236,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
         token, crop, location: locationLabel.trim(), weather: weatherData,
         ph: measuredPH, texture, drainage, soilProfile,
         locationPrecision: usingExactLocation ? 'farmer-approved device GPS coordinates' : 'selected district-centre coordinates; village name is a text label only',
+        photoObservations,
       });
       setAiReport(report);
       setReportLocation(locationLabel.trim());
@@ -225,6 +255,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
       const findings = [
         texture !== 'unknown' ? `Farmer-observed texture: ${textureLabels[texture]}.` : 'Texture not assessed.',
         drainage !== 'unknown' ? `Farmer-observed drainage: ${drainageLabels[drainage]}.` : 'Drainage not assessed.',
+        `Soil photo visual observations: ${photoObservations}`,
         usingExactLocation ? 'Location source: farmer-approved device GPS.' : 'Location source: selected farm district coordinates.',
       ];
       const { data, error: saveError } = await supabase.from('soil_assessments').insert({
@@ -276,13 +307,17 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
       </section>}
 
       {!aiReport ? <>
-        <section className="mb-4 rounded-2xl bg-[#174432] p-4 text-white">
-          <div className="flex items-center gap-2"><Sprout className="h-5 w-5 text-[#e8d6a8]"/><h2 className="text-sm font-semibold">Understand the soil on your farm</h2></div>
-          <p className="mt-2 text-xs leading-relaxed text-white/75">We'll combine your field observations with local soil moisture, soil temperature and the weather forecast. pH and nutrients need a soil test.</p>
+        <section className="mb-4 rounded-2xl bg-[#174432] p-4 text-white"><div className="flex items-center gap-2"><Sprout className="h-5 w-5 text-[#e8d6a8]"/><h2 className="text-sm font-semibold">Start with a soil photo</h2></div><p className="mt-2 text-xs leading-relaxed text-white/75">Take a clear photo of the soil on your farm. Omulimi will inspect visible features, then combine them with mapped soil data and local weather.</p></section>
+        <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={event => { const next=event.target.files?.[0]; if(!next)return; if(!next.type.startsWith('image/')){setError('Choose an image file.');return;} setSoilPhoto(next); setPhotoPreview(URL.createObjectURL(next)); setPhotoObservations(''); setError(''); }}/>
+        <section className="mb-4 rounded-2xl border border-dashed border-[#cfc2aa] bg-[#fffdf8] p-4">{photoPreview ? <img src={photoPreview} alt="Soil sample" className="mb-3 max-h-64 w-full rounded-xl object-cover"/> : <div className="flex min-h-36 flex-col items-center justify-center text-soil-500"><Camera className="mb-2 h-8 w-8"/><p className="text-xs">No soil photo added yet</p></div>}
+          <div className="grid grid-cols-2 gap-2"><button onClick={() => photoInputRef.current?.click()} className="rounded-xl border border-[#d9cfbc] bg-[#faf7ef] px-3 py-3 text-xs font-bold text-soil-800"><Camera className="mr-1 inline h-4 w-4"/>Take photo</button><button onClick={() => photoInputRef.current?.click()} className="rounded-xl border border-[#d9cfbc] bg-[#faf7ef] px-3 py-3 text-xs font-bold text-soil-800"><ImagePlus className="mr-1 inline h-4 w-4"/>Upload photo</button></div>
+          {soilPhoto && <button onClick={() => void analyseSoilPhoto()} disabled={analysingPhoto} className="mt-3 w-full rounded-xl bg-leaf-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{analysingPhoto ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Scanning soil photo…</> : photoObservations ? 'Scan photo again' : 'Scan soil photo'}</button>}
+          {photoObservations && <div className="mt-3 rounded-xl border border-[#d8e5d9] bg-[#f4f8f1] p-3"><p className="mb-1 text-xs font-bold text-leaf-800">What the photo shows</p><p className="text-xs leading-relaxed text-soil-700">{photoObservations}</p><p className="mt-2 text-[10px] text-soil-500">A photo cannot measure pH or nutrients.</p></div>}
         </section>
 
+        {photoObservations && <>
         <div className="mb-4 space-y-2">
-          <label className="block text-xs font-bold text-soil-800">Farm location</label>
+          <label className="block text-xs font-bold text-soil-800">Where is this soil from?</label>
           <input value={locationLabel} onChange={event => setLocationLabel(event.target.value)} placeholder="Village, parish or area" className="w-full rounded-xl border border-[#ded3bf] bg-[#fffdf8] p-3 text-sm text-soil-900 outline-none focus:ring-2 focus:ring-leaf-600"/>
           <div className="flex items-center justify-between gap-3"><p className="text-[10px] text-soil-500">{usingExactLocation ? 'Using your device location' : 'Using your selected farm district as an estimate'}</p><button onClick={useMyLocation} className="inline-flex items-center gap-1 rounded-lg border border-[#d9cfbc] bg-white px-3 py-2 text-[10px] font-semibold text-leaf-800"><Compass className="h-3.5 w-3.5"/> Use my location</button></div>
         </div>
@@ -306,6 +341,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
           <div className="mt-4"><label className="mb-2 block text-[11px] font-semibold text-soil-700">How does water drain?</label><div className="space-y-2">{(['fast','moderate','slow','unknown'] as Drainage[]).map(value => <button key={value} onClick={() => setDrainage(value)} className={`w-full rounded-lg border px-3 py-3 text-left text-xs ${drainage === value ? 'border-leaf-700 bg-leaf-100 text-leaf-800' : 'border-[#e6dcc8] bg-white text-soil-700'}`}>{drainageLabels[value]}</button>)}</div></div>
         </section>
 
+        </>}
         {error && <p role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
         <button onClick={() => void createReport()} disabled={loading} className="w-full rounded-xl bg-leaf-700 px-4 py-3.5 text-sm font-bold text-white disabled:opacity-60">{loading ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Preparing your report…</> : <>Create soil report <ChevronRight className="ml-1 inline h-4 w-4"/></>}</button>
       </> : <>
@@ -315,7 +351,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
           <div className="mt-3 grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-[#f7f1e5] p-3"><div className="flex items-center gap-2 text-soil-600"><Thermometer className="h-4 w-4"/><span className="text-[10px]">Soil temperature</span></div><p className="mt-1 text-lg font-bold text-soil-900">{reportWeather?.current?.soilTemperature == null ? '—' : `${reportWeather.current.soilTemperature.toFixed(1)}°C`}</p><p className="text-[9px] text-soil-500">Model estimate · 6 cm</p></div>
             <div className="rounded-xl bg-[#f7f1e5] p-3"><div className="flex items-center gap-2 text-soil-600"><Droplets className="h-4 w-4"/><span className="text-[10px]">Soil moisture</span></div><p className="mt-1 text-lg font-bold text-soil-900">{reportWeather?.current?.soilMoisture == null ? '—' : `${(reportWeather.current.soilMoisture * 100).toFixed(1)}%`}</p><p className="text-[9px] text-soil-500">Model estimate · 3–9 cm</p></div>
-            <div className="rounded-xl bg-[#f7f1e5] p-3"><div className="flex items-center gap-2 text-soil-600"><FlaskConical className="h-4 w-4"/><span className="text-[10px]">Soil pH</span></div><p className="mt-1 text-lg font-bold text-soil-900">{reportPH === null ? 'Needs a soil test' : `pH ${reportPH.toFixed(1)}`}</p><p className="text-[9px] text-soil-500">{reportPH === null ? 'Not estimated from weather' : 'Farmer-entered test reading'}</p></div>
+            <div className="rounded-xl bg-[#f7f1e5] p-3"><div className="flex items-center gap-2 text-soil-600"><FlaskConical className="h-4 w-4"/><span className="text-[10px]">Soil pH</span></div><p className="mt-1 text-lg font-bold text-soil-900">{reportPH !== null ? `pH ${reportPH.toFixed(1)}` : reportWeather?.isdaSoil?.properties?.ph ? `pH ${reportWeather.isdaSoil.properties.ph.value.toFixed(1)}` : 'No mapped pH'}</p><p className="text-[9px] text-soil-500">{reportPH !== null ? 'Farmer-entered test reading' : reportWeather?.isdaSoil?.properties?.ph ? 'iSDAsoil mapped estimate · not a lab test' : 'No pH value available'}</p></div>
             <div className="rounded-xl bg-[#f7f1e5] p-3"><div className="flex items-center gap-2 text-soil-600"><CloudRain className="h-4 w-4"/><span className="text-[10px]">Rain today</span></div><p className="mt-1 text-lg font-bold text-soil-900">{reportWeather?.current?.rainfall == null ? '—' : `${reportWeather.current.rainfall.toFixed(1)} mm`}</p><p className="text-[9px] text-soil-500">Weather model</p></div>
           </div>
           {reportWeather?.isdaSoil ? <div className="mt-3 rounded-xl border border-[#d8e5d9] bg-[#f4f8f1] p-3">
@@ -335,7 +371,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
         {error && <p role="alert" className="mb-3 text-xs text-rose-700">{error}</p>}
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => void saveReport()} disabled={saving || saved || Boolean(selectedSaved)} className="rounded-xl bg-leaf-700 px-3 py-3 text-xs font-bold text-white disabled:opacity-60">{saved ? <><CheckCircle2 className="mr-1 inline h-4 w-4"/>Saved</> : saving ? 'Saving…' : <><Save className="mr-1 inline h-4 w-4"/>Save report</>}</button>
-          <button onClick={() => { setAiReport(''); setWeather(null); setSelectedSaved(null); setSaved(false); setError(''); }} className="rounded-xl border border-[#d9cfbc] bg-[#fffdf8] px-3 py-3 text-xs font-bold text-soil-800"><RefreshCw className="mr-1 inline h-4 w-4"/>New report</button>
+          <button onClick={() => { setAiReport(''); setWeather(null); setSelectedSaved(null); setSaved(false); setError(''); setPhotoObservations(''); setSoilPhoto(null); setPhotoPreview(''); }} className="rounded-xl border border-[#d9cfbc] bg-[#fffdf8] px-3 py-3 text-xs font-bold text-soil-800"><RefreshCw className="mr-1 inline h-4 w-4"/>New report</button>
         </div>
       </>}
     </div>
