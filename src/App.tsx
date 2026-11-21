@@ -23,15 +23,11 @@ const DEFAULT_DISTRICT = DISTRICTS[1];
 
 function BrandHeader() {
   return (
-    <header className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3 border-b border-[#e4dac7] bg-[#f8f4eb]">
-      <div className="flex items-center gap-2.5">
-        <div className="h-10 w-10 rounded-xl bg-[#e3ecde] flex items-center justify-center"><Sprout className="h-6 w-6 text-leaf-700" /></div>
-        <div>
-          <div className="text-[25px] leading-7 font-bold text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>Omulimi</div>
-          <div className="text-[10px] text-soil-700">Better decisions. Healthier harvests.</div>
-        </div>
+    <header className="bg-[#faf7ef] px-4 py-4 sm:px-6">
+      <div className="mx-auto flex max-w-3xl items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7eddf]"><Sprout className="h-6 w-6 text-leaf-700"/></div>
+        <span className="text-2xl font-bold text-soil-900" style={{fontFamily:'Fraunces, Georgia, serif'}}>Omulimi</span>
       </div>
-      <div className="hidden sm:block text-[11px] font-medium text-soil-700">Farmer-focused <span className="mx-2 text-leaf-600">•</span> Practical advice <span className="mx-2 text-leaf-600">•</span> Stronger communities</div>
     </header>
   );
 }
