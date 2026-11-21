@@ -374,7 +374,8 @@ export default function DiseaseDetection({
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [checkedSteps, setCheckedSteps] = useState<number>(0);
-  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);\n  const [carePlanStatus, setCarePlanStatus] = useState<'idle'|'creating'|'created'|'error'>('idle');
+  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
+  const [carePlanStatus, setCarePlanStatus] = useState<'idle'|'creating'|'created'|'error'>('idle');
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -562,6 +563,7 @@ export default function DiseaseDetection({
           <p className="mt-3 border-t border-[#edf0e9] pt-3 text-xs leading-relaxed text-[#829084]">This is an image-based suggestion, not a confirmed diagnosis. Check whether the visible symptoms match before taking action.</p>
         </div>
 
+        <div className="rounded-2xl bg-[#e7eddf] p-4 text-sm text-[#174432]" role="status">{carePlanStatus==='creating'?'Omulimi is creating your crop-care plan…':carePlanStatus==='created'?'Your crop-care plan and follow-up checks have been saved.':carePlanStatus==='error'?'The scan is ready, but the care plan could not be saved. Please try again later.':'Omulimi will prepare a care plan from this scan.'}</div>
         <button
           onClick={() => {
             if (!selectedCrop || !diagnosis || diagnosis.outcome !== 'disease') return;
