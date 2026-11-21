@@ -223,6 +223,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
   };
 
   const openSaved = (item: SavedAssessment) => {
+    setCrop(item.crop);
     setSelectedSaved(item);
     setAiReport(item.aiReport || 'This older report contains field observations only. Create a new Soil Intelligence report to include weather and Kato guidance.');
     setWeather(item.weatherSnapshot);
