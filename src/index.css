@@ -47,3 +47,11 @@ button { touch-action: manipulation; }
   opacity: .4;
   border-radius: 3px;
 }
+
+
+/* Shared Omulimi app polish */
+html { scroll-behavior: smooth; }
+body { min-width: 320px; }
+#app-root { min-height: 100dvh; }
+button { -webkit-user-select: none; user-select: none; }
+::selection { background: #dce7d4; color: #174432; }
