@@ -37,7 +37,11 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
     setBusyId(null);
   };
 
-  const guidance = plan?.care_plan?.kato_guidance;
+  const savedConversation = Array.isArray(plan?.care_plan?.kato_conversation) ? plan.care_plan.kato_conversation as Array<{role?: string; content?: string}> : [];
+  const conversationGuidance = [...savedConversation].reverse().find(message => message.role === 'assistant' && typeof message.content === 'string' && message.content.trim())?.content;
+  const guidance = typeof plan?.care_plan?.kato_guidance === 'string' && plan.care_plan.kato_guidance.trim()
+    ? plan.care_plan.kato_guidance
+    : conversationGuidance;
   const pending = tasks.filter(task => task.status === 'pending');
   const dateText = (value: string) => new Date(value).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
