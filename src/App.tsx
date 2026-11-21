@@ -43,56 +43,64 @@ function HomeDashboard({farm, weather, loading, onOpenWeather, onOpenDisease, on
 }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  
+
   return (
-    <div className="px-4 sm:px-6 py-5 flex flex-col gap-4">
-      <section className="flex items-start justify-between">
-        <div>
-          <p className="text-xs text-leaf-700 font-semibold">YOUR FARM DASHBOARD</p>
-          <h1 className="text-2xl font-bold text-soil-900 mt-1">{greeting}, farmer.</h1>
-          <p className="text-xs text-soil-600 mt-1">What needs your attention today?</p>
-        </div>
-        <div className="h-10 w-10 rounded-full bg-leaf-100 flex items-center justify-center"><Sprout className="h-5 w-5 text-leaf-700"/></div>
+    <div className="px-4 sm:px-6 py-6 flex flex-col gap-6">
+      <section>
+        <p className="text-sm font-medium text-leaf-700">{greeting}</p>
+        <h1 className="mt-1 text-3xl font-bold text-soil-900">Your farm, at a glance.</h1>
       </section>
 
-      <button onClick={onOpenDistrict} className="flex items-center justify-between rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left">
-        <div className="flex items-center gap-2.5"><MapPin className="h-4 w-4 text-leaf-700"/><div><p className="text-[10px] text-soil-500">YOUR FARM LOCATION</p><p className="text-sm font-bold text-soil-900">{farm.district.name}</p><p className="text-[10px] text-soil-600">{farm.crop} farm</p></div></div>
+      <button onClick={onOpenDistrict} className="flex items-center justify-between rounded-2xl bg-[#faf7ef] px-4 py-4 text-left">
+        <div className="flex items-center gap-3">
+          <MapPin className="h-5 w-5 text-leaf-700"/>
+          <div><p className="text-xs text-soil-500">Your farm</p><p className="text-sm font-semibold text-soil-900">{farm.district.name} · {farm.crop}</p></div>
+        </div>
         <ChevronRight className="h-4 w-4 text-soil-400"/>
       </button>
 
-      <button onClick={onOpenWeather} className="w-full text-left rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4 shadow-sm">
+      <button onClick={onOpenWeather} className="w-full rounded-2xl bg-[#174432] p-5 text-left text-white">
         <div className="flex items-center justify-between">
-          <div><p className="text-xs font-bold text-soil-800">Today's weather</p><p className="text-[10px] text-soil-500 mt-0.5">{farm.district.name} District</p></div>
-          <span className="text-[10px] font-semibold text-leaf-700">Full forecast <ChevronRight className="inline h-3 w-3"/></span>
+          <span className="text-sm font-semibold text-white/80">Weather today</span>
+          <ChevronRight className="h-5 w-5 text-white/70"/>
         </div>
-        <div className="flex items-center gap-4 mt-3">
-          {weather ? <WeatherGlyph code={weather.current.weatherCode} size="md"/> : <CloudSun className="h-10 w-10 text-leaf-600"/>}
-          <div><div className="text-3xl font-bold text-soil-900">{loading ? '—' : weather ? Math.round(weather.current.temperature) + '°C' : '—'}</div><div className="text-[11px] text-soil-600">{weather ? (weather.current.rainfall > 0 ? 'Rain recorded today' : 'Current conditions') : loading ? 'Loading local forecast…' : 'Weather unavailable'}</div></div>
-          <div className="ml-auto border-l border-[#e8dfcc] pl-4"><Droplets className="h-4 w-4 text-blue-600"/><p className="text-xs font-bold text-soil-900 mt-1">{weather ? weather.current.rainfall.toFixed(1) + ' mm' : '—'}</p><p className="text-[9px] text-soil-500">Rainfall</p></div>
+        <div className="mt-4 flex items-center gap-4">
+          {weather ? <WeatherGlyph code={weather.current.weatherCode} size="md"/> : <CloudSun className="h-10 w-10 text-[#e8d6a8]"/>}
+          <div>
+            <p className="text-3xl font-semibold">{loading ? '—' : weather ? Math.round(weather.current.temperature) + '°C' : '—'}</p>
+            <p className="mt-1 text-xs text-white/75">{loading ? 'Loading forecast…' : weather ? farm.district.name + ' District' : 'Forecast unavailable'}</p>
+          </div>
+          <div className="ml-auto text-right">
+            <p className="text-lg font-semibold">{weather ? weather.current.rainfall.toFixed(1) + ' mm' : '—'}</p>
+            <p className="text-xs text-white/70">Rainfall</p>
+          </div>
         </div>
       </button>
 
-      <section className="rounded-2xl border border-[#efd9bd] bg-[#fff3e3] p-4">
-        <div className="flex items-center gap-2 text-clay-600"><span className="text-base">✦</span><p className="text-xs font-bold">Your farming tools</p></div>
-        <p className="text-xs text-soil-700 mt-1">Get weather insights, check crop photos and ask Kato for practical guidance.</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button onClick={onOpenWeather} className="flex items-center gap-2 rounded-xl bg-[#fffdf8] border border-[#eadfc9] p-3 text-left"><CloudSun className="h-5 w-5 text-gold-500"/><span className="text-xs font-bold text-soil-900">Weather</span></button>
-          <button onClick={onOpenDisease} className="flex items-center gap-2 rounded-xl bg-[#fffdf8] border border-[#eadfc9] p-3 text-left"><Leaf className="h-5 w-5 text-leaf-700"/><span className="text-xs font-bold text-soil-900">Check a crop</span></button>
-        </div>
-      </section>
-
       <section>
-        <div className="flex items-center justify-between mb-2"><h2 className="text-sm font-bold text-soil-900">More from Omulimi</h2><span className="text-[10px] text-soil-500">Explore tools</span></div>
-        <div className="grid grid-cols-3 gap-2">
-          <button onClick={() => onOpenComingSoon('Farm calendar','Plan planting dates, farm activities and important reminders.')} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 flex flex-col items-center gap-2"><CalendarDays className="h-5 w-5 text-leaf-700"/><span className="text-[10px] font-semibold text-soil-800">Calendar</span></button>
-          <button onClick={onOpenSoil} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 flex flex-col items-center gap-2"><Wrench className="h-5 w-5 text-leaf-700"/><span className="text-[10px] font-semibold text-soil-800">Soil calculator</span></button>
-          <button onClick={() => onOpenComingSoon('Livestock advisor','Livestock care guidance is being prepared for a future Omulimi update.')} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 flex flex-col items-center gap-2"><Sprout className="h-5 w-5 text-leaf-700"/><span className="text-[10px] font-semibold text-soil-800">Livestock</span></button>
+        <div className="mb-3"><h2 className="text-lg font-bold text-soil-900">What would you like to do?</h2></div>
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={onOpenDisease} className="flex min-h-28 flex-col justify-between rounded-2xl bg-[#faf7ef] p-4 text-left">
+            <Leaf className="h-6 w-6 text-leaf-700"/>
+            <span><span className="block text-sm font-semibold text-soil-900">Check a crop</span><span className="mt-1 block text-xs text-soil-500">Identify possible diseases</span></span>
+          </button>
+          <button onClick={onOpenSoil} className="flex min-h-28 flex-col justify-between rounded-2xl bg-[#faf7ef] p-4 text-left">
+            <Wrench className="h-6 w-6 text-leaf-700"/>
+            <span><span className="block text-sm font-semibold text-soil-900">Check your soil</span><span className="mt-1 block text-xs text-soil-500">Get soil guidance</span></span>
+          </button>
+          <button onClick={()=>onOpenComingSoon('Farm calendar','Farm planning tools are coming soon.')} className="flex min-h-24 flex-col justify-between rounded-2xl bg-[#faf7ef] p-4 text-left">
+            <CalendarDays className="h-5 w-5 text-leaf-700"/>
+            <span className="text-sm font-semibold text-soil-900">Farm calendar</span>
+          </button>
+          <button onClick={()=>onOpenComingSoon('Livestock advisor','Livestock guidance is coming soon.')} className="flex min-h-24 flex-col justify-between rounded-2xl bg-[#faf7ef] p-4 text-left">
+            <Sprout className="h-5 w-5 text-leaf-700"/>
+            <span className="text-sm font-semibold text-soil-900">Livestock</span>
+          </button>
         </div>
       </section>
     </div>
   );
 }
-
 function AuthenticatedApp({ userId }: { userId: string }) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmSyncError, setFarmSyncError] = useState<string | null>(null);
