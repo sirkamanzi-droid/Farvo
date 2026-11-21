@@ -70,7 +70,7 @@ export default function DiagnosisKatoPanel(props: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: `Diagnosis context for this conversation: Crop: ${props.cropName}. District selected in Omulimi: ${props.districtName}. Possible diagnosis: ${props.issueName} (unconfirmed). Image-service match score: ${props.confidence}% (not diagnostic accuracy). Scan observations: ${props.observations}. Keep this diagnosis context in mind when answering the farmer's following message.` }, ...next],
+          messages: [{ role: 'user', content: `Diagnosis context for this conversation: Crop: ${props.cropName}. District selected in Omulimi: ${props.districtName}. Possible diagnosis: ${props.issueName} (unconfirmed). Image-service match score: ${props.confidence}% (not diagnostic accuracy). Scan observations: ${props.observations}. Keep this diagnosis context in mind when answering the farmer's following message.` }, ...next.slice(-11)],
           cropName: props.cropName,
           districtName: props.districtName,
           weatherContext: props.weatherData,
