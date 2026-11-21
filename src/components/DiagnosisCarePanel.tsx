@@ -95,7 +95,7 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
           .upsert({ user_id: userId, reminders_enabled: false, browser_permission: Notification.permission, updated_at: new Date().toISOString() });
         if (prefError) throw prefError;
         setRemindersEnabled(false);
-        setReminderMessage('Background reminders are turned off on this device.');
+        setReminderMessage('');
         return;
       }
 
@@ -141,7 +141,7 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
       if (prefError) throw prefError;
 
       setRemindersEnabled(true);
-      setReminderMessage('You’re set. Omulimi can now send crop reminders even when the app is closed.');
+      setReminderMessage('');
       await registration.showNotification('Omulimi reminders enabled', {
         body: 'You will receive a notification when a crop-care activity is due.',
         icon: '/pwa-icon-192.png',
@@ -180,8 +180,7 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-[#1d2d27]">Crop reminders</h3>
-          <p className="mt-0.5 text-xs text-[#718074]">{remindersEnabled ? 'Background reminders are enabled on this device.' : 'Get notified when a crop-care activity is due, even when Omulimi is closed.'}</p>
-        </div>
+          </div>
         <button type="button" onClick={() => void toggleReminders()} disabled={reminderBusy} className="rounded-xl bg-[#174432] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">
           {reminderBusy ? 'Please wait…' : remindersEnabled ? 'Turn off' : 'Enable'}
         </button>
