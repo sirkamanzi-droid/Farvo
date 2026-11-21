@@ -364,14 +364,12 @@ async function computeDiagnosis(
 
 
 export default function DiseaseDetection({
-  onGetTreatmentAdvice,
   onCreateCarePlan,
   userId,
   districtName,
   weatherData,
   weatherDistrictName,
 }: {
-  onGetTreatmentAdvice: (question: string) => void;
   onCreateCarePlan: (input: { cropName: string; diagnosis: Diagnosis }) => Promise<string>;
   userId: string;
   districtName: string;
@@ -582,16 +580,6 @@ export default function DiseaseDetection({
         {scannedAt && <p className="px-1 text-xs text-[#829084]">Scanned {new Date(scannedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · {districtName} District</p>}
         {carePlanId && selectedCrop && <DiagnosisKatoPanel planId={carePlanId} userId={userId} cropName={selectedCrop.name} districtName={districtName} issueName={diagnosis.simpleDiseaseName || diagnosis.diseaseName || 'Possible crop issue'} observations={diagnosis.whatObserved || 'No scan observations recorded'} confidence={diagnosis.confidence} weatherData={weatherData} weatherDistrictName={weatherDistrictName}/>}
 
-        <button
-          onClick={() => {
-            if (!selectedCrop || !diagnosis || diagnosis.outcome !== 'disease') return;
-            const question = `I scanned a ${selectedCrop.name} plant in Omulimi. The image service suggested ${diagnosis.simpleDiseaseName || diagnosis.diseaseName || 'a possible disease'} with a ${diagnosis.confidence}% provider match score (not diagnostic accuracy). Scan notes: ${diagnosis.whatObserved ?? 'No additional observations recorded'}. Omulimi has already created a crop-care plan and follow-up tasks from this scan. Act as its agricultural intelligence layer: review the scan and help the farmer verify symptoms, ask only essential questions, explain safe immediate actions, and provide locally appropriate treatment guidance only when crop use, active ingredient, label directions and local approval can be verified. Explain what information should update the saved plan. Do not invent product names or claim the scan confirms the disease. Do not claim the scan confirms the disease, invent local product names, or recommend a pesticide unless the active ingredient, crop use, label directions and local approval can be verified. Explain when to contact an agricultural extension officer.`;
-            onGetTreatmentAdvice(question);
-          }}
-          className="bg-leaf-700 hover:bg-leaf-800 text-white font-bold text-sm py-3 rounded-xl transition"
-        >
-          Ask Kato to review my crop-care plan →
-        </button>
         <button onClick={resetAll} className="text-xs font-semibold text-soil-400 py-1">Scan another</button>
       </div>
     );
