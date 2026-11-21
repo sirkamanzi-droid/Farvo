@@ -29,7 +29,7 @@ function pHLabel(ph: number) {
 
 async function streamKatoReport(input: {
   token: string; crop: string; location: string; weather: WeatherSnapshot;
-  ph: number | null; texture: Texture; drainage: Drainage;
+  ph: number | null; texture: Texture; drainage: Drainage; locationPrecision: string;
 }) {
   const prompt = [
     'Create a concise, practical Soil Intelligence report for a smallholder farmer in Uganda.',
@@ -41,7 +41,7 @@ async function streamKatoReport(input: {
     'Give cautious crop and soil-management guidance for the selected crop. Do not prescribe fertiliser, lime or chemical rates without soil-test evidence.',
     'Include: FARM SNAPSHOT, WHAT THE DATA SAYS, WHAT WE CANNOT CONFIRM, PRACTICAL NEXT STEPS, WEATHER WATCH.',
     'Use simple English and short bullets. Never promise yield or profit.',
-    `Selected crop: ${input.crop}. Farm location entered by farmer: ${input.location}.`,
+    `Selected crop: ${input.crop}. Farm location entered by farmer: ${input.location}. Coordinate precision: ${input.locationPrecision}. Do not describe district-centre weather as plot-level weather.`,
     `Measured pH entered by farmer: ${input.ph === null ? 'not supplied' : input.ph}.`,
     `Farmer-observed texture: ${textureLabels[input.texture]}; drainage: ${drainageLabels[input.drainage]}.`,
     `Weather and soil model response: ${JSON.stringify(input.weather)}.`,
@@ -182,6 +182,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
       const report = await streamKatoReport({
         token, crop, location: locationLabel.trim(), weather: weatherData,
         ph: measuredPH, texture, drainage,
+        locationPrecision: usingExactLocation ? 'farmer-approved device GPS coordinates' : 'selected district-centre coordinates; village name is a text label only',
       });
       setAiReport(report);
       setReportLocation(locationLabel.trim());
