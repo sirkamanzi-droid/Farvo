@@ -493,64 +493,37 @@ export default function DiseaseDetection({
       );
     }
 
-    const severityBg = diagnosis.severity === 'High' ? 'bg-rose-600' : diagnosis.severity === 'Moderate' ? 'bg-clay-600' : 'bg-gold-500';
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex gap-3 items-start">
-          <div className="h-24 w-24 rounded-2xl overflow-hidden shrink-0">
-            {photoDataUrl && <img src={photoDataUrl} alt="Captured leaf" className="w-full h-full object-cover" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="inline-block bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1.5">● Possible match — unconfirmed</span>
-            <div className="text-xs text-soil-500">Provider label</div>
-            <div className="text-sm font-semibold text-soil-700">{diagnosis.diseaseName}</div>
-            <div className="text-lg font-bold text-soil-900 mt-1">{diagnosis.simpleDiseaseName || diagnosis.diseaseName}</div>
-            <div className="text-xs text-soil-400 mt-1">Provider match score (not accuracy)</div>
-            <div className="text-base font-bold text-soil-900">{diagnosis.confidence}%</div>
-            <div className="w-full bg-parchment-200 h-2 rounded-full overflow-hidden mt-1">
-              <div className="h-full bg-leaf-600 rounded-full" style={{ width: `${diagnosis.confidence}%` }} />
+        <div className="overflow-hidden rounded-3xl bg-[#1d4b35]">
+          {photoDataUrl && <img src={photoDataUrl} alt="Your scanned crop" className="h-52 w-full object-cover" />}
+          <div className="p-5 text-white">
+            <span className="inline-flex rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold text-[#f2dfad]">Possible match · Not confirmed</span>
+            <p className="mt-3 text-xs text-white/65">{selectedCrop?.name} · Crop health check</p>
+            <h2 className="mt-1 text-2xl font-semibold">{diagnosis.simpleDiseaseName || diagnosis.diseaseName}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/80">{diagnosis.diseaseExplanation || 'A plain-language explanation is not available for this disease label yet.'}</p>
+            <div className="mt-4 border-t border-white/15 pt-3">
+              <p className="text-[11px] text-white/65">Image-service match score — not diagnostic accuracy</p>
+              <p className="mt-0.5 text-xl font-semibold">{diagnosis.confidence}%</p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-parchment-50 border border-parchment-100 rounded-xl p-2.5 text-center">
-            <div className="text-[10px] text-soil-400 font-semibold uppercase">Crop</div>
-            <div className="text-xs font-bold text-soil-900 mt-0.5">{selectedCrop?.name}</div>
-          </div>
-          <div className="bg-parchment-50 border border-parchment-100 rounded-xl p-2.5 text-center">
-            <div className="text-[10px] text-soil-400 font-semibold uppercase">Affected part</div>
-            <div className="text-xs font-bold text-soil-900 mt-0.5">{diagnosis.affectedPart || 'Not assessed'}</div>
-          </div>
-          <div className="bg-parchment-50 border border-parchment-100 rounded-xl p-2.5 text-center">
-            <div className="text-[10px] text-soil-400 font-semibold uppercase">Severity</div>
-            <div className={`text-xs font-bold text-white mt-0.5 rounded px-1.5 py-0.5 inline-block ${severityBg}`}>{diagnosis.severity || 'Not assessed'}</div>
-          </div>
-        </div>
-
-        <div className="bg-parchment-50 border border-parchment-100 rounded-2xl p-4">
-          <div className="text-xs font-bold text-soil-900 mb-1.5">What this disease means</div>
-          <p className="text-xs text-soil-700 leading-relaxed">{diagnosis.diseaseExplanation || 'A plain-language explanation is not available for this disease label yet.'}</p>
-          <div className="border-t border-[#e4dac7] mt-3 pt-3">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-soil-500 mb-1">Scan details</div>
-            <p className="text-xs text-soil-500 leading-relaxed">{diagnosis.whatObserved}</p>
-          </div>
-        </div>
-
-        <div className="bg-leaf-100/30 border border-leaf-100 rounded-2xl p-4">
-          <div className="text-xs font-bold text-soil-900 mb-1">Next step</div>
-          <p className="text-[11px] text-soil-500 leading-relaxed">Compare the result with the symptoms visible on your crop. Kato can help you understand the possible match and what to check next.</p>
+        <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e6e9df]">
+          <p className="text-sm font-semibold text-[#24392b]">What to check on your plant</p>
+          <p className="mt-2 text-sm leading-relaxed text-[#718074]">{diagnosis.whatObserved}</p>
+          <p className="mt-3 border-t border-[#edf0e9] pt-3 text-xs leading-relaxed text-[#829084]">This is an image-based suggestion, not a confirmed diagnosis. Check whether the visible symptoms match before taking action.</p>
         </div>
 
         <button
           onClick={() => {
             if (!selectedCrop || !diagnosis || diagnosis.outcome !== 'disease') return;
-            const question = `I scanned a ${selectedCrop.name} plant in Omulimi. The possible diagnosis is ${diagnosis.diseaseName ?? 'an unknown disease'} with a ${diagnosis.confidence}% match. Observations: ${diagnosis.whatObserved ?? 'No additional observations recorded'}. Please help me assess this result, explain practical immediate steps for a Ugandan smallholder farmer, and ask follow-up questions if needed. Do not treat the scan as a confirmed diagnosis.`;
+            const question = `I scanned a ${selectedCrop.name} plant in Omulimi. The image service suggested ${diagnosis.simpleDiseaseName || diagnosis.diseaseName || 'a possible disease'} with a ${diagnosis.confidence}% provider match score (not diagnostic accuracy). Scan notes: ${diagnosis.whatObserved ?? 'No additional observations recorded'}. Help me build a practical crop-care plan for a smallholder farmer in Uganda. First explain what symptoms to verify and ask any essential questions. Then separate safe immediate actions from treatment options. Do not claim the scan confirms the disease, invent local product names, or recommend a pesticide unless the active ingredient, crop use, label directions and local approval can be verified. Explain when to contact an agricultural extension officer.`;
             onGetTreatmentAdvice(question);
           }}
           className="bg-leaf-700 hover:bg-leaf-800 text-white font-bold text-sm py-3 rounded-xl transition"
         >
-          Talk to Kato about treatment →
+          Build my crop-care plan with Kato →
         </button>
         <button onClick={resetAll} className="text-xs font-semibold text-soil-400 py-1">Scan another</button>
       </div>
