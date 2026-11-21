@@ -1,4 +1,6 @@
 import React, { useState, useRef } from 'react';
+import DiagnosisKatoPanel from './DiagnosisKatoPanel';
+import type { WeatherData } from '../types';
 import { findMismatchedDiseaseHost, isGenericDiseaseLabel, matchesSelectedCropPlant } from '../utils/diseaseValidation';
 import { supabase } from '../lib/supabase';
 import { Camera, Image as ImageIcon, Lightbulb, Sprout, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw } from 'lucide-react';
@@ -364,9 +366,17 @@ async function computeDiagnosis(
 export default function DiseaseDetection({
   onGetTreatmentAdvice,
   onCreateCarePlan,
+  userId,
+  districtName,
+  weatherData,
+  weatherDistrictName,
 }: {
   onGetTreatmentAdvice: (question: string) => void;
-  onCreateCarePlan: (input: { cropName: string; diagnosis: Diagnosis }) => Promise<void>;
+  onCreateCarePlan: (input: { cropName: string; diagnosis: Diagnosis }) => Promise<string>;
+  userId: string;
+  districtName: string;
+  weatherData: WeatherData | null;
+  weatherDistrictName: string | null;
 }) {
   const [view, setView] = useState<DiseaseView>('home');
   const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
@@ -376,6 +386,8 @@ export default function DiseaseDetection({
   const [checkedSteps, setCheckedSteps] = useState<number>(0);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [carePlanStatus, setCarePlanStatus] = useState<'idle'|'creating'|'created'|'error'>('idle');
+  const [carePlanId, setCarePlanId] = useState<string | null>(null);
+  const [scannedAt, setScannedAt] = useState<string | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -385,6 +397,8 @@ export default function DiseaseDetection({
     if (!file) return;
     setPhotoError(null);
     setCarePlanStatus('idle');
+    setCarePlanId(null);
+    setScannedAt(new Date().toISOString());
     try {
       const dataUrl = await prepareDiseasePhoto(file);
       setPhotoDataUrl(dataUrl);
@@ -412,7 +426,7 @@ export default function DiseaseDetection({
       if (result.outcome === 'disease' && selectedCrop) {
         setCarePlanStatus('creating');
         void onCreateCarePlan({ cropName: selectedCrop.name, diagnosis: result })
-          .then(() => setCarePlanStatus('created'))
+          .then((id) => { setCarePlanId(id); setCarePlanStatus('created'); })
           .catch((error) => { console.error('Automatic crop-care plan creation failed:', error); setCarePlanStatus('error'); });
       }
     }, minimumDisplayTime);
@@ -497,7 +511,7 @@ export default function DiseaseDetection({
   }
 
   if (view === 'result' && diagnosis) {
-    const resetAll = () => { setView('home'); setSelectedCrop(null); setPhotoDataUrl(null); setDiagnosis(null); setCarePlanStatus('idle'); };
+    const resetAll = () => { setView('home'); setSelectedCrop(null); setPhotoDataUrl(null); setDiagnosis(null); setCarePlanStatus('idle'); setCarePlanId(null); setScannedAt(null); };
 
     if (diagnosis.outcome === 'uncertain') {
       return (
@@ -565,6 +579,9 @@ export default function DiseaseDetection({
         </div>
 
         <div className="rounded-2xl bg-[#e7eddf] p-4 text-sm text-[#174432]" role="status">{carePlanStatus==='creating'?'Omulimi is creating your crop-care plan…':carePlanStatus==='created'?'Your crop-care plan and follow-up checks have been saved.':carePlanStatus==='error'?'The scan is ready, but the care plan could not be saved. Please try again later.':'Omulimi will prepare a care plan from this scan.'}</div>
+        {scannedAt && <p className="px-1 text-xs text-[#829084]">Scanned {new Date(scannedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} · {districtName} District</p>}
+        {carePlanId && selectedCrop && <DiagnosisKatoPanel planId={carePlanId} userId={userId} cropName={selectedCrop.name} districtName={districtName} issueName={diagnosis.simpleDiseaseName || diagnosis.diseaseName || 'Possible crop issue'} observations={diagnosis.whatObserved || 'No scan observations recorded'} confidence={diagnosis.confidence} weatherData={weatherData} weatherDistrictName={weatherDistrictName}/>}
+
         <button
           onClick={() => {
             if (!selectedCrop || !diagnosis || diagnosis.outcome !== 'disease') return;
