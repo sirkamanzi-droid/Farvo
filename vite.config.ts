@@ -14,6 +14,10 @@ export default defineConfig(() => {
         includeAssets: ['pwa-icon-192.png', 'pwa-icon-512.png'],
         workbox: {
           importScripts: ['push-sw.js'],
+          cleanupOutdatedCaches: true,
+          navigateFallback: 'index.html',
+          navigateFallbackDenylist: [/^\\/api\\//],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}'],
         },
         manifest: {
           name: 'Omulimi',
