@@ -16,7 +16,7 @@ export default defineConfig(() => {
           importScripts: ['push-sw.js'],
           cleanupOutdatedCaches: true,
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\\/api\\//],
+          navigateFallbackDenylist: [/^\/api\//],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}'],
         },
         manifest: {
