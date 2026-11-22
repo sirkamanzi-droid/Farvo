@@ -7,5 +7,5 @@ export const SUPPORTED_CROPS = [
   { id: 'potato', name: 'Irish potato', emoji: '🥔' },
 ] as const;
 
-export const SUPPORTED_CROP_NAMES = SUPPORTED_CROPS.map(crop => crop.name);
+export const SUPPORTED_CROP_NAMES: string[] = SUPPORTED_CROPS.map(crop => crop.name);
 export const DEFAULT_CROP = 'Maize';
