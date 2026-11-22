@@ -1,6 +1,7 @@
 import FormattedResponse from './FormattedResponse';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { SUPPORTED_CROP_NAMES } from '../data/supportedCrops';
 import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Droplets, FlaskConical, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera } from 'lucide-react';
 
 type Mode = 'tested' | 'guided';
@@ -26,7 +27,7 @@ type SavedAssessment = {
   latitude: number | null; longitude: number | null; aiReport: string | null; weatherSnapshot: WeatherSnapshot | null;
 };
 
-const CROPS = ['Maize', 'Beans', 'Coffee', 'Banana', 'Tomato', 'Potato', 'Cassava', 'Rice'];
+const CROPS = SUPPORTED_CROP_NAMES;
 const textureLabels: Record<Texture, string> = { sandy: 'Sandy', loamy: 'Loamy', clay: 'Clay', unknown: 'Not sure' };
 const drainageLabels: Record<Drainage, string> = { fast: 'Drains quickly', moderate: 'Drains moderately', slow: 'Holds water for long', unknown: 'Not observed' };
 
