@@ -1,3 +1,4 @@
+import FormattedResponse from './FormattedResponse';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Bell, BellOff, CalendarDays, CheckCircle2, Circle, Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -191,7 +192,7 @@ export default function DiagnosisCarePanel({ planId, userId }: { planId: string;
       <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e7eddf] text-[#285b40]"><CalendarDays className="h-4 w-4"/></span><div className="min-w-0 flex-1"><h3 className="text-sm font-semibold text-[#1d2d27]">Treatment and care plan</h3><p className="text-xs text-[#718074]">{pending.length} activities still to do</p></div><button onClick={() => void load()} aria-label="Refresh care plan" className="rounded-lg p-2 text-[#718074]"><RefreshCw className="h-4 w-4"/></button></div>
       {loading ? <div className="flex justify-center py-5"><Loader2 className="h-5 w-5 animate-spin text-[#285b40]"/></div> :
         typeof guidance === 'string' && guidance.trim() ?
-          <div className="mt-4 border-t border-[#edf0e9] pt-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#718074]">Kato's guidance</p><p className="whitespace-pre-wrap text-sm leading-relaxed text-[#43564a]">{guidance}</p></div> :
+          <div className="mt-4 border-t border-[#edf0e9] pt-3"><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#718074]">Kato's guidance</p><FormattedResponse content={guidance} className="text-sm text-[#43564a]"/></div> :
           <p className="mt-4 border-t border-[#edf0e9] pt-3 text-sm leading-relaxed text-[#718074]">Your scan is saved. Kato's full care guidance is not available yet. You can still use the inspection activities below and ask Kato about this plant.</p>}
     </div>
     <div className="rounded-2xl border border-[#dce5d8] bg-white p-4">
