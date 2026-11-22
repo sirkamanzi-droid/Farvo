@@ -1,3 +1,4 @@
+import FormattedResponse from './FormattedResponse';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft, ArrowUp, Bot, Check, ChevronDown, Clock3, Leaf, Loader2,
@@ -318,11 +319,11 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
             {messages.map(message => <div key={message.id} className={`flex gap-3 max-w-3xl ${message.role==='user'?'ml-auto flex-row-reverse':'mr-auto'}`}>
               <div className={`h-8 w-8 rounded-xl shrink-0 flex items-center justify-center ${message.role==='user'?'bg-[#d7a442] text-[#1d2d27]':'bg-[#174432] text-white'}`}>{message.role==='user'?<MessageCircle className="h-4 w-4"/>:<Sprout className="h-4 w-4"/>}</div>
               <div className={`max-w-[88%] sm:max-w-[80%] ${message.role==='user'?'text-right':''}`}>
-                <div className={`rounded-2xl px-4 py-3 text-sm leading-7 whitespace-pre-wrap ${message.role==='user'?'bg-[#174432] text-white rounded-tr-sm':'bg-white border border-[#e6dece] text-[#1d2d27] rounded-tl-sm'}`}>{message.content}</div>
+                <div className={`rounded-2xl px-4 py-3 text-sm leading-7 whitespace-pre-wrap ${message.role==='user'?'bg-[#174432] text-white rounded-tr-sm':'bg-white border border-[#e6dece] text-[#1d2d27] rounded-tl-sm'}`}>{message.role === 'assistant' ? <FormattedResponse content={message.content}/> : message.content}</div>
                 <p className="mt-1 px-1 text-[9px] text-[#879188]">{timeLabel(message.created_at)}</p>
               </div>
             </div>)}
-            {sending && <div className="flex gap-3 max-w-3xl mr-auto"><div className="h-8 w-8 rounded-xl bg-[#174432] text-white flex items-center justify-center shrink-0"><Sprout className="h-4 w-4"/></div><div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-white border border-[#e6dece] px-4 py-3 text-sm leading-7 text-[#1d2d27] whitespace-pre-wrap">{streamingText || <span className="inline-flex items-center gap-2 text-xs text-[#52645a]"><Loader2 className="h-4 w-4 animate-spin"/>Kato is thinking…</span>}{streamingText && <span className="inline-block ml-1 h-4 w-1 animate-pulse bg-[#719579] align-middle"/>}</div></div>}
+            {sending && <div className="flex gap-3 max-w-3xl mr-auto"><div className="h-8 w-8 rounded-xl bg-[#174432] text-white flex items-center justify-center shrink-0"><Sprout className="h-4 w-4"/></div><div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-white border border-[#e6dece] px-4 py-3 text-sm leading-7 text-[#1d2d27] whitespace-pre-wrap">{streamingText ? <FormattedResponse content={streamingText}/> : <span className="inline-flex items-center gap-2 text-xs text-[#52645a]"><Loader2 className="h-4 w-4 animate-spin"/>Kato is thinking…</span>}{streamingText && <span className="inline-block ml-1 h-4 w-1 animate-pulse bg-[#719579] align-middle"/>}</div></div>}
             <div ref={bottomRef}/>
           </div>
 
