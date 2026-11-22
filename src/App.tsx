@@ -4,6 +4,7 @@ import AuthScreen from './components/AuthScreen';
 import AccountScreen from './components/AccountScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import { DISTRICTS } from './data/districts';
+import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
 import { detectNearestDistrict, LocationStatus } from './data/geolocation';
 import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm } from './data/farms';
@@ -153,12 +154,16 @@ function AuthenticatedApp({ userId }: { userId: string }) {
           } catch (status) {
             if (!cancelled) setLocationStatus(status as LocationStatus);
           }
-          const firstFarm = await insertFarm(userId, createFarm(district, district.mainCrops[0] || 'Maize', 0));
+          const firstFarm = await insertFarm(userId, createFarm(district, DEFAULT_CROP, 0));
           saved = [firstFarm];
         }
         if (cancelled) return;
-        setFarms(saved);
-        setActiveFarmId(saved[0].id);
+        const normalized = saved.map(farm => SUPPORTED_CROP_NAMES.includes(farm.crop) ? farm : { ...farm, crop: DEFAULT_CROP });
+        setFarms(normalized);
+        for (const farm of normalized) {
+          if (!saved.find(item => item.id === farm.id && item.crop === farm.crop)) void updateFarm(userId, farm).catch(error => console.warn('Could not update an older unsupported crop selection:', error));
+        }
+        setActiveFarmId(normalized[0].id);
         setFarmSyncError(null);
       } catch (error) {
         console.error('Farm cloud sync error:', error);
@@ -274,7 +279,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       {!showSoilCalculator&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
       {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} initialCrop={activeFarm.crop} initialLatitude={activeFarm.district.latitude} initialLongitude={activeFarm.district.longitude} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
-      <DistrictPicker isOpen={districtPickerOpen} onClose={()=>setDistrictPickerOpen(false)} selectedDistrict={activeFarm.district} onSelect={d=>handleUpdateActiveFarm(d,d.mainCrops[0]||activeFarm.crop)} onUseMyLocation={detectLocationForActiveFarm} locationStatus={locationStatus}/>
+      <DistrictPicker isOpen={districtPickerOpen} onClose={()=>setDistrictPickerOpen(false)} selectedDistrict={activeFarm.district} onSelect={d=>handleUpdateActiveFarm(d,SUPPORTED_CROP_NAMES.includes(activeFarm.crop)?activeFarm.crop:DEFAULT_CROP)} onUseMyLocation={detectLocationForActiveFarm} locationStatus={locationStatus}/>
     </div>
   );
 }
