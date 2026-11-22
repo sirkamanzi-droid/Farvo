@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Compass, Droplets, FlaskConical, MapPin, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Droplets, FlaskConical, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera } from 'lucide-react';
 
 type Mode = 'tested' | 'guided';
 type Texture = 'sandy' | 'loamy' | 'clay' | 'unknown';
@@ -202,7 +202,8 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
     setWeather(null);
     setSelectedSaved(null);
     if (!soilPhoto || !photoObservations) { setError('Take a soil photo and analyse it before continuing.'); return; }
-    if (!locationLabel.trim()) { setError('Enter the farm village, parish or area.'); return; }
+    if (!locationLabel.trim()) { setError('Set your farm location in your farmer profile before creating a soil report.'); return; }
+    if (drainage === 'unknown') { setError('Please choose a drainage answer, including “I don’t know” if unsure.'); return; }
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) { setError('Farm coordinates are not valid.'); return; }
     if (phInput.trim() && measuredPH === null) { setError('Enter a valid pH reading between 0 and 14.'); return; }
     setLoading(true);
@@ -316,31 +317,12 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
         </section>
 
         {photoObservations && <>
-        <div className="mb-4 space-y-2">
-          <label className="block text-xs font-bold text-soil-800">Where is this soil from?</label>
-          <input value={locationLabel} onChange={event => setLocationLabel(event.target.value)} placeholder="Village, parish or area" className="w-full rounded-xl border border-[#ded3bf] bg-[#fffdf8] p-3 text-sm text-soil-900 outline-none focus:ring-2 focus:ring-leaf-600"/>
-          <div className="flex items-center justify-between gap-3"><p className="text-[10px] text-soil-500">{usingExactLocation ? 'Using your device location' : 'Using your selected farm district as an estimate'}</p><button onClick={useMyLocation} className="inline-flex items-center gap-1 rounded-lg border border-[#d9cfbc] bg-white px-3 py-2 text-[10px] font-semibold text-leaf-800"><Compass className="h-3.5 w-3.5"/> Use my location</button></div>
-        </div>
-
-        <section className="mb-4 space-y-2">
-          <label className="block text-xs font-bold text-soil-800">Crop you're planning for</label>
-          <select value={crop} onChange={event => setCrop(event.target.value)} className="w-full rounded-xl border border-[#ded3bf] bg-[#fffdf8] p-3 text-sm text-soil-900">{CROPS.map(item => <option key={item}>{item}</option>)}</select>
-        </section>
-
-        <section className="mb-4 rounded-2xl bg-[#faf7ef] p-4">
-          <label className="mb-2 block text-xs font-bold text-soil-800">Soil pH (optional)</label>
-          <input type="number" min="0" max="14" step="0.1" inputMode="decimal" value={phInput} onChange={event => setPhInput(event.target.value)} placeholder="Enter a reading from a soil test" className="w-full rounded-xl border border-[#ded3bf] bg-[#fffdf8] p-3 text-sm text-soil-900"/>
-          <p className="mt-1 text-[10px] text-soil-500">Leave blank if you haven't tested it. A phone photo or weather data cannot measure pH.</p>
-          {measuredPH !== null && <p className="mt-2 text-xs font-semibold text-leaf-800">Entered reading: pH {measuredPH.toFixed(1)} · {pHLabel(measuredPH)}</p>}
-        </section>
-
-        <section className="mb-4 rounded-2xl bg-[#faf7ef] p-4">
-          <h3 className="text-xs font-bold text-soil-800">What have you observed?</h3>
-          <p className="mt-1 text-[10px] text-soil-500">These are field observations, not lab results.</p>
-          <div className="mt-3"><label className="mb-2 block text-[11px] font-semibold text-soil-700">Soil texture</label><div className="grid grid-cols-2 gap-2">{(['sandy','loamy','clay','unknown'] as Texture[]).map(value => <button key={value} onClick={() => setTexture(value)} className={`rounded-lg border px-3 py-3 text-left text-xs font-medium ${texture === value ? 'border-leaf-700 bg-leaf-100 text-leaf-800' : 'border-[#e6dcc8] bg-white text-soil-700'}`}>{textureLabels[value]}</button>)}</div></div>
-          <div className="mt-4"><label className="mb-2 block text-[11px] font-semibold text-soil-700">How does water drain?</label><div className="space-y-2">{(['fast','moderate','slow','unknown'] as Drainage[]).map(value => <button key={value} onClick={() => setDrainage(value)} className={`w-full rounded-lg border px-3 py-3 text-left text-xs ${drainage === value ? 'border-leaf-700 bg-leaf-100 text-leaf-800' : 'border-[#e6dcc8] bg-white text-soil-700'}`}>{drainageLabels[value]}</button>)}</div></div>
-        </section>
-
+          <section className="mb-4 rounded-2xl bg-[#faf7ef] p-4">
+            <h3 className="mb-1 text-sm font-bold text-soil-900">One quick question</h3>
+            <label className="mb-3 block text-xs text-soil-700">When it rains, how quickly does water drain from this soil?</label>
+            <div className="space-y-2">{(['fast','moderate','slow','unknown'] as Drainage[]).map(value => <button key={value} onClick={() => setDrainage(value)} className={`w-full rounded-xl border px-3 py-3 text-left text-xs font-medium ${drainage === value ? 'border-leaf-700 bg-leaf-100 text-leaf-800' : 'border-[#e6dcc8] bg-white text-soil-700'}`}>{value === 'fast' ? 'Quickly' : value === 'moderate' ? 'At a moderate rate' : value === 'slow' ? 'Slowly — water stays for a while' : "I don't know"}</button>)}</div>
+          </section>
+          <p className="mb-3 text-[10px] text-soil-500">We'll use your farm location and selected crop from your Omulimi account, then combine the photo, iSDAsoil estimates and local weather.</p>
         </>}
         {error && <p role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
         <button onClick={() => void createReport()} disabled={loading} className="w-full rounded-xl bg-leaf-700 px-4 py-3.5 text-sm font-bold text-white disabled:opacity-60">{loading ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Preparing your report…</> : <>Create soil report <ChevronRight className="ml-1 inline h-4 w-4"/></>}</button>
