@@ -41,23 +41,30 @@ async function streamKatoReport(input: {
   token: string; crop: string; location: string; weather: WeatherSnapshot;
   ph: number | null; texture: Texture; drainage: Drainage; locationPrecision: string; soilProfile: IsdaSoilProfile | null; photoObservations: string;
 }) {
+  const current = input.weather.current || {};
+  const forecast = (input.weather.daily || []).slice(0, 3).map(day => ({
+    date: day.date, rainMm: day.precipitation, maxC: day.maxTemp, minC: day.minTemp,
+  }));
+  const soilData = input.soilProfile ? {
+    source: input.soilProfile.provider,
+    depth: input.soilProfile.depth,
+    mapResolution: input.soilProfile.resolution,
+    note: 'Mapped model estimates for this location, not a laboratory test.',
+    properties: input.soilProfile.properties,
+  } : null;
   const prompt = [
-    'Create a concise, practical Soil Intelligence report for a smallholder farmer in Uganda.',
-    'Separate confirmed farmer-provided information from weather-model estimates.',
-    'Never infer or invent pH, nitrogen, phosphorus, potassium, organic matter, soil type or nutrient levels from coordinates or weather.',
-    'If a measured pH is supplied, label it as farmer-entered test reading, not independently verified.',
-    'The photo analysis describes visible clues only. Never claim it can measure pH, NPK or organic carbon.',
-    'Texture and drainage are farmer observations, not laboratory measurements.',
-    'Open-Meteo soil temperature and soil moisture are regional model estimates, not direct measurements at the plot. Explain this limitation.',
-    'Give cautious crop and soil-management guidance for the selected crop. Do not prescribe fertiliser, lime or chemical rates without soil-test evidence.',
-    'Include: FARM SNAPSHOT, WHAT THE DATA SAYS, WHAT WE CANNOT CONFIRM, PRACTICAL NEXT STEPS, WEATHER WATCH.',
-    'Use simple English and short bullets. Never promise yield or profit.',
-    `Selected crop: ${input.crop}. Farm location entered by farmer: ${input.location}. Coordinate precision: ${input.locationPrecision}. Do not describe district-centre weather as plot-level weather.`,
-    `Measured pH entered by farmer: ${input.ph === null ? 'not supplied' : input.ph}.`,
-    `Visible soil-photo observations (visual clues only): ${input.photoObservations}.`,
-    `Farmer-observed texture: ${textureLabels[input.texture]}; drainage: ${drainageLabels[input.drainage]}.`,
-    `iSDAsoil mapped soil profile (machine-learning estimates, not lab measurements): ${input.soilProfile ? JSON.stringify(input.soilProfile) : 'Unavailable for this report; do not invent soil properties.'}.`,
-    `Weather and soil moisture model response: ${JSON.stringify(input.weather)}.`,
+    'Prepare a practical Soil Intelligence report for a smallholder farmer in Uganda. Use simple English and short sections.',
+    'IMPORTANT: Use the iSDAsoil mapped profile below for numeric soil pH and nutrient estimates whenever those properties are present. Do not say pH is unavailable just because it cannot be read from the photo. Explain that the pH estimate comes from the mapped soil data for this farm location, while the photo adds visible colour and surface clues. Never calculate pH from colour alone.',
+    'Clearly label iSDAsoil values as location-based model estimates (about 30 m map resolution), not lab measurements. Include uncertainty bounds when supplied. If iSDAsoil has no pH property, say the mapped pH value was unavailable; do not invent one.',
+    'Use the photo to describe visible soil colour, surface texture clues, stones and organic matter clues. Use drainage as the farmer observation. Use weather only as regional model context.',
+    'Explain what the pH estimate means for the selected crop and give cautious practical soil-improvement advice. Do not invent fertiliser or lime rates. Do not claim the image itself measured pH or nutrients.',
+    'Sections: FARM SNAPSHOT; SOIL PROFILE; WHAT THIS MEANS FOR YOUR CROP; PRACTICAL NEXT STEPS; WEATHER WATCH.',
+    `Crop: ${input.crop}. Farm area: ${input.location} (${input.locationPrecision}).`,
+    `Photo observations: ${input.photoObservations.slice(0, 700)}.`,
+    `Farmer drainage answer: ${drainageLabels[input.drainage]}. Texture observation: ${textureLabels[input.texture]}.`,
+    `Farmer-entered lab pH, if any: ${input.ph === null ? 'none' : input.ph}.`,
+    `iSDAsoil location profile: ${soilData ? JSON.stringify(soilData) : 'No mapped profile returned. Do not invent values.'}.`,
+    `Weather: ${JSON.stringify({ current: { soilTemperature: current.soilTemperature, soilMoisture: current.soilMoisture, rainfall: current.rainfall, temperature: current.temperature, time: current.time }, nextDays: forecast })}.`,
   ].join('\n');
   const response = await fetch('/api/chat', {
     method: 'POST',
