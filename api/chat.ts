@@ -239,7 +239,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const receivedMessages: IncomingMessage[] = [];
     for (const item of rawMessages) {
       if (!item || (item.role !== 'user' && item.role !== 'assistant') ||
-        typeof item.content !== 'string' || !item.content.trim() || item.content.length > 4000) {
+        typeof item.content !== 'string' || !item.content.trim() || item.content.length > 9000) {
         return res.status(400).json({ error: 'One of the chat messages is invalid or too long.' });
       }
       receivedMessages.push({ role: item.role, content: item.content.trim() });
