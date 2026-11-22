@@ -117,6 +117,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [texture, setTexture] = useState<Texture>('unknown');
   const [drainage, setDrainage] = useState<Drainage>('unknown');
+  const [hasAnsweredDrainage, setHasAnsweredDrainage] = useState(false);
   const [weather, setWeather] = useState<WeatherSnapshot | null>(null);
   const [aiReport, setAiReport] = useState('');
   const [reportLocation, setReportLocation] = useState('');
@@ -203,7 +204,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
     setSelectedSaved(null);
     if (!soilPhoto || !photoObservations) { setError('Take a soil photo and analyse it before continuing.'); return; }
     if (!locationLabel.trim()) { setError('Set your farm location in your farmer profile before creating a soil report.'); return; }
-    if (drainage === 'unknown') { setError('Please choose a drainage answer, including “I don’t know” if unsure.'); return; }
+    if (!hasAnsweredDrainage) { setError('Please answer the drainage question.'); return; }
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) { setError('Farm coordinates are not valid.'); return; }
     if (phInput.trim() && measuredPH === null) { setError('Enter a valid pH reading between 0 and 14.'); return; }
     setLoading(true);
@@ -320,7 +321,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
           <section className="mb-4 rounded-2xl bg-[#faf7ef] p-4">
             <h3 className="mb-1 text-sm font-bold text-soil-900">One quick question</h3>
             <label className="mb-3 block text-xs text-soil-700">When it rains, how quickly does water drain from this soil?</label>
-            <div className="space-y-2">{(['fast','moderate','slow','unknown'] as Drainage[]).map(value => <button key={value} onClick={() => setDrainage(value)} className={`w-full rounded-xl border px-3 py-3 text-left text-xs font-medium ${drainage === value ? 'border-leaf-700 bg-leaf-100 text-leaf-800' : 'border-[#e6dcc8] bg-white text-soil-700'}`}>{value === 'fast' ? 'Quickly' : value === 'moderate' ? 'At a moderate rate' : value === 'slow' ? 'Slowly — water stays for a while' : "I don't know"}</button>)}</div>
+            <div className="space-y-2">{(['fast','moderate','slow','unknown'] as Drainage[]).map(value => <button key={value} onClick={() => { setDrainage(value); setHasAnsweredDrainage(true); }} className={`w-full rounded-xl border px-3 py-3 text-left text-xs font-medium ${drainage === value ? 'border-leaf-700 bg-leaf-100 text-leaf-800' : 'border-[#e6dcc8] bg-white text-soil-700'}`}>{value === 'fast' ? 'Quickly' : value === 'moderate' ? 'At a moderate rate' : value === 'slow' ? 'Slowly — water stays for a while' : "I don't know"}</button>)}</div>
           </section>
           <p className="mb-3 text-[10px] text-soil-500">We'll use your farm location and selected crop from your Omulimi account, then combine the photo, iSDAsoil estimates and local weather.</p>
         </>}
@@ -353,7 +354,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
         {error && <p role="alert" className="mb-3 text-xs text-rose-700">{error}</p>}
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => void saveReport()} disabled={saving || saved || Boolean(selectedSaved)} className="rounded-xl bg-leaf-700 px-3 py-3 text-xs font-bold text-white disabled:opacity-60">{saved ? <><CheckCircle2 className="mr-1 inline h-4 w-4"/>Saved</> : saving ? 'Saving…' : <><Save className="mr-1 inline h-4 w-4"/>Save report</>}</button>
-          <button onClick={() => { setAiReport(''); setWeather(null); setSelectedSaved(null); setSaved(false); setError(''); setPhotoObservations(''); setSoilPhoto(null); setPhotoPreview(''); }} className="rounded-xl border border-[#d9cfbc] bg-[#fffdf8] px-3 py-3 text-xs font-bold text-soil-800"><RefreshCw className="mr-1 inline h-4 w-4"/>New report</button>
+          <button onClick={() => { setAiReport(''); setWeather(null); setSelectedSaved(null); setSaved(false); setError(''); setPhotoObservations(''); setSoilPhoto(null); setPhotoPreview(''); setDrainage('unknown'); setHasAnsweredDrainage(false); }} className="rounded-xl border border-[#d9cfbc] bg-[#fffdf8] px-3 py-3 text-xs font-bold text-soil-800"><RefreshCw className="mr-1 inline h-4 w-4"/>New report</button>
         </div>
       </>}
     </div>
