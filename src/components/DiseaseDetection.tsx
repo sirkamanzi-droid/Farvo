@@ -4,6 +4,7 @@ import DiagnosisCarePanel from './DiagnosisCarePanel';
 import type { WeatherData } from '../types';
 import { findMismatchedDiseaseHost, isGenericDiseaseLabel, matchesSelectedCropPlant } from '../utils/diseaseValidation';
 import { supabase } from '../lib/supabase';
+import { SUPPORTED_CROPS } from '../data/supportedCrops';
 import { Camera, Image as ImageIcon, Lightbulb, Sprout, ChevronLeft, Search, Check, Scan, Loader2, RotateCcw, MoreVertical } from 'lucide-react';
 
 interface Crop {
@@ -13,16 +14,7 @@ interface Crop {
   diseaseSupported: boolean;
 }
 
-const CROPS: Crop[] = [
-  { id: 'maize', name: 'Maize', emoji: '🌽', diseaseSupported: true },
-  { id: 'beans', name: 'Beans', emoji: '🫘', diseaseSupported: true },
-  { id: 'coffee', name: 'Coffee (Arabica)', emoji: '☕', diseaseSupported: true },
-  { id: 'banana', name: 'Banana', emoji: '🍌', diseaseSupported: true },
-  { id: 'tomato', name: 'Tomato', emoji: '🍅', diseaseSupported: true },
-  { id: 'potato', name: 'Potato', emoji: '🥔', diseaseSupported: true },
-  { id: 'cassava', name: 'Cassava', emoji: '🥔', diseaseSupported: false },
-  { id: 'rice', name: 'Rice', emoji: '🌾', diseaseSupported: false },
-];
+const CROPS: Crop[] = SUPPORTED_CROPS.map(crop => ({ ...crop, diseaseSupported: true }));
 
 
 
