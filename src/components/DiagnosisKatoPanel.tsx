@@ -1,3 +1,4 @@
+import FormattedResponse from './FormattedResponse';
 import React, { useEffect, useState } from 'react';
 import { MessageCircle, Send, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -124,7 +125,7 @@ export default function DiagnosisKatoPanel(props: Props) {
       {loading ? <div className="py-5 text-center text-xs text-[#718074]">Loading your conversation…</div> :
         <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
           {messages.length === 0 && <p className="rounded-xl bg-[#f4f6f0] p-3 text-xs leading-relaxed text-[#617064]">Ask anything about this scan. Kato knows the crop, possible diagnosis and selected farm district.</p>}
-          {messages.map((message, index) => <div key={index} className={`max-w-[90%] rounded-2xl px-3 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user' ? 'ml-auto bg-[#174432] text-white' : 'bg-[#f2f5ee] text-[#263b2d]'}`}>{message.content}</div>)}
+          {messages.map((message, index) => <div key={index} className={`max-w-[90%] rounded-2xl px-3 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user' ? 'ml-auto bg-[#174432] text-white' : 'bg-[#f2f5ee] text-[#263b2d]'}`}>{message.role === 'assistant' ? <FormattedResponse content={message.content}/> : message.content}</div>)}
           {sending && <div className="flex items-center gap-2 text-xs text-[#718074]"><Loader2 className="h-3.5 w-3.5 animate-spin"/>Kato is thinking…</div>}
         </div>}
       {error && <p role="alert" className="mb-2 text-xs text-[#a34e32]">{error}</p>}
