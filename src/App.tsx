@@ -170,8 +170,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         if (cancelled) return;
         const legacy = loadLegacyFarms(userId);
         const fallback = legacy.length > 0
-          ? legacy
-          : [createFarm(DEFAULT_DISTRICT, DEFAULT_DISTRICT.mainCrops[0] || 'Maize', 0)];
+          ? legacy.map(farm => SUPPORTED_CROP_NAMES.includes(farm.crop) ? farm : { ...farm, crop: DEFAULT_CROP })
+          : [createFarm(DEFAULT_DISTRICT, DEFAULT_CROP, 0)];
         setFarms(fallback);
         setActiveFarmId(fallback[0].id);
         setFarmSyncError('Your farm information could not sync. Check your connection and reload to try again.');
