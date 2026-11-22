@@ -228,20 +228,4 @@ export const DISTRICTS: District[] = [
   }
 ];
 
-export const MAJOR_CROPS = [
-  'Maize',
-  'Matooke (Bananas)',
-  'Coffee',
-  'Beans',
-  'Cassava',
-  'Sweet Potatoes',
-  'Sorghum',
-  'Millet',
-  'Irish Potatoes',
-  'Tea',
-  'Cocoa Beans',
-  'Simsim (Sesame)',
-  'Sunflower',
-  'Vanilla',
-  'Vegetables'
-];
+export const MAJOR_CROPS = ['Beans', 'Maize', 'Coffee', 'Banana/Matooke', 'Tomato', 'Irish potato'];
