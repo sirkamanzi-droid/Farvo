@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BookOpen, Check, Download, FileText, Play, Search, Wifi, WifiOff } from 'lucide-react';
 import { SUPPORTED_CROPS } from '../data/supportedCrops';
+import { KNOWLEDGE_SOURCES } from '../data/knowledgeSources';
 
 type Topic = { id: string; title: string; description: string };
 type LessonSection = { heading: string; body: string };
@@ -90,6 +91,7 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
   }, []);
 
   const crop = SUPPORTED_CROPS.find(item => item.id === selectedCrop);
+  const cropSources = KNOWLEDGE_SOURCES.filter(source => source.crops.includes(selectedCrop || ''));
   const visibleCrops = useMemo(() => SUPPORTED_CROPS.filter(item => item.name.toLowerCase().includes(query.toLowerCase())), [query]);
   const lessonId = selectedCrop && selectedTopic ? selectedCrop + ':' + selectedTopic.id : '';
   const isSaved = saved.some(item => item.id === lessonId);
@@ -134,6 +136,7 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
           <div className="mb-4 rounded-[24px] bg-[#e7eddf] p-5"><p className="text-xs font-semibold text-[#52645a]">CROP LEARNING GUIDE</p><h2 className="mt-1 text-2xl font-semibold text-[#1d2d27]">{crop?.emoji} {crop?.name}</h2><p className="mt-2 text-sm leading-6 text-[#52645a]">Explore the main stages of growing {crop?.name.toLowerCase()}. Choose a topic to open its learning page.</p></div>
           <div className="space-y-2">{TOPICS.map((topic, index) => <button key={topic.id} onClick={() => setSelectedTopic(topic)} className="flex w-full items-center gap-3 rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4 text-left"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e7eddf] text-xs font-bold text-[#285b40]">{index + 1}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[#1d2d27]">{topic.title}</span><span className="mt-1 block text-xs leading-5 text-[#879188]">{topic.description}</span></span><span className="text-[#879188]">›</span></button>)}</div>
           <div className="mt-5 rounded-2xl border border-dashed border-[#cfc3ad] p-4"><div className="flex items-center gap-2 text-sm font-semibold text-[#1d2d27]"><Play className="h-4 w-4 text-[#285b40]"/>Practical videos</div><p className="mt-2 text-xs leading-5 text-[#879188]">Verified videos are being sourced. Downloadable video files will be available here when publication and offline-use permission are confirmed.</p></div>
+          <section className="mt-5"><h3 className="mb-2 text-sm font-semibold text-[#1d2d27]">Trusted learning sources</h3><p className="mb-3 text-xs leading-5 text-[#879188]">These are official catalogues where the Omulimi team checks manuals and learning resources. Opening a catalogue requires internet.</p><div className="space-y-2">{cropSources.map(source => <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="block rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><span className="block text-sm font-semibold text-[#1d2d27]">{source.title}</span><span className="mt-1 block text-[11px] font-medium text-[#285b40]">{source.institution}</span><span className="mt-2 block text-xs leading-5 text-[#879188]">{source.note}</span><span className="mt-2 block text-[11px] font-semibold text-[#285b40]">Open official catalogue ↗</span></a>)}</div></section>
         </div>}
 
         {selectedCrop && selectedTopic && <article className="px-4 py-5 sm:px-6">
