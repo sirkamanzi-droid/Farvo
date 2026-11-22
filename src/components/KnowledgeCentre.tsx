@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BookOpen, Check, Download, FileText, Play, Search, Wifi, WifiOff } from 'lucide-react';
 import { SUPPORTED_CROPS } from '../data/supportedCrops';
 import { KNOWLEDGE_SOURCES } from '../data/knowledgeSources';
+import { getCropLesson, getSourcesForLesson } from '../data/cropGuides';
 
 type Topic = { id: string; title: string; description: string };
 type LessonSection = { heading: string; body: string };
@@ -95,12 +96,15 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
   const visibleCrops = useMemo(() => SUPPORTED_CROPS.filter(item => item.name.toLowerCase().includes(query.toLowerCase())), [query]);
   const lessonId = selectedCrop && selectedTopic ? selectedCrop + ':' + selectedTopic.id : '';
   const isSaved = saved.some(item => item.id === lessonId);
+  const currentLesson = selectedCrop && selectedTopic ? getCropLesson(selectedCrop, selectedTopic.id) : undefined;
+  const lessonSources = currentLesson ? getSourcesForLesson(currentLesson, KNOWLEDGE_SOURCES) : [];
 
   const saveCurrentLesson = async () => {
     if (!crop || !selectedTopic) return;
     setSaving(true); setNotice('');
     try {
-      await saveLessonOffline({ id: lessonId, cropId: crop.id, cropName: crop.name, topicId: selectedTopic.id, topicDescription: selectedTopic.description, title: selectedTopic.title + ': ' + crop.name, summary: STARTER_LESSON.summary, sections: STARTER_LESSON.sections, savedAt: new Date().toISOString() });
+      if (!currentLesson) throw new Error('This lesson is not available yet.');
+      await saveLessonOffline({ id: lessonId, cropId: crop.id, cropName: crop.name, topicId: selectedTopic.id, topicDescription: selectedTopic.description, title: currentLesson.title, summary: currentLesson.summary, sections: currentLesson.sections, savedAt: new Date().toISOString() });
       setSaved(await readSavedLessons());
       setNotice('This lesson is saved on this device.');
     } catch (error) {
@@ -140,9 +144,9 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
         </div>}
 
         {selectedCrop && selectedTopic && <article className="px-4 py-5 sm:px-6">
-          <div className="mb-4 rounded-2xl bg-[#e7eddf] p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#52645a]">{crop?.name} · Learning guide</p><h2 className="mt-1 text-xl font-semibold text-[#1d2d27]">{selectedTopic.title}</h2><p className="mt-2 text-sm text-[#52645a]">{selectedTopic.description}</p></div>
-          <div className="space-y-3">{STARTER_LESSON.sections.map(section => <section key={section.heading} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.heading}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.body}</p></section>)}</div>
-          <div className="mt-4 rounded-2xl border border-[#e4dac7] bg-white/60 p-4"><p className="text-xs leading-5 text-[#879188]">This is starter learning content, not a crop-specific verified farming recommendation. Detailed crop manuals will be added after source review.</p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveCurrentLesson()} disabled={saving || isSaved} className="flex items-center gap-2 rounded-xl bg-[#174432] px-4 py-3 text-xs font-semibold text-white disabled:opacity-50">{isSaved ? <Check className="h-4 w-4"/> : <Download className="h-4 w-4"/>}{saving ? 'Saving…' : isSaved ? 'Saved offline' : 'Save lesson offline'}</button><button onClick={() => onAskKato('Explain the ' + selectedTopic.title.toLowerCase() + ' topic for ' + crop?.name + ' on my farm. Keep the advice practical and explain what depends on my location and crop variety.')} className="rounded-xl border border-[#cfc3ad] px-4 py-3 text-xs font-semibold text-[#285b40]">Ask Kato about this</button></div></div>
+          <div className="mb-4 rounded-2xl bg-[#e7eddf] p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#52645a]">{crop?.name} · Crop manual</p><h2 className="mt-1 text-xl font-semibold text-[#1d2d27]">{currentLesson?.title || selectedTopic.title}</h2><p className="mt-2 text-sm text-[#52645a]">{currentLesson?.summary || selectedTopic.description}</p></div>
+          <div className="space-y-3">{(currentLesson?.sections || []).map(section => <section key={section.heading} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.heading}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.body}</p></section>)}</div>
+          <div className="mt-4 rounded-2xl border border-[#e4dac7] bg-white/60 p-4"><p className="text-xs leading-5 text-[#879188]">This is an Omulimi learning guide prepared from the listed Ugandan agricultural references. Local variety, district and seasonal recommendations may differ. Confirm exact input rates and crop-protection decisions with a qualified extension worker and product label.</p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveCurrentLesson()} disabled={saving || isSaved} className="flex items-center gap-2 rounded-xl bg-[#174432] px-4 py-3 text-xs font-semibold text-white disabled:opacity-50">{isSaved ? <Check className="h-4 w-4"/> : <Download className="h-4 w-4"/>}{saving ? 'Saving…' : isSaved ? 'Saved offline' : 'Save lesson offline'}</button><button onClick={() => onAskKato('Explain the ' + selectedTopic.title.toLowerCase() + ' topic for ' + crop?.name + ' on my farm. Keep the advice practical and explain what depends on my location and crop variety.')} className="rounded-xl border border-[#cfc3ad] px-4 py-3 text-xs font-semibold text-[#285b40]">Ask Kato about this</button></div></div>
           {notice && <p role="status" className="mt-3 rounded-xl bg-[#e7eddf] p-3 text-xs text-[#285b40]">{notice}</p>}
         </article>}
       </div>
