@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Compass, Droplets, FlaskConical, MapPin, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera, ImagePlus } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Compass, Droplets, FlaskConical, MapPin, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera } from 'lucide-react';
 
 type Mode = 'tested' | 'guided';
 type Texture = 'sandy' | 'loamy' | 'clay' | 'unknown';
@@ -310,7 +310,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
         <section className="mb-4 rounded-2xl bg-[#174432] p-4 text-white"><div className="flex items-center gap-2"><Sprout className="h-5 w-5 text-[#e8d6a8]"/><h2 className="text-sm font-semibold">Start with a soil photo</h2></div><p className="mt-2 text-xs leading-relaxed text-white/75">Take a clear photo of the soil on your farm. Omulimi will inspect visible features, then combine them with mapped soil data and local weather.</p></section>
         <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={event => { const next=event.target.files?.[0]; if(!next)return; if(!next.type.startsWith('image/')){setError('Choose an image file.');return;} setSoilPhoto(next); setPhotoPreview(URL.createObjectURL(next)); setPhotoObservations(''); setError(''); }}/>
         <section className="mb-4 rounded-2xl border border-dashed border-[#cfc2aa] bg-[#fffdf8] p-4">{photoPreview ? <img src={photoPreview} alt="Soil sample" className="mb-3 max-h-64 w-full rounded-xl object-cover"/> : <div className="flex min-h-36 flex-col items-center justify-center text-soil-500"><Camera className="mb-2 h-8 w-8"/><p className="text-xs">No soil photo added yet</p></div>}
-          <div className="grid grid-cols-2 gap-2"><button onClick={() => photoInputRef.current?.click()} className="rounded-xl border border-[#d9cfbc] bg-[#faf7ef] px-3 py-3 text-xs font-bold text-soil-800"><Camera className="mr-1 inline h-4 w-4"/>Take photo</button><button onClick={() => photoInputRef.current?.click()} className="rounded-xl border border-[#d9cfbc] bg-[#faf7ef] px-3 py-3 text-xs font-bold text-soil-800"><ImagePlus className="mr-1 inline h-4 w-4"/>Upload photo</button></div>
+          <button onClick={() => photoInputRef.current?.click()} className="w-full rounded-xl border border-[#d9cfbc] bg-[#faf7ef] px-3 py-3 text-xs font-bold text-soil-800"><Camera className="mr-1 inline h-4 w-4"/>Take soil photo</button>
           {soilPhoto && <button onClick={() => void analyseSoilPhoto()} disabled={analysingPhoto} className="mt-3 w-full rounded-xl bg-leaf-700 px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{analysingPhoto ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Scanning soil photo…</> : photoObservations ? 'Scan photo again' : 'Scan soil photo'}</button>}
           {photoObservations && <div className="mt-3 rounded-xl border border-[#d8e5d9] bg-[#f4f8f1] p-3"><p className="mb-1 text-xs font-bold text-leaf-800">What the photo shows</p><p className="text-xs leading-relaxed text-soil-700">{photoObservations}</p><p className="mt-2 text-[10px] text-soil-500">A photo cannot measure pH or nutrients.</p></div>}
         </section>
