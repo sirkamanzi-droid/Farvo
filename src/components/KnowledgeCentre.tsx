@@ -3,7 +3,8 @@ import { ArrowLeft, BookOpen, Check, Download, FileText, Play, Search, Wifi, Wif
 import { SUPPORTED_CROPS } from '../data/supportedCrops';
 
 type Topic = { id: string; title: string; description: string };
-type LessonSection = { heading: string; body: string };\ntype SavedLesson = { id: string; cropId: string; cropName: string; topicId: string; topicDescription: string; title: string; summary: string; sections: LessonSection[]; savedAt: string };
+type LessonSection = { heading: string; body: string };
+type SavedLesson = { id: string; cropId: string; cropName: string; topicId: string; topicDescription: string; title: string; summary: string; sections: LessonSection[]; savedAt: string };
 
 const TOPICS: Topic[] = [
   { id: 'getting-started', title: 'Getting started', description: 'Understand the crop and plan a growing season.' },
