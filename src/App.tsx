@@ -17,7 +17,8 @@ import WeatherGlyph from './components/WeatherGlyph';
 import DiseaseDetection from './components/DiseaseDetection';
 import SoilCalculator from './components/SoilCalculator';
 import CommandCentre from './components/CommandCentre';
-import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain } from 'lucide-react';
+import KnowledgeCentre from './components/KnowledgeCentre';
+import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain, BookOpen } from 'lucide-react';
 
 
 const DEFAULT_DISTRICT = DISTRICTS[1];
@@ -80,7 +81,7 @@ async function generateKatoCareGuidance(input: { cropName: string; districtName:
 }
 
 function BrandHeader() { return (<header className="sticky top-0 z-20 flex h-14 items-center bg-[#f2ecdf]/95 px-4 backdrop-blur-md sm:px-6"><div className="mx-auto flex w-full max-w-3xl items-center gap-2.5"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e4eadc]"><Sprout className="h-5 w-5 text-[#174432]"/></div><span className="text-xl font-bold tracking-tight text-[#1d2d27]" style={{fontFamily:'Fraunces, Georgia, serif'}}>Omulimi</span><span className="ml-auto rounded-full bg-[#e4eadc] px-3 py-1 text-[11px] font-semibold text-[#285b40]">Your farm companion</span></div></header>); }
-function HomeDashboard({farm, farmerName, weather, loading, onOpenWeather, onOpenDisease, onOpenSoil, onOpenComingSoon, onOpenDistrict}: { farm: Farm; farmerName: string; weather: WeatherData | null; loading: boolean; onOpenWeather: () => void; onOpenDisease: () => void; onOpenSoil: () => void; onOpenComingSoon: (title: string, description: string) => void; onOpenDistrict: () => void; }) {
+function HomeDashboard({farm, farmerName, weather, loading, onOpenWeather, onOpenDisease, onOpenSoil, onOpenKnowledge, onOpenComingSoon, onOpenDistrict}: { farm: Farm; farmerName: string; weather: WeatherData | null; loading: boolean; onOpenWeather: () => void; onOpenDisease: () => void; onOpenSoil: () => void; onOpenKnowledge: () => void; onOpenComingSoon: (title: string, description: string) => void; onOpenDistrict: () => void; }) {
   const hour = new Date().getHours(); const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   return (<div className="px-4 pb-8 pt-5 sm:px-6"><section className="mb-5"><h1 className="text-[30px] font-semibold leading-tight text-[#1d2d27]">{greeting}, {farmerName || 'farmer'}.</h1></section>
     <button onClick={onOpenDistrict} className="mb-4 flex w-full items-center justify-between rounded-2xl bg-[#faf7ef] px-4 py-3.5 text-left"><span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#e7eddf]"><MapPin className="h-5 w-5 text-[#285b40]"/></span><span className="min-w-0"><span className="block text-[11px] text-[#879188]">YOUR FARM</span><span className="mt-0.5 block truncate text-sm font-semibold text-[#1d2d27]">{farm.district.name} · {farm.crop}</span></span></span><ChevronRight className="h-4 w-4 shrink-0 text-[#879188]"/></button>
@@ -88,7 +89,7 @@ function HomeDashboard({farm, farmerName, weather, loading, onOpenWeather, onOpe
     <section><div className="mb-3 flex items-end justify-between"><h2 className="text-xl font-semibold text-[#1d2d27]">Your farm tools</h2><span className="text-xs text-[#879188]">Made for your crops</span></div><div className="grid grid-cols-2 gap-3">
       <button onClick={onOpenDisease} className="flex min-h-[142px] flex-col justify-between rounded-[22px] bg-[#e7eddf] p-4 text-left"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/75"><Leaf className="h-5 w-5 text-[#285b40]"/></span><span><span className="block text-[15px] font-semibold text-[#1d2d27]">Crop health</span><span className="mt-1 block text-xs text-[#52645a]">Check a crop for disease</span></span></button>
       <button onClick={onOpenSoil} className="flex min-h-[142px] flex-col justify-between rounded-[22px] bg-[#f5ebd2] p-4 text-left"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/75"><Sprout className="h-5 w-5 text-[#8b6531]"/></span><span><span className="block text-[15px] font-semibold text-[#1d2d27]">Soil Intelligence</span><span className="mt-1 block text-xs text-[#6f624d]">Understand your soil and weather</span></span></button>
-    </div></section></div>); }
+    </div><button onClick={onOpenKnowledge} className="mt-3 flex min-h-[112px] w-full items-center gap-4 rounded-[22px] bg-[#faf7ef] p-4 text-left border border-[#e6dcc8]"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f5ebd2]"><BookOpen className="h-6 w-6 text-[#8b6531]"/></span><span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold text-[#1d2d27]">Farming Knowledge</span><span className="mt-1 block text-xs text-[#6f624d]">Manuals, learning guides and practical videos</span><span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#285b40]">Explore the library <ChevronRight className="h-3 w-3"/></span></span></button></section></div>); }
 function AuthenticatedApp({ userId }: { userId: string }) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmSyncError, setFarmSyncError] = useState<string | null>(null);
@@ -105,6 +106,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [locationDetected, setLocationDetected] = useState(false);
   const [comingSoon, setComingSoon] = useState<{title:string;description:string}|null>(null);
   const [showSoilCalculator, setShowSoilCalculator] = useState(false);
+  const [showKnowledgeCentre, setShowKnowledgeCentre] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [farmerName, setFarmerName] = useState('');
 
@@ -254,7 +256,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       {announcement && <div role="status" className="mx-auto mt-3 w-full max-w-3xl px-4 sm:px-6"><div className="rounded-xl border border-[#ead7a8] bg-[#fff3d5] px-4 py-3 text-sm text-soil-900">{announcement}</div></div>}
       <main className="flex-1 w-full max-w-3xl mx-auto">
         {farmSyncError&&<div className="mx-4 sm:mx-6 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{farmSyncError}</div>}
-        {activeTab==='home' && <HomeDashboard farm={activeFarm} farmerName={farmerName} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenSoil={()=>setShowSoilCalculator(true)} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={()=>setDistrictPickerOpen(true)}/>}
+        {activeTab==='home' && <HomeDashboard farm={activeFarm} farmerName={farmerName} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenSoil={()=>setShowSoilCalculator(true)} onOpenKnowledge={()=>setShowKnowledgeCentre(true)} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={()=>setDistrictPickerOpen(true)}/>}
         {activeTab==='weather' && <div className="flex flex-col gap-4">
           <SkyHero farms={farms} activeFarm={activeFarm} onSelectFarm={handleSelectFarm} onAddFarm={handleAddFarm} onOpenDistrictPicker={()=>setDistrictPickerOpen(true)} onSelectCrop={c=>handleUpdateActiveFarm(activeFarm.district,c)} onDeleteFarm={handleDeleteActiveFarm} weatherCode={weatherData?.current.weatherCode??1} temperature={weatherData?.current.temperature??0} wasGeoDetected={locationStatus==='success'&&locationDetected}/>
           <div className="px-0 sm:px-0 flex flex-col gap-0 pb-4">
@@ -276,8 +278,9 @@ function AuthenticatedApp({ userId }: { userId: string }) {
           <button onClick={()=>setComingSoon({title:'Livestock advisor',description:'Livestock care guidance is being prepared for a future Omulimi update.'})} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Sprout className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Livestock advisor</span></button>
         </div></div>}
       </main>
+      {showKnowledgeCentre&&<KnowledgeCentre onBack={()=>setShowKnowledgeCentre(false)} onAskKato={(question)=>{setPendingKatoQuestion(question);setShowKnowledgeCentre(false);setActiveTab('kato');}}/>}
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
-      {!showSoilCalculator&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
+      {!showSoilCalculator&&!showKnowledgeCentre&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
       {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} initialCrop={activeFarm.crop} initialLatitude={activeFarm.district.latitude} initialLongitude={activeFarm.district.longitude} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
       <DistrictPicker isOpen={districtPickerOpen} onClose={()=>setDistrictPickerOpen(false)} selectedDistrict={activeFarm.district} onSelect={d=>handleUpdateActiveFarm(d,SUPPORTED_CROP_NAMES.includes(activeFarm.crop)?activeFarm.crop:DEFAULT_CROP)} onUseMyLocation={detectLocationForActiveFarm} locationStatus={locationStatus}/>
     </div>
