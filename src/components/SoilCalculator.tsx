@@ -1,3 +1,4 @@
+import FormattedResponse from './FormattedResponse';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Droplets, FlaskConical, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera } from 'lucide-react';
@@ -357,7 +358,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
           <div className="mt-3 rounded-xl border border-[#eadfca] bg-[#faf7ef] p-3 text-[10px] leading-relaxed text-soil-600">Weather-based soil conditions are model estimates for the selected coordinates, not a sensor reading from this exact field. Confirm important decisions with a local soil test or extension officer.</div>
         </section>
 
-        <article className="mb-4 whitespace-pre-wrap rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4 text-xs leading-relaxed text-soil-800">{aiReport}</article>
+        <article className="mb-4 rounded-2xl border border-[#e6dcc8] bg-[#fffdf8] p-4 text-sm text-soil-800"><FormattedResponse content={aiReport}/></article>
         {error && <p role="alert" className="mb-3 text-xs text-rose-700">{error}</p>}
         <div className="grid grid-cols-2 gap-2">
           <button onClick={() => void saveReport()} disabled={saving || saved || Boolean(selectedSaved)} className="rounded-xl bg-leaf-700 px-3 py-3 text-xs font-bold text-white disabled:opacity-60">{saved ? <><CheckCircle2 className="mr-1 inline h-4 w-4"/>Saved</> : saving ? 'Saving…' : <><Save className="mr-1 inline h-4 w-4"/>Save report</>}</button>
