@@ -44,17 +44,6 @@ const CROP_VIDEOS: Record<string, { title: string; description: string; url: str
   ],
 };
 
-const STARTER_LESSON = {
-  title: 'How to use this crop guide',
-  summary: 'A practical starting point for learning about your crop.',
-  sections: [
-    { heading: 'Start with your farm', body: 'Before following a farming guide, consider your district, the crop variety, the season, the condition of your soil and the water available on your farm. Recommendations can differ between locations and varieties.' },
-    { heading: 'Learn one stage at a time', body: 'Use the guide to learn about land preparation, planting, crop care, pest and disease prevention, harvesting and storage. Keep notes about what you do and what you observe in your field.' },
-    { heading: 'Check advice before acting', body: 'Farming recommendations should come from trusted agricultural sources and should fit your crop and location. Ask a local extension worker when a recommendation is unclear, especially before using pesticides or fertilisers.' },
-    { heading: 'Use Kato for follow-up questions', body: 'When you are online, you can ask Kato to explain a lesson and help relate it to your farm information. Kato needs an internet connection for live answers.' },
-  ],
-};
-
 const DB_NAME = 'omulimi-knowledge';
 const STORE_NAME = 'saved-lessons';
 
