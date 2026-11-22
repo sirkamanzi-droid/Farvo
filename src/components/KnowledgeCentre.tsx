@@ -18,6 +18,32 @@ const TOPICS: Topic[] = [
   { id: 'harvest', title: 'Harvest and storage', description: 'Learn about maturity, harvesting and post-harvest handling.' },
 ];
 
+const CROP_VIDEOS: Record<string, { title: string; description: string; url: string }[]> = {
+  beans: [
+    { title: 'Bean farming in Uganda — NARO', description: 'NARO field demonstrations of bean varieties and farmer selection.', url: 'https://www.youtube.com/watch?v=Swxs0cm8ztw' },
+    { title: 'Staking climbing beans', description: 'Farmers in southwest Uganda demonstrate support methods.', url: 'https://www.accessagriculture.org/staking-climbing-beans' },
+    { title: 'Beans for the lowlands', description: 'Variety selection and growing in hot lowland conditions.', url: 'https://www.accessagriculture.org/beans-lowlands' },
+  ],
+  maize: [{ title: 'Maize production and post-harvest videos', description: 'Demonstrations on fall armyworm scouting, harvesting, drying and grain storage.', url: 'https://www.accessagriculture.org/video-series' }],
+  coffee: [
+    { title: 'Coffee: picking and drying', description: 'Coffee harvesting and post-harvest demonstration.', url: 'https://www.accessagriculture.org/video-series' },
+    { title: 'Coffee: stumping and pruning', description: 'Coffee garden renovation and pruning demonstration.', url: 'https://www.accessagriculture.org/video-series' },
+  ],
+  banana: [
+    { title: 'Banana growing and planting videos', description: 'Demonstrations on healthy suckers, planting and garden management.', url: 'https://www.accessagriculture.org/video-series' },
+    { title: 'Making banana flour', description: 'Banana post-harvest processing demonstration.', url: 'https://www.accessagriculture.org/making-banana-flour' },
+  ],
+  tomato: [
+    { title: 'Managing tomato late blight', description: 'Recognising and managing an important tomato disease.', url: 'https://www.accessagriculture.org/managing-tomato-late-blight' },
+    { title: 'Staking tomato plants', description: 'Practical plant support demonstration.', url: 'https://www.accessagriculture.org/staking-tomato-plants' },
+    { title: 'Tomato production and post-harvest videos', description: 'Demonstrations on transplanting, irrigation, pests and handling.', url: 'https://www.accessagriculture.org/video-series' },
+  ],
+  potato: [
+    { title: 'Managing seed potato', description: 'Seed potato selection and management demonstration.', url: 'https://www.accessagriculture.org/managing-seed-potato' },
+    { title: 'Potato production videos', description: 'Demonstrations on potato tubers, seed management and storage.', url: 'https://www.accessagriculture.org/video-series' },
+  ],
+};
+
 const STARTER_LESSON = {
   title: 'How to use this crop guide',
   summary: 'A practical starting point for learning about your crop.',
@@ -139,7 +165,7 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
         {selectedCrop && !selectedTopic && <div className="px-4 py-5 sm:px-6">
           <div className="mb-4 rounded-[24px] bg-[#e7eddf] p-5"><p className="text-xs font-semibold text-[#52645a]">CROP LEARNING GUIDE</p><h2 className="mt-1 text-2xl font-semibold text-[#1d2d27]">{crop?.emoji} {crop?.name}</h2><p className="mt-2 text-sm leading-6 text-[#52645a]">Explore the main stages of growing {crop?.name.toLowerCase()}. Choose a topic to open its learning page.</p></div>
           <div className="space-y-2">{TOPICS.map((topic, index) => <button key={topic.id} onClick={() => setSelectedTopic(topic)} className="flex w-full items-center gap-3 rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4 text-left"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#e7eddf] text-xs font-bold text-[#285b40]">{index + 1}</span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[#1d2d27]">{topic.title}</span><span className="mt-1 block text-xs leading-5 text-[#879188]">{topic.description}</span></span><span className="text-[#879188]">›</span></button>)}</div>
-          <div className="mt-5 rounded-2xl border border-dashed border-[#cfc3ad] p-4"><div className="flex items-center gap-2 text-sm font-semibold text-[#1d2d27]"><Play className="h-4 w-4 text-[#285b40]"/>Practical videos</div><p className="mt-2 text-xs leading-5 text-[#879188]">Verified videos are being sourced. Downloadable video files will be available here when publication and offline-use permission are confirmed.</p></div>
+          <div className="mt-5 rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><div className="flex items-center gap-2 text-sm font-semibold text-[#1d2d27]"><Play className="h-4 w-4 text-[#285b40]"/>Practical videos for {crop?.name}</div><p className="mt-2 text-xs leading-5 text-[#879188]">Curated demonstrations from NARO and Access Agriculture. These videos open online; offline video saving is not enabled because each publisher's download and redistribution permissions must be confirmed.</p><div className="mt-3 space-y-2">{(CROP_VIDEOS[selectedCrop] || []).map(video => <a key={video.title} href={video.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl border border-[#e4dac7] bg-white p-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e7eddf]"><Play className="h-4 w-4 text-[#285b40]"/></span><span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#1d2d27]">{video.title}</span><span className="mt-1 block text-[11px] leading-4 text-[#879188]">{video.description}</span></span><span className="text-xs font-semibold text-[#285b40]">Watch ↗</span></a>)}</div></div>
           <section className="mt-5"><h3 className="mb-2 text-sm font-semibold text-[#1d2d27]">Trusted learning sources</h3><p className="mb-3 text-xs leading-5 text-[#879188]">These are official catalogues where the Omulimi team checks manuals and learning resources. Opening a catalogue requires internet.</p><div className="space-y-2">{cropSources.map(source => <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="block rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><span className="block text-sm font-semibold text-[#1d2d27]">{source.title}</span><span className="mt-1 block text-[11px] font-medium text-[#285b40]">{source.institution}</span><span className="mt-2 block text-xs leading-5 text-[#879188]">{source.note}</span><span className="mt-2 block text-[11px] font-semibold text-[#285b40]">Open official catalogue ↗</span></a>)}</div></section>
         </div>}
 
