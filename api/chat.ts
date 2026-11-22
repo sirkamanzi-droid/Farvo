@@ -46,7 +46,7 @@ async function streamGroqModel(
   sendChunk: (text: string) => void,
 ): Promise<string> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 22000);
+  const timeout = setTimeout(() => controller.abort(), 26000);
   let answer = '';
   let emitted = false;
 
@@ -67,7 +67,7 @@ async function streamGroqModel(
         temperature: 0.2,
         reasoning_effort: 'low',
         include_reasoning: false,
-        max_completion_tokens: 700,
+        max_completion_tokens: 1400,
       }),
       signal: controller.signal,
     });
@@ -81,6 +81,7 @@ async function streamGroqModel(
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let finishReason: string | null = null;
 
     const processLine = (line: string) => {
       const trimmed = line.trim();
@@ -89,7 +90,9 @@ async function streamGroqModel(
       if (!payload || payload === '[DONE]') return;
       let event: any;
       try { event = JSON.parse(payload); } catch { return; }
-      const delta = event?.choices?.[0]?.delta?.content;
+      const choice = event?.choices?.[0];
+      if (typeof choice?.finish_reason === 'string') finishReason = choice.finish_reason;
+      const delta = choice?.delta?.content;
       if (typeof delta === 'string' && delta.length) {
         answer += delta;
         emitted = true;
@@ -116,6 +119,7 @@ async function streamGroqModel(
     buffer += decoder.decode();
     if (buffer.trim()) processLine(buffer);
     if (!answer.trim()) throw new Error(`Groq returned an empty response from ${model}.`);
+    if (finishReason === 'length') throw new Error(`Kato response reached the model output limit (${model}); refusing to mark a partial answer as complete.`);
     console.info('Kato Groq stream completed', { model, characters: answer.length });
     return answer.trim();
   } catch (error) {
@@ -333,7 +337,7 @@ When the farmer asks for treatment, reports a crop problem, or arrives from a di
 7. WHEN TO GET HELP — explain clear signs that require an extension officer, plant clinic or laboratory.
 8. FOLLOW-UP — finish by telling the farmer exactly what to record or photograph at the next check. Do not end with a vague offer to chat.
 
-Keep the plan concise and farmer-friendly. Use short headings and numbered actions. Be explicit when a timeline is a suggested inspection schedule rather than a treatment schedule. Never promise full recovery or 100% health. A monitoring plan tracks observations and changes; it does not certify that a crop is healthy.
+Keep the plan concise and farmer-friendly. Use short headings and numbered actions. Complete every required section before ending; do not stop mid-sentence or leave a heading unfinished. If details are extensive, shorten explanations rather than omit the final sections. Be explicit when a timeline is a suggested inspection schedule rather than a treatment schedule. Never promise full recovery or 100% health. A monitoring plan tracks observations and changes; it does not certify that a crop is healthy.
 
 AGRICULTURAL SAFETY AND QUALITY
 - Treat symptoms as clues, not a confirmed diagnosis. Give a short list of checks that help distinguish likely causes.
