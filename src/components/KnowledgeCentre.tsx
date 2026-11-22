@@ -3,7 +3,7 @@ import { ArrowLeft, BookOpen, Check, Download, FileText, Play, Search, Wifi, Wif
 import { SUPPORTED_CROPS } from '../data/supportedCrops';
 
 type Topic = { id: string; title: string; description: string };
-type SavedLesson = { id: string; cropId: string; cropName: string; title: string; summary: string; savedAt: string };
+type LessonSection = { heading: string; body: string };\ntype SavedLesson = { id: string; cropId: string; cropName: string; topicId: string; topicDescription: string; title: string; summary: string; sections: LessonSection[]; savedAt: string };
 
 const TOPICS: Topic[] = [
   { id: 'getting-started', title: 'Getting started', description: 'Understand the crop and plan a growing season.' },
@@ -97,7 +97,7 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
     if (!crop || !selectedTopic) return;
     setSaving(true); setNotice('');
     try {
-      await saveLessonOffline({ id: lessonId, cropId: crop.id, cropName: crop.name, title: selectedTopic.title + ': ' + crop.name, summary: STARTER_LESSON.summary, savedAt: new Date().toISOString() });
+      await saveLessonOffline({ id: lessonId, cropId: crop.id, cropName: crop.name, topicId: selectedTopic.id, topicDescription: selectedTopic.description, title: selectedTopic.title + ': ' + crop.name, summary: STARTER_LESSON.summary, sections: STARTER_LESSON.sections, savedAt: new Date().toISOString() });
       setSaved(await readSavedLessons());
       setNotice('This lesson is saved on this device.');
     } catch (error) {
@@ -124,9 +124,9 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
           <div className="my-5 flex items-center gap-2 rounded-2xl border border-[#e4dac7] bg-[#faf7ef] px-3"><Search className="h-4 w-4 text-[#879188]"/><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Find a crop" className="w-full bg-transparent py-3 text-sm outline-none"/></div>
           <div className="grid grid-cols-2 gap-3">{visibleCrops.map(item => <button key={item.id} onClick={() => setSelectedCrop(item.id)} className="flex min-h-28 flex-col items-start justify-between rounded-[22px] border border-[#e4dac7] bg-[#faf7ef] p-4 text-left"><span className="text-2xl">{item.emoji}</span><span className="text-sm font-semibold text-[#1d2d27]">{item.name}</span><span className="text-[11px] text-[#879188]">Open learning guide →</span></button>)}</div>
           <section className="mt-6 rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><div className="flex items-center justify-between"><h2 className="font-semibold text-[#1d2d27]">Saved for offline</h2><span className="rounded-full bg-[#e7eddf] px-2 py-1 text-xs font-semibold text-[#285b40]">{saved.length}</span></div>
-            {saved.length === 0 ? <p className="mt-2 text-xs leading-5 text-[#879188]">Lessons you save will appear here and remain on this device.</p> : <div className="mt-3 space-y-2">{saved.map(item => <div key={item.id} className="flex items-center gap-2 rounded-xl bg-white p-3"><FileText className="h-4 w-4 shrink-0 text-[#285b40]"/><span className="min-w-0 flex-1 text-xs font-medium text-[#1d2d27]">{item.title}</span><button onClick={() => { setSelectedCrop(item.cropId); setSelectedTopic(TOPICS.find(topic => item.id.endsWith(':' + topic.id)) || TOPICS[0]); }} className="text-xs font-semibold text-[#285b40]">Open</button><button onClick={() => void deleteSaved(item.id)} className="text-xs text-[#a94d2e]">Remove</button></div>)}</div>}
+            {saved.length === 0 ? <p className="mt-2 text-xs leading-5 text-[#879188]">Lessons you save will appear here and remain on this device.</p> : <div className="mt-3 space-y-2">{saved.map(item => <div key={item.id} className="flex items-center gap-2 rounded-xl bg-white p-3"><FileText className="h-4 w-4 shrink-0 text-[#285b40]"/><span className="min-w-0 flex-1 text-xs font-medium text-[#1d2d27]">{item.title}</span><button onClick={() => { setSelectedCrop(item.cropId); setSelectedTopic(TOPICS.find(topic => topic.id === item.topicId) || TOPICS[0]); }} className="text-xs font-semibold text-[#285b40]">Open</button><button onClick={() => void deleteSaved(item.id)} className="text-xs text-[#a94d2e]">Remove</button></div>)}</div>}
           </section>
-          <p className="mt-4 text-[11px] leading-5 text-[#879188]">Lessons are being prepared from trusted agricultural publications. Content will be clearly attributed and reviewed before it is marked as verified.</p>
+          <p className="mt-4 text-[11px] leading-5 text-[#879188]">Your saved lessons and the app shell are stored on this device. Detailed crop manuals and videos will be added after source, accuracy and reuse-permission checks.</p>
         </div>}
 
         {selectedCrop && !selectedTopic && <div className="px-4 py-5 sm:px-6">
