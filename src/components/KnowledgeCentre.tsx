@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BookOpen, Check, Download, FileText, Play, Search, Wifi, WifiOff } from 'lucide-react';
 import { SUPPORTED_CROPS } from '../data/supportedCrops';
 import { getCropLesson } from '../data/cropGuides';
-import { MAIZE_MANUAL_ANNEXES, MAIZE_MANUAL_MODULES, MAIZE_MANUAL_TOC } from '../data/maizeManual';
+import { MAIZE_MANUAL_ANNEXES, MAIZE_MANUAL_MODULES, MAIZE_MANUAL_SOURCE_URL, MAIZE_MANUAL_TOC } from '../data/maizeManual';
 
 type Topic = { id: string; title: string; description: string };
 type LessonSection = { heading: string; body: string };
@@ -146,7 +146,7 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
         </div>}
 
         {selectedCrop && selectedTopic && <article className="px-4 py-5 sm:px-6">
-          <div className="mb-4 rounded-2xl bg-[#e7eddf] p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#52645a]">{crop?.name} · Crop manual</p><h2 className="mt-1 text-xl font-semibold text-[#1d2d27]">{currentMaizeModule?.title || (currentMaizeAnnex ? 'Maize manual annexes' : currentLesson?.title) || selectedTopic.title}</h2><p className="mt-2 text-sm text-[#52645a]">{currentMaizeModule?.introduction || (currentMaizeAnnex ? 'Reference material and supporting schedules.' : currentLesson?.summary) || selectedTopic.description}</p></div>
+          <div className="mb-4 rounded-2xl bg-[#e7eddf] p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#52645a]">{crop?.name} · Crop manual</p><h2 className="mt-1 text-xl font-semibold text-[#1d2d27]">{currentMaizeModule?.title || (currentMaizeAnnex ? 'Maize manual annexes' : currentLesson?.title) || selectedTopic.title}</h2><p className="mt-2 text-sm text-[#52645a]">{currentMaizeModule?.introduction || (currentMaizeAnnex ? 'Reference material and supporting schedules.' : currentLesson?.summary) || selectedTopic.description}</p>{selectedCrop === 'maize' && <a href={MAIZE_MANUAL_SOURCE_URL} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-xl border border-[#cfc3ad] bg-white/70 px-3 py-2 text-xs font-semibold text-[#285b40]">View original MAAIF manual and illustrations ↗</a>}</div>
           <div className="space-y-3">{currentMaizeModule?.sections.map(section => <section key={section.id} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.title}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.content}</p></section>)}
             {currentMaizeAnnex?.map(section => <section key={section.id} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.title}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.content}</p></section>)}
             {!currentMaizeModule && !currentMaizeAnnex && (currentLesson?.sections || []).map(section => <section key={section.heading} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.heading}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.body}</p></section>)}</div>
