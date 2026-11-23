@@ -21,13 +21,13 @@ const TOPICS: Topic[] = [
 
 const MAIZE_TOPICS: Topic[] = MAIZE_MANUAL_TOC.map(module => ({
   id: module.id,
-  title: module.title.replace(/^MODULE \\d+:? /, '').replace(/^ANNEXES$/, 'Annexes'),
+  title: module.title.replace(/^MODULE \d+:? /, '').replace(/^ANNEXES$/, 'Annexes'),
   description: module.items.length + ' sections · Source manual page ' + module.page
 }));
 
 const BEANS_TOPICS: Topic[] = BEANS_MANUAL_TOC.map(module => ({
   id: module.id,
-  title: module.title.replace(/^MODULE \\d+:? /, '').replace(/^ANNEXES$/, 'Annexes'),
+  title: module.title.replace(/^MODULE \d+:? /, '').replace(/^ANNEXES$/, 'Annexes'),
   description: module.items.length + ' sections · Source manual page ' + module.page
 }));
 
