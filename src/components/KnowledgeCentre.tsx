@@ -3,6 +3,7 @@ import { ArrowLeft, BookOpen, Check, Download, FileText, Play, Search, Wifi, Wif
 import { SUPPORTED_CROPS } from '../data/supportedCrops';
 import { getCropLesson } from '../data/cropGuides';
 import { MAIZE_MANUAL_ANNEXES, MAIZE_MANUAL_MODULES, MAIZE_MANUAL_SOURCE_URL, MAIZE_MANUAL_TOC } from '../data/maizeManual';
+import { BEANS_MANUAL_ANNEXES, BEANS_MANUAL_MODULES, BEANS_MANUAL_SOURCE_URL, BEANS_MANUAL_TOC } from '../data/beansManual';
 
 type Topic = { id: string; title: string; description: string };
 type LessonSection = { heading: string; body: string };
@@ -24,8 +25,16 @@ const MAIZE_TOPICS: Topic[] = MAIZE_MANUAL_TOC.map(module => ({
   description: module.items.length + ' sections · Source manual page ' + module.page
 }));
 
+const BEANS_TOPICS: Topic[] = BEANS_MANUAL_TOC.map(module => ({
+  id: module.id,
+  title: module.title.replace(/^MODULE \\d+:? /, '').replace(/^ANNEXES$/, 'Annexes'),
+  description: module.items.length + ' sections · Source manual page ' + module.page
+}));
+
 function getTopicsForCrop(cropId: string): Topic[] {
-  return cropId === 'maize' ? MAIZE_TOPICS : TOPICS;
+  if (cropId === 'maize') return MAIZE_TOPICS;
+  if (cropId === 'beans') return BEANS_TOPICS;
+  return TOPICS;
 }
 
 const DB_NAME = 'omulimi-knowledge';
@@ -96,16 +105,18 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
   const isSaved = saved.some(item => item.id === lessonId);
   const currentMaizeModule = selectedCrop === 'maize' && selectedTopic ? MAIZE_MANUAL_MODULES.find(module => module.id === selectedTopic.id) : undefined;
   const currentMaizeAnnex = selectedCrop === 'maize' && selectedTopic?.id === 'annexes' ? MAIZE_MANUAL_ANNEXES : undefined;
-  const currentLesson = selectedCrop && selectedTopic && selectedCrop !== 'maize' ? getCropLesson(selectedCrop, selectedTopic.id) : undefined;
+  const currentBeansModule = selectedCrop === 'beans' && selectedTopic ? BEANS_MANUAL_MODULES.find(module => module.id === selectedTopic.id) : undefined;
+  const currentBeansAnnex = selectedCrop === 'beans' && selectedTopic?.id === 'annexes' ? BEANS_MANUAL_ANNEXES : undefined;
+  const currentLesson = selectedCrop && selectedTopic && selectedCrop !== 'maize' && selectedCrop !== 'beans' ? getCropLesson(selectedCrop, selectedTopic.id) : undefined;
 
   const saveCurrentLesson = async () => {
     if (!crop || !selectedTopic) return;
     setSaving(true); setNotice('');
     try {
-      const offlineSections: LessonSection[] = currentMaizeModule ? currentMaizeModule.sections.map(section => ({ heading: section.title, body: section.content })) : currentMaizeAnnex ? currentMaizeAnnex.map(section => ({ heading: section.title, body: section.content })) : currentLesson?.sections || [];
-      if (!currentLesson && !currentMaizeModule && !currentMaizeAnnex) throw new Error('This lesson is not available yet.');
-      const lessonTitle = currentMaizeModule?.title || (currentMaizeAnnex ? 'Maize manual annexes' : currentLesson!.title);
-      const lessonSummary = currentMaizeModule?.introduction || (currentMaizeAnnex ? 'Reference annexes for maize production.' : currentLesson!.summary);
+      const offlineSections: LessonSection[] = currentMaizeModule ? currentMaizeModule.sections.map(section => ({ heading: section.title, body: section.content })) : currentMaizeAnnex ? currentMaizeAnnex.map(section => ({ heading: section.title, body: section.content })) : currentBeansModule ? currentBeansModule.sections.map(section => ({ heading: section.title, body: section.content })) : currentBeansAnnex ? currentBeansAnnex.map(section => ({ heading: section.title, body: section.content })) : currentLesson?.sections || [];
+      if (!currentLesson && !currentMaizeModule && !currentMaizeAnnex && !currentBeansModule && !currentBeansAnnex) throw new Error('This lesson is not available yet.');
+      const lessonTitle = currentMaizeModule?.title || (currentMaizeAnnex ? 'Maize manual annexes' : currentBeansModule?.title || (currentBeansAnnex ? 'Beans manual annexes' : currentLesson!.title));
+      const lessonSummary = currentMaizeModule?.introduction || (currentMaizeAnnex ? 'Reference annexes for maize production.' : currentBeansModule?.introduction || (currentBeansAnnex ? 'Reference annexes for bean production.' : currentLesson!.summary));
       await saveLessonOffline({ id: lessonId, cropId: crop.id, cropName: crop.name, topicId: selectedTopic.id, topicDescription: selectedTopic.description, title: lessonTitle, summary: lessonSummary, sections: offlineSections, savedAt: new Date().toISOString() });
       setSaved(await readSavedLessons());
       setNotice('This lesson is saved on this device.');
@@ -146,12 +157,14 @@ export default function KnowledgeCentre({ onBack, onAskKato }: { onBack: () => v
         </div>}
 
         {selectedCrop && selectedTopic && <article className="px-4 py-5 sm:px-6">
-          <div className="mb-4 rounded-2xl bg-[#e7eddf] p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#52645a]">{crop?.name} · Crop manual</p><h2 className="mt-1 text-xl font-semibold text-[#1d2d27]">{currentMaizeModule?.title || (currentMaizeAnnex ? 'Maize manual annexes' : currentLesson?.title) || selectedTopic.title}</h2><p className="mt-2 text-sm text-[#52645a]">{currentMaizeModule?.introduction || (currentMaizeAnnex ? 'Reference material and supporting schedules.' : currentLesson?.summary) || selectedTopic.description}</p>{selectedCrop === 'maize' && <a href={MAIZE_MANUAL_SOURCE_URL} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-xl border border-[#cfc3ad] bg-white/70 px-3 py-2 text-xs font-semibold text-[#285b40]">View original MAAIF manual and illustrations ↗</a>}</div>
+          <div className="mb-4 rounded-2xl bg-[#e7eddf] p-4"><p className="text-xs font-semibold uppercase tracking-wide text-[#52645a]">{crop?.name} · Crop manual</p><h2 className="mt-1 text-xl font-semibold text-[#1d2d27]">{currentMaizeModule?.title || (currentMaizeAnnex ? 'Maize manual annexes' : currentBeansModule?.title || (currentBeansAnnex ? 'Beans manual annexes' : currentLesson?.title)) || selectedTopic.title}</h2><p className="mt-2 text-sm text-[#52645a]">{currentMaizeModule?.introduction || (currentMaizeAnnex ? 'Reference material and supporting schedules.' : currentBeansModule?.introduction || (currentBeansAnnex ? 'Reference material and supporting schedules.' : currentLesson?.summary)) || selectedTopic.description}</p>{selectedCrop === 'maize' && <a href={MAIZE_MANUAL_SOURCE_URL} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-xl border border-[#cfc3ad] bg-white/70 px-3 py-2 text-xs font-semibold text-[#285b40]">View original MAAIF manual and illustrations ↗</a>}{selectedCrop === 'beans' && <a href={BEANS_MANUAL_SOURCE_URL} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-xl border border-[#cfc3ad] bg-white/70 px-3 py-2 text-xs font-semibold text-[#285b40]">View original MAAIF manual and illustrations ↗</a>}</div>
           <div className="space-y-3">{currentMaizeModule?.sections.map(section => <section key={section.id} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.title}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.content}</p></section>)}
             {currentMaizeAnnex?.map(section => <section key={section.id} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.title}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.content}</p></section>)}
-            {!currentMaizeModule && !currentMaizeAnnex && (currentLesson?.sections || []).map(section => <section key={section.heading} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.heading}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.body}</p></section>)}</div>
+            {currentBeansModule?.sections.map(section => <section key={section.id} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.title}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.content}</p></section>)}
+            {currentBeansAnnex?.map(section => <section key={section.id} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.title}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.content}</p></section>)}
+            {!currentMaizeModule && !currentMaizeAnnex && !currentBeansModule && !currentBeansAnnex && (currentLesson?.sections || []).map(section => <section key={section.heading} className="rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><h3 className="font-semibold text-[#1d2d27]">{section.heading}</h3><p className="mt-2 text-sm leading-6 text-[#52645a]">{section.body}</p></section>)}</div>
           <section className="mt-4 rounded-2xl border border-[#e4dac7] bg-[#faf7ef] p-4"><div className="flex items-center gap-2 text-sm font-semibold text-[#1d2d27]"><Play className="h-4 w-4 text-[#285b40]"/>Practical video</div><p className="mt-2 text-xs text-[#879188]">A verified Ugandan demonstration for this lesson will appear here.</p></section>
-          <div className="mt-4 rounded-2xl border border-[#e4dac7] bg-white/60 p-4"><p className="text-xs leading-5 text-[#879188]"></p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveCurrentLesson()} disabled={saving || isSaved} className="flex items-center gap-2 rounded-xl bg-[#174432] px-4 py-3 text-xs font-semibold text-white disabled:opacity-50">{isSaved ? <Check className="h-4 w-4"/> : <Download className="h-4 w-4"/>}{saving ? 'Saving…' : isSaved ? 'Saved offline' : 'Save lesson offline'}</button><button onClick={() => onAskKato('Explain the ' + (currentMaizeModule?.title || selectedTopic.title).toLowerCase() + ' topic for ' + crop?.name + ' on my farm. Use the Omulimi learning manual as context. Keep the advice practical and explain what depends on my location and crop variety.')} className="rounded-xl border border-[#cfc3ad] px-4 py-3 text-xs font-semibold text-[#285b40]">Ask Kato about this</button></div></div>
+          <div className="mt-4 rounded-2xl border border-[#e4dac7] bg-white/60 p-4"><p className="text-xs leading-5 text-[#879188]"></p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => void saveCurrentLesson()} disabled={saving || isSaved} className="flex items-center gap-2 rounded-xl bg-[#174432] px-4 py-3 text-xs font-semibold text-white disabled:opacity-50">{isSaved ? <Check className="h-4 w-4"/> : <Download className="h-4 w-4"/>}{saving ? 'Saving…' : isSaved ? 'Saved offline' : 'Save lesson offline'}</button><button onClick={() => onAskKato('Explain the ' + (currentMaizeModule?.title || currentBeansModule?.title || selectedTopic.title).toLowerCase() + ' topic for ' + crop?.name + ' on my farm. Use the Omulimi learning manual as context. Keep the advice practical and explain what depends on my location and crop variety.')} className="rounded-xl border border-[#cfc3ad] px-4 py-3 text-xs font-semibold text-[#285b40]">Ask Kato about this</button></div></div>
           {notice && <p role="status" className="mt-3 rounded-xl bg-[#e7eddf] p-3 text-xs text-[#285b40]">{notice}</p>}
         </article>}
       </div>
