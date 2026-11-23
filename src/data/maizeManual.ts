@@ -1,6 +1,8 @@
 export type MaizeManualSection = { id: string; title: string; content: string; imageCaption?: string };
 export type MaizeManualModule = { id: string; title: string; page: string; introduction: string; sections: MaizeManualSection[] };
 
+export const MAIZE_MANUAL_SOURCE_URL = 'https://www.agriculture.go.ug/wp-content/uploads/2019/09/Maize-training-manual-for-extension-workers-in-Uganda.pdf';
+
 export const MAIZE_MANUAL_CREDITS = {
   title: 'Maize Training Manual for Extension Workers in Uganda',
   publisher: 'Ministry of Agriculture, Animal Industry and Fisheries (MAAIF), Uganda',
@@ -118,7 +120,7 @@ export const MAIZE_MANUAL_MODULES: MaizeManualModule[] = [
     ]
   },
   {
-    id:'module-6',title:'Value addition',page:'38',
+    id:'module-6',title:'Value addition',page:'58',
     introduction:'Value addition means improving the usefulness, quality, presentation or market value of maize after harvest. It can create income and employment, but processing must protect food safety and meet buyer requirements.',
     sections:[
       {id:'6-1',title:'6.1 Cleaning and sorting of maize grain',content:'Clean and sort grain before processing. Remove foreign matter, stones, damaged kernels and visibly mouldy grain. Use clean equipment and separate rejected material. Sorting improves consistency but does not prove that grain is free from aflatoxin; testing may be required.'},
