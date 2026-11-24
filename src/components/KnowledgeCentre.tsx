@@ -32,7 +32,7 @@ const BEANS_TOPICS: Topic[] = BEANS_MANUAL_TOC.map(module => ({
   description: module.items.length + ' sections · Source manual page ' + module.page
 }));
 
-const COFFEE_TOPICS: Topic[] = COFFEE_MANUAL_TOC.map(module => ({ id: module.id, title: module.title.replace(/^CHAPTER \\d+:? /, '').replace(/^ANNEXES$/, 'Annexes'), description: module.items.length + ' sections · Source manual page ' + module.page }));
+const COFFEE_TOPICS: Topic[] = COFFEE_MANUAL_TOC.map(module => ({ id: module.id, title: module.title.replace(/^CHAPTER \d+:? /, '').replace(/^ANNEXES$/, 'Annexes'), description: module.items.length + ' sections · Source manual page ' + module.page }));
 
 function getTopicsForCrop(cropId: string): Topic[] {
   if (cropId === 'maize') return MAIZE_TOPICS;
