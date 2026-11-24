@@ -3,20 +3,9 @@
 alter table public.soil_assessments
   add column if not exists farm_id uuid;
 
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'soil_assessments_farm_id_fkey'
-      and conrelid = 'public.soil_assessments'::regclass
-  ) then
-    alter table public.soil_assessments
-      add constraint soil_assessments_farm_id_fkey
-      foreign key (farm_id) references public.farms(id) on delete set null;
-  end if;
-end;
-$;
+alter table public.soil_assessments
+  add constraint soil_assessments_farm_id_fkey
+  foreign key (farm_id) references public.farms(id) on delete set null;
 
 create index if not exists soil_assessments_farm_created_idx
   on public.soil_assessments (user_id, farm_id, created_at desc)
