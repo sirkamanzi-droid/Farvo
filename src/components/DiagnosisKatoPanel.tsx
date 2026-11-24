@@ -24,15 +24,17 @@ export default function DiagnosisKatoPanel(props: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [farmId, setFarmId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       const { data, error: readError } = await supabase.from('crop_care_plans')
-        .select('care_plan').eq('id', props.planId).eq('user_id', props.userId).single();
+        .select('care_plan,farm_id').eq('id', props.planId).eq('user_id', props.userId).single();
       if (!alive) return;
       if (readError) setError('Could not load this plant’s saved Kato conversation.');
       else {
+        setFarmId(typeof data?.farm_id === 'string' ? data.farm_id : null);
         const carePlan = (data?.care_plan || {}) as Record<string, unknown>;
         const saved = carePlan.kato_conversation;
         if (Array.isArray(saved)) setMessages(saved.filter((m): m is Message =>
@@ -76,6 +78,7 @@ export default function DiagnosisKatoPanel(props: Props) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           messages: [{ role: 'user', content: `Diagnosis context for this conversation: Crop: ${props.cropName}. District selected in Omulimi: ${props.districtName}. Possible diagnosis: ${props.issueName} (unconfirmed). Image-service match score: ${props.confidence}% (not diagnostic accuracy). Scan observations: ${props.observations}. Keep this diagnosis context in mind when answering the farmer's following message.` }, ...next.slice(-11)],
+          farmId,
           cropName: props.cropName,
           districtName: props.districtName,
           weatherContext: props.weatherData,
