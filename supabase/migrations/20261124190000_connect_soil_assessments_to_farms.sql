@@ -15,11 +15,11 @@ begin
       add constraint soil_assessments_farm_id_fkey
       foreign key (farm_id) references public.farms(id) on delete set null;
   end if;
-end
-$$;
+end;
+$;
 
 create index if not exists soil_assessments_farm_created_idx
-  on public.soil_assessments (farm_id, created_at desc)
+  on public.soil_assessments (user_id, farm_id, created_at desc)
   where farm_id is not null;
 
 -- A farmer may only attach a soil report to a farm they own.
