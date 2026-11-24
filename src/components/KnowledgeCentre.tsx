@@ -35,7 +35,7 @@ const BEANS_TOPICS: Topic[] = BEANS_MANUAL_TOC.map(module => ({
 
 const COFFEE_TOPICS: Topic[] = COFFEE_MANUAL_TOC.map(module => ({ id: module.id, title: module.title.replace(/^CHAPTER \d+:? /, '').replace(/^ANNEXES$/, 'Annexes'), description: module.items.length + ' sections · Source manual page ' + module.page }));
 
-const BANANA_TOPICS: Topic[] = BANANA_MANUAL_TOC.map(module => ({ id: module.id, title: module.title.replace(/^MODULE \\d+:? /, '').replace(/^ANNEXES$/, 'Annexes'), description: module.items.length + ' sections · Source manual page ' + module.page }));
+const BANANA_TOPICS: Topic[] = BANANA_MANUAL_TOC.map(module => ({ id: module.id, title: module.title.replace(/^MODULE \d+:? /, '').replace(/^ANNEXES$/, 'Annexes'), description: module.items.length + ' sections · Source manual page ' + module.page }));
 
 function getTopicsForCrop(cropId: string): Topic[] {
   if (cropId === 'maize') return MAIZE_TOPICS;
