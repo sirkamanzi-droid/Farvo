@@ -24,6 +24,7 @@ type ChatMessage = {
 
 interface KatoChatProps {
   userId: string;
+  farmId: string;
   district: District;
   cropName: string;
   weatherData: WeatherData | null;
@@ -45,7 +46,7 @@ function dateLabel(value: string) {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
-export default function KatoChat({ userId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
+export default function KatoChat({ userId, farmId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -64,13 +65,14 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
       .from('kato_conversations')
       .select('id,title,district_name,crop_name,created_at,updated_at')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
       .order('updated_at', { ascending: false })
       .limit(60);
     if (queryError) throw queryError;
     const rows = (data || []) as Conversation[];
     setConversations(rows);
     return rows;
-  }, [userId]);
+  }, [userId, farmId]);
 
   const loadMessages = useCallback(async (conversationId: string) => {
     const { data, error: queryError } = await supabase
@@ -143,7 +145,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
         const title = question.length > 58 ? question.slice(0, 55).trimEnd() + '…' : question;
         const { data: created, error: createError } = await supabase
           .from('kato_conversations')
-          .insert({ user_id: userId, title, district_name: district.name, crop_name: cropName })
+          .insert({ user_id: userId, farm_id: farmId, title, district_name: district.name, crop_name: cropName })
           .select('id,title,district_name,crop_name,created_at,updated_at')
           .single();
         if (createError) throw createError;
@@ -172,6 +174,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
           signal: controller.signal,
           body: JSON.stringify({
             messages: history.slice(-12).map(({ role, content }) => ({ role, content })),
+            farmId,
             districtName: district.name,
             cropName,
             weatherDistrictName: weatherData && weatherDistrictName === district.name ? weatherDistrictName : null,
