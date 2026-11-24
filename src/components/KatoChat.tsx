@@ -24,6 +24,7 @@ type ChatMessage = {
 
 interface KatoChatProps {
   userId: string;
+  farmId: string;
   district: District;
   cropName: string;
   weatherData: WeatherData | null;
@@ -45,7 +46,7 @@ function dateLabel(value: string) {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
-export default function KatoChat({ userId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
+export default function KatoChat({ userId, farmId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -172,6 +173,7 @@ export default function KatoChat({ userId, district, cropName, weatherData, weat
           signal: controller.signal,
           body: JSON.stringify({
             messages: history.slice(-12).map(({ role, content }) => ({ role, content })),
+            farmId,
             districtName: district.name,
             cropName,
             weatherDistrictName: weatherData && weatherDistrictName === district.name ? weatherDistrictName : null,
