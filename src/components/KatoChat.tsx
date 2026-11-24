@@ -65,13 +65,14 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
       .from('kato_conversations')
       .select('id,title,district_name,crop_name,created_at,updated_at')
       .eq('user_id', userId)
+      .eq('farm_id', farmId)
       .order('updated_at', { ascending: false })
       .limit(60);
     if (queryError) throw queryError;
     const rows = (data || []) as Conversation[];
     setConversations(rows);
     return rows;
-  }, [userId]);
+  }, [userId, farmId]);
 
   const loadMessages = useCallback(async (conversationId: string) => {
     const { data, error: queryError } = await supabase
@@ -144,7 +145,7 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
         const title = question.length > 58 ? question.slice(0, 55).trimEnd() + '…' : question;
         const { data: created, error: createError } = await supabase
           .from('kato_conversations')
-          .insert({ user_id: userId, title, district_name: district.name, crop_name: cropName })
+          .insert({ user_id: userId, farm_id: farmId, title, district_name: district.name, crop_name: cropName })
           .select('id,title,district_name,crop_name,created_at,updated_at')
           .single();
         if (createError) throw createError;
