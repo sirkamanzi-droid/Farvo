@@ -40,7 +40,7 @@ function pHLabel(ph: number) {
 }
 
 async function streamKatoReport(input: {
-  token: string; crop: string; location: string; weather: WeatherSnapshot;
+  token: string; farmId: string; crop: string; location: string; weather: WeatherSnapshot;
   ph: number | null; texture: Texture; drainage: Drainage; locationPrecision: string; soilProfile: IsdaSoilProfile | null; photoObservations: string;
 }) {
   const current = input.weather.current || {};
@@ -73,6 +73,7 @@ async function streamKatoReport(input: {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${input.token}` },
     body: JSON.stringify({
       messages: [{ role: 'user', content: prompt }],
+      farmId: input.farmId,
       cropName: input.crop,
       districtName: input.location,
       weatherDistrictName: input.location,
@@ -109,8 +110,8 @@ async function streamKatoReport(input: {
   return answer.trim();
 }
 
-export default function SoilCalculator({ userId, initialCrop, initialLatitude, initialLongitude, initialLocation, onBack }: {
-  userId: string; initialCrop: string; initialLatitude: number; initialLongitude: number;
+export default function SoilCalculator({ userId, farmId, initialCrop, initialLatitude, initialLongitude, initialLocation, onBack }: {
+  userId: string; farmId: string; initialCrop: string; initialLatitude: number; initialLongitude: number;
   initialLocation: string; onBack: () => void;
 }) {
   const [crop, setCrop] = useState(CROPS.includes(initialCrop) ? initialCrop : 'Maize');
@@ -149,7 +150,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
     const load = async () => {
       const { data, error: loadError } = await supabase.from('soil_assessments')
         .select('id,created_at,crop,mode,measured_ph,texture,drainage,findings,location_label,latitude,longitude,ai_report,weather_snapshot')
-        .eq('user_id', userId).order('created_at', { ascending: false }).limit(30);
+        .eq('user_id', userId).eq('farm_id', farmId).order('created_at', { ascending: false }).limit(30);
       if (!active || loadError) {
         if (loadError) console.warn('Could not load soil reports:', loadError.message);
         return;
@@ -167,7 +168,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
     };
     void load();
     return () => { active = false; };
-  }, [userId]);
+  }, [userId, farmId]);
 
   const useMyLocation = () => {
     if (!navigator.geolocation) { setError('Location is not available on this device.'); return; }
@@ -244,7 +245,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
       const combinedWeather: WeatherSnapshot = { ...weatherData, isdaSoil: soilProfile };
       setWeather(combinedWeather);
       const report = await streamKatoReport({
-        token, crop, location: locationLabel.trim(), weather: weatherData,
+        token, farmId, crop, location: locationLabel.trim(), weather: weatherData,
         ph: measuredPH, texture, drainage, soilProfile,
         locationPrecision: usingExactLocation ? 'farmer-approved device GPS coordinates' : 'selected district-centre coordinates; village name is a text label only',
         photoObservations,
@@ -270,7 +271,7 @@ export default function SoilCalculator({ userId, initialCrop, initialLatitude, i
         usingExactLocation ? 'Location source: farmer-approved device GPS.' : 'Location source: selected farm district coordinates.',
       ];
       const { data, error: saveError } = await supabase.from('soil_assessments').insert({
-        user_id: userId, crop, mode: measuredPH === null ? 'guided' : 'tested',
+        user_id: userId, farm_id: farmId, crop, mode: measuredPH === null ? 'guided' : 'tested',
         measured_ph: measuredPH, texture, drainage, findings,
         location_label: reportLocation, latitude, longitude,
         weather_snapshot: weather, ai_report: aiReport,
