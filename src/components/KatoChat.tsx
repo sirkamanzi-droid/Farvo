@@ -178,7 +178,7 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
             districtName: district.name,
             cropName,
             weatherDistrictName: weatherData && weatherDistrictName === district.name ? weatherDistrictName : null,
-            weatherContext: weatherData && weatherDistrictName === district.name ? { current: weatherData.current, daily: weatherData.daily.slice(0, 5) } : null,
+            weatherContext: weatherData && weatherDistrictName === district.name ? { current: weatherData.current, daily: weatherData.daily.slice(0, 7) } : null,
           }),
         });
         if (!response.ok) {
