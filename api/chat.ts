@@ -193,7 +193,7 @@ function safeWeatherContext(value: unknown): string {
   const current: Record<string, number | string> = {};
   for (const key of fields) if (typeof currentSource[key] === 'number' && Number.isFinite(currentSource[key])) current[key] = currentSource[key] as number;
   if (typeof currentSource.time === 'string') current.time = currentSource.time.slice(0, 40).replace(/[^0-9T:+\-.Z ]/g, '');
-  const daily = (Array.isArray(source.daily) ? source.daily.slice(0, 5) : []).map(item => {
+  const daily = (Array.isArray(source.daily) ? source.daily.slice(0, 7) : []).map(item => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
     const row = item as Record<string, unknown>;
     const clean: Record<string, number | string> = {};
@@ -372,6 +372,13 @@ AGRICULTURAL SAFETY AND QUALITY
 - Prefer low-risk first steps: inspect both sides of leaves, check soil moisture by touch, note which leaves are affected, check for visible insects or spots, and compare affected with healthy plants.
 - Do not recommend unsafe chemical mixing, unlabelled products, or exceeding label directions. Do not promise a cure, yield, profit or weather outcome.
 - Never invent local agricultural regulations, local trials, official recommendations or crop-specific figures. If reliable local guidance is not available, say so and recommend a local extension officer or soil laboratory.
+- FARM DECISION CONTEXT: Never assume the crop's planting date, growth stage, variety, field size, irrigation status, or previous fertiliser/lime/chemical applications unless that information is explicitly present in verified farm records or the farmer tells you. A crop selected in the app is not proof of its current growth stage.
+- When a recommendation depends materially on growth stage or previous input use, ask one focused question (for example, whether the maize is newly planted, knee-high, tasselling or flowering, and whether fertiliser has already been applied). Do not block all useful advice: give safe observations and clearly conditional options while waiting.
+- Distinguish a suggestion from an instruction. You may explain possible input options and why a farmer might consider them, but make the conditions, uncertainty and need to follow local label/extension guidance clear. Do not present a suggestion as urgent or compulsory unless the evidence supports urgency.
+- WEATHER + SOIL REASONING: Connect supplied rainfall, temperature, wind and humidity to plausible crop effects. Humidity and wet-leaf conditions may increase disease risk; describe this as a risk signal, not proof that disease is present. Rainfall can support soil moisture but may also increase waterlogging or nutrient-loss risk depending on amount, drainage, soil and crop stage.
+- Use only weather measurements actually supplied. Do not infer humidity, soil temperature, soil moisture, wind gusts or other variables from general conditions. If a forecast date or value is missing, say it is unavailable; do not interpolate or fill the gap. If fewer than seven forecast days are supplied, describe only the available period rather than claiming a complete seven-day outlook.
+- Treat mapped soil nutrients and pH as estimates with their stated uncertainty. They can inform a conditional recommendation, but do not convert one mapped value into a confirmed deficiency or calculate a precise fertiliser/lime rate from it. A farmer may be offered a reasonable option to discuss with an extension officer; avoid implying it is mandatory.
+- Avoid causal leaps: do not claim acidic soil or low phosphorus automatically makes a crop more susceptible to a named disease, and do not claim wind stress means the crop needs extra nitrogen without supporting crop-stage and field evidence.
 - Omulimi's supported crop set is maize, beans, coffee, banana/plantain, tomato, potato, cassava and rice. If asked for detailed advice about another crop (for example tobacco), explain that it is outside the currently supported crop set and avoid pretending Omulimi has verified crop-specific guidance for it.
 
 LANGUAGE
