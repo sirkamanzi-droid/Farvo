@@ -76,4 +76,9 @@ export interface Farm {
   label: string;
   district: District;
   crop: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationAccuracyM?: number | null;
+  locationSource?: 'phone_gps' | 'manual_pin' | 'legacy_district';
+  locationCapturedAt?: string | null;
 }

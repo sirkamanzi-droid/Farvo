@@ -31,7 +31,7 @@ export default function SkyHero({ farms, activeFarm, onSelectFarm, onAddFarm, on
       </div>
       {farms.length > 1 && <div className="flex gap-2 overflow-x-auto pb-2 mb-2">{farms.map(farm=><button key={farm.id} onClick={()=>onSelectFarm(farm)} className={`shrink-0 rounded-full px-3 py-2 text-xs font-semibold ${farm.id===activeFarm.id?'bg-[#174432] text-white':'bg-[#e7eddf] text-[#285b40]'}`}>{farm.label || farm.district.name}</button>)}</div>}
       <button onClick={onOpenDistrictPicker} className="flex w-full items-center justify-between rounded-xl bg-[#faf7ef] px-4 py-3 text-left">
-        <span className="flex items-center gap-3"><MapPin className="h-5 w-5 text-leaf-700"/><span><span className="block text-xs text-soil-500">Farm location</span><span className="block text-sm font-semibold text-soil-900">{activeFarm.district.name} District{wasGeoDetected?' · GPS':''}</span></span></span>
+        <span className="flex items-center gap-3"><MapPin className="h-5 w-5 text-leaf-700"/><span><span className="block text-xs text-soil-500">Farm location</span><span className="block text-sm font-semibold text-soil-900">District: {activeFarm.district.name}{wasGeoDetected?' · GPS saved':' · GPS needed'}</span></span></span>
         <ChevronDown className="h-4 w-4 text-soil-500"/>
       </button>
       <label className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-[#faf7ef] px-4 py-3">

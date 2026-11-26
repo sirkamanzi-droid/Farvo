@@ -14,6 +14,9 @@ type FarmRow = {
   region: District['region'];
   latitude: number;
   longitude: number;
+  location_accuracy_m: number | null;
+  location_source: 'phone_gps' | 'manual_pin' | 'legacy_district';
+  location_captured_at: string | null;
 };
 
 function fromRow(row: FarmRow): Farm {
@@ -27,7 +30,13 @@ function fromRow(row: FarmRow): Farm {
     mainCrops: [],
     description: '',
   };
-  return { id: row.id, label: row.label, crop: row.crop, district };
+  return {
+    id: row.id, label: row.label, crop: row.crop, district,
+    latitude: Number(row.latitude), longitude: Number(row.longitude),
+    locationAccuracyM: row.location_accuracy_m,
+    locationSource: row.location_source || 'legacy_district',
+    locationCapturedAt: row.location_captured_at,
+  };
 }
 
 function toRow(userId: string, farm: Farm) {
@@ -38,15 +47,18 @@ function toRow(userId: string, farm: Farm) {
     district_id: farm.district.id,
     district_name: farm.district.name,
     region: farm.district.region,
-    latitude: farm.district.latitude,
-    longitude: farm.district.longitude,
+    latitude: farm.latitude ?? farm.district.latitude,
+    longitude: farm.longitude ?? farm.district.longitude,
+    location_accuracy_m: farm.locationAccuracyM ?? null,
+    location_source: farm.locationSource ?? 'legacy_district',
+    location_captured_at: farm.locationCapturedAt ?? null,
   };
 }
 
 export async function fetchFarms(userId: string): Promise<Farm[]> {
   const { data, error } = await supabase
     .from('farms')
-    .select('id,label,crop,district_id,district_name,region,latitude,longitude')
+    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -57,7 +69,7 @@ export async function insertFarm(userId: string, farm: Farm): Promise<Farm> {
   const { data, error } = await supabase
     .from('farms')
     .insert(toRow(userId, farm))
-    .select('id,label,crop,district_id,district_name,region,latitude,longitude')
+    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at')
     .single();
   if (error) throw error;
   return fromRow(data as FarmRow);
@@ -69,7 +81,7 @@ export async function updateFarm(userId: string, farm: Farm): Promise<Farm> {
     .update(toRow(userId, farm))
     .eq('id', farm.id)
     .eq('user_id', userId)
-    .select('id,label,crop,district_id,district_name,region,latitude,longitude')
+    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at')
     .single();
   if (error) throw error;
   return fromRow(data as FarmRow);
@@ -121,6 +133,40 @@ export function createFarm(district: District, crop: string, existingCount: numb
     district,
     crop,
   };
+}
+
+export async function saveFarmAssets(
+  userId: string,
+  farmId: string,
+  crops: string[],
+  livestock: Array<{ species: string; animalCount: number | null }>
+): Promise<void> {
+  // GPS recapture must preserve existing farm assets without inserting duplicates.
+  const [existingCropsResult, existingLivestockResult] = await Promise.all([
+    supabase.from('farm_crops').select('crop_name').eq('farm_id', farmId).eq('user_id', userId).eq('is_active', true),
+    supabase.from('farm_livestock').select('species').eq('farm_id', farmId).eq('user_id', userId).eq('is_active', true),
+  ]);
+  if (existingCropsResult.error) throw existingCropsResult.error;
+  if (existingLivestockResult.error) throw existingLivestockResult.error;
+
+  const existingCrops = new Set((existingCropsResult.data ?? []).map(row => row.crop_name.toLowerCase()));
+  const existingLivestock = new Set((existingLivestockResult.data ?? []).map(row => row.species.toLowerCase()));
+
+  const newCrops = crops.filter(cropName => !existingCrops.has(cropName.toLowerCase()));
+  const newLivestock = livestock.filter(item => !existingLivestock.has(item.species.toLowerCase()));
+
+  if (newCrops.length > 0) {
+    const { error } = await supabase.from('farm_crops').insert(newCrops.map(cropName => ({
+      user_id: userId, farm_id: farmId, crop_name: cropName,
+    })));
+    if (error) throw error;
+  }
+  if (newLivestock.length > 0) {
+    const { error } = await supabase.from('farm_livestock').insert(newLivestock.map(item => ({
+      user_id: userId, farm_id: farmId, species: item.species, animal_count: item.animalCount,
+    })));
+    if (error) throw error;
+  }
 }
 
 export async function deleteFarm(userId: string, farmId: string): Promise<void> {
