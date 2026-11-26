@@ -223,7 +223,9 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         latitude:result.latitude,longitude:result.longitude,
         locationAccuracyM:result.accuracyM,locationSource:'phone_gps',locationCapturedAt:result.capturedAt,
       });
-      await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock);
+      if(target.locationSource!=='phone_gps') {
+        await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock);
+      }
       setFarms(current=>current.map(item=>item.id===savedFarm.id?savedFarm:item));
     } else {
       throw new Error('This farm setup action is not supported.');
