@@ -131,7 +131,7 @@ export async function ingestApprovedFeeds(db: SupabaseClient) {
           signal: controller.signal,
         });
       } finally { clearTimeout(timeout); }
-      if (!response.ok) throw new Error(`Feed returned HTTP ${response.status}.`);
+      if (!response.ok) throw new Error(`Feed returned HTTP ${response.status}.`);\n      if (!allowedFeedUrl(response.url, source.homepage_url)) throw new Error('Feed redirected outside the registered publisher domain.');
       const xml = await response.text();
       if (xml.length > 1_500_000) throw new Error('Feed response exceeded the 1.5 MB safety limit.');
       const entries = feedEntries(xml);
