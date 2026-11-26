@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.117.3";
 
 type EonetGeometry = {
   date?: string | null;
@@ -82,10 +82,10 @@ function coordinatesFrom(value: unknown, found: Array<[number, number]> = []): A
 }
 
 function isInsideUgandaScreeningBounds(geometry: EonetGeometry[]) {
-  return geometry.some((point) =>
-    coordinatesFrom(point.coordinates).some(([longitude, latitude]) =>
-      longitude >= 29.5 && longitude <= 35.1 && latitude >= -1.6 && latitude <= 4.3
-    )
+  const latest = geometry.length ? geometry[geometry.length - 1] : null;
+  if (!latest) return false;
+  return coordinatesFrom(latest.coordinates).some(([longitude, latitude]) =>
+    longitude >= 29.5 && longitude <= 35.1 && latitude >= -1.6 && latitude <= 4.3
   );
 }
 
