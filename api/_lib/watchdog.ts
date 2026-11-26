@@ -139,7 +139,7 @@ async function ingestNasaEonet(db: SupabaseClient) {
       const {error:insertError}=await db.from('agri_intelligence_items').insert({
         source_id:source.id,source_name:'NASA EONET',title:title.slice(0,300),summary:description||null,canonical_url:canonicalUrl,
         category:classify(title,description),geography_scope:'global',country_code:'UG',affected_crops:assets.crops,affected_livestock:assets.livestock,
-        published_at:geometry[0]?.date||null,verification_status:'unverified',evidence_type:'dataset_observation',dedupe_key,is_published:false,
+        published_at:geometry[0]?.date||null,verification_status:'unverified',evidence_type:'dataset_observation',dedupe_key:dedupeKey,is_published:false,
         metadata:{ingestion_method:'nasa_eonet_api',eonet_event_id:String(event.id),categories:categoryNames,geometry,attribution:'NASA Earth Observatory Natural Event Tracker (EONET)',geographic_assignment:'Not assigned; reviewer must confirm relevance and coverage.'}
       });
       if(insertError?.code==='23505')duplicates++; else if(insertError)throw insertError; else inserted++;
