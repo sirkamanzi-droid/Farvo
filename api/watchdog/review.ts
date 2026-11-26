@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (body.action === 'update-source') {
       const sourceId = typeof body.sourceId === 'string' ? body.sourceId : '';
       if (!sourceId) return res.status(400).json({ error: 'A source ID is required.' });
-      const { data: source, error: readError } = await db.from('agri_sources').select('id,homepage_url,access_status,commercial_use_notes,feed_url').eq('id', sourceId).maybeSingle();
+      const { data: source, error: readError } = await db.from('agri_sources').select('id,homepage_url,source_key,access_method,access_status,commercial_use_notes,feed_url,api_base_url').eq('id', sourceId).maybeSingle();
       if (readError) throw readError;
       if (!source) return res.status(404).json({ error: 'Source not found.' });
 
