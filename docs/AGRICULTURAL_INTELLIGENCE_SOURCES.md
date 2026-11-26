@@ -49,15 +49,16 @@ The database now contains the source registry, evidence-item model and farm-scop
 
 ## Scheduled collection
 
-The production Supabase project has the hourly job registered through pg_cron + pg_net. The shared bearer secret is stored in Supabase Vault under `watchdog_cron_secret`; do not copy it into source control or client code. The job is currently inactive because Vercel has not accepted the deployment yet.
+The production Supabase project runs `watchdog-collector`, a deployed Supabase Edge Function. It validates a random bearer secret against a SHA-256 hash stored in the service-role-only `watchdog_cron_auth` table. The original bearer secret is stored in Supabase Vault as `watchdog_cron_secret`.
 
-After the endpoint is deployed, verify that an unauthenticated request returns HTTP 401 (rather than 404 or 5xx), then activate the existing job:
+The production Supabase Cron job `omulimi-watchdog-collection` is active on `0 * * * *` (at the start of every UTC hour). It calls the Edge Function directly through `pg_net`, so scheduled monitoring does not depend on a Vercel deployment.
 
-```sql
-select cron.alter_job(
-  job_id := (select jobid from cron.job where jobname = 'omulimi-watchdog-collection'),
-  active := true
-);
-```
+The collector:
+- Polls the approved, enabled NASA EONET v3 source using the Uganda screening bounding box (longitude 29.5–35.1, latitude -1.6–4.3).
+- Polls approved, enabled RSS sources with HTTPS and publisher-domain validation, redirect checks, response-size limits and duplicate detection.
+- Keeps all new evidence unpublished for administrator review. NASA event geometry is a screening signal, not proof of an exact district or agricultural impact.
+- Expires stale intelligence hourly. Default expiry windows are 7 days for market items, 14 days for threats/environment items, 30 days for news/opportunities, and 180 days for research. Opportunity publication still requires a specific future closing/review date.
 
-The registered job calls `https://omulimiapp.vercel.app/api/watchdog/cron` with the bearer secret read from Vault. It runs at the start of every hour (UTC). Inspect `cron.job_run_details` for execution history. Only explicitly enabled and approved sources are collected; collected evidence remains unpublished until an administrator reviews it.
+NASA EONET returned no events inside the Uganda screening bounds during the initial live test. This is a valid zero-result check, not a failed request. Its source is enabled and will be checked hourly. The separate NASA Earthdata/GIBS source remains disabled until a specific dataset and workflow are selected.
+
+The Vercel `/api/watchdog/cron` endpoint remains in the repository but is not used by the active production schedule.
