@@ -3,6 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 
 type Address = Record<string, unknown>;
 
+// Best-effort burst protection for warm serverless instances. Farm-level results
+// are persisted, so normal use does not repeatedly call the public geocoder.
+let lastLookupAt = 0;
+
 async function requireFarmer(req: VercelRequest): Promise<boolean> {
   const authorization = req.headers.authorization || '';
   const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
@@ -34,6 +38,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
       return res.status(400).json({ error: 'Valid coordinates are required.' });
     }
+
+    if (Date.now() - lastLookupAt < 1100) {
+      return res.status(429).json({ error: 'Please wait a moment before looking up another farm location.' });
+    }
+    lastLookupAt = Date.now();
 
     const url = new URL('https://nominatim.openstreetmap.org/reverse');
     url.searchParams.set('format', 'jsonv2');
