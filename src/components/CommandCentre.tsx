@@ -2,15 +2,16 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Activity, ArrowLeft, Building2, CheckCircle2, ClipboardList, Loader2, LogOut, Megaphone, RefreshCw, ShieldCheck, Sprout, Users, CircleAlert } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import WatchdogConsole from './WatchdogConsole';
 
-type View = 'overview' | 'farmers' | 'cooperatives' | 'settings' | 'activity';
+type View = 'overview' | 'farmers' | 'cooperatives' | 'settings' | 'activity' | 'watchdog';
 type Farmer = { id: string; full_name: string; farmer_code: string; cooperativeName?: string; created_at: string };
 type Cooperative = { id: string; name: string; is_active: boolean; farmerCount: number; created_at: string };
 type Audit = { id: number; action: string; target_type: string; target_id: string | null; created_at: string };
 const nav: { id: View; label: string; icon: typeof Activity }[] = [
   { id: 'overview', label: 'Overview', icon: Activity }, { id: 'farmers', label: 'Farmers', icon: Users },
   { id: 'cooperatives', label: 'Cooperatives', icon: Building2 }, { id: 'settings', label: 'App settings', icon: Megaphone },
-  { id: 'activity', label: 'Audit trail', icon: ClipboardList },
+  { id: 'activity', label: 'Audit trail', icon: ClipboardList }, { id: 'watchdog', label: 'Agricultural intelligence', icon: ShieldCheck },
 ];
 const date = (value: string) => new Date(value).toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -84,7 +85,7 @@ export default function CommandCentre({ session }: { session: Session | null }) 
   };
 
   useEffect(() => {
-    if (!session?.access_token || mfaMode !== 'verified') return;
+    if (!session?.access_token || mfaMode !== 'verified' || view === 'watchdog') return;
     let cancelled = false;
     (async () => {
       setLoading(true); setError(''); setNotice('');
@@ -168,6 +169,7 @@ export default function CommandCentre({ session }: { session: Session | null }) 
           {view === 'farmers' && <section className="overflow-hidden rounded-2xl border border-[#ded5c3] bg-[#f8f4eb]"><div className="border-b border-[#ded5c3] p-4"><h3 className="font-bold">Farmer directory</h3><p className="text-xs text-[#52645a]">Read-only. Passwords and private credentials are never displayed.</p></div>{farmers.map(f => <div key={f.id} className="flex flex-wrap justify-between gap-2 border-b border-[#e5dccb] p-4"><div><p className="font-semibold">{f.full_name}</p><p className="text-xs text-[#52645a]">{f.farmer_code} · {f.cooperativeName}</p></div><span className="text-xs text-[#52645a]">{date(f.created_at)}</span></div>)}<p className="p-3 text-xs text-[#52645a]">Showing up to 250 farmer accounts.</p></section>}
           {view === 'cooperatives' && <section className="space-y-3"><p className="text-sm text-[#52645a]">Activate or deactivate cooperative registration access. Existing farmer records are not deleted.</p>{coops.map(c => <article key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#ded5c3] bg-[#f8f4eb] p-4"><div><div className="flex items-center gap-2"><h3 className="font-bold">{c.name}</h3><span className={'rounded-full px-2 py-1 text-[10px] font-bold ' + (c.is_active ? 'bg-[#e7eddf] text-[#174432]' : 'bg-rose-100 text-rose-700')}>{c.is_active ? 'ACTIVE' : 'INACTIVE'}</span></div><p className="mt-1 text-xs text-[#52645a]">{c.farmerCount} farmers · Added {date(c.created_at)}</p></div><button disabled={busy} onClick={() => void toggleCoop(c)} className={'rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-50 ' + (c.is_active ? 'border border-rose-200 text-rose-700' : 'bg-[#174432] text-white')}>{c.is_active ? 'Deactivate' : 'Activate'}</button></article>)}</section>}
           {view === 'settings' && <section className="max-w-2xl rounded-2xl border border-[#ded5c3] bg-[#f8f4eb] p-5"><div className="flex items-start gap-3"><Megaphone className="h-6 w-6 text-[#285b40]"/><div><h3 className="font-bold">Farmer app announcement</h3><p className="text-xs text-[#52645a]">Publish a short notice visible in the farmer app.</p></div></div><textarea rows={4} maxLength={240} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Write a farmer-facing announcement…" className="mt-5 w-full rounded-xl border border-[#ded5c3] bg-white p-3 text-sm"/><div className="mt-2 flex items-center justify-between"><span className="text-xs text-[#52645a]">{draft.length}/240</span><button disabled={busy} onClick={() => void publish()} className="rounded-xl bg-[#174432] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? 'Publishing…' : 'Publish announcement'}</button></div><div className="mt-4 rounded-xl border border-dashed border-[#cfc4ae] bg-white/70 p-3"><p className="text-[10px] font-bold uppercase text-[#52645a]">Live preview</p><p className="mt-2 text-sm">{draft.trim() || 'Your announcement will appear here.'}</p></div><p className="mt-3 text-xs text-[#52645a]">Do not publish passwords, personal data or confidential information.</p></section>}
+          {view === 'watchdog' && session && <WatchdogConsole session={session}/>}
           {view === 'activity' && <section className="rounded-2xl border border-[#ded5c3] bg-[#f8f4eb] p-4"><h3 className="font-bold">Administrative audit trail</h3><p className="mb-3 text-xs text-[#52645a]">Latest 100 actions performed through this console.</p>{activity.length ? activity.map(a => <div key={a.id} className="border-t border-[#e5dccb] py-3"><div className="flex flex-wrap justify-between gap-2"><p className="text-sm font-semibold">{a.action.replaceAll('_',' ')}</p><span className="text-xs text-[#52645a]">{date(a.created_at)}</span></div><p className="mt-1 text-xs text-[#52645a]">{a.target_type}{a.target_id ? ' · ' + a.target_id : ''}</p></div>) : <p className="py-6 text-center text-sm text-[#52645a]">No admin actions recorded yet.</p>}</section>}
         </>}
       </main>

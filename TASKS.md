@@ -18,7 +18,7 @@
 - [x] Add an admin-protected RSS ingestion endpoint for approved, explicitly enabled feeds; new entries remain unpublished for review.
 - [x] Add an admin-only publishing endpoint requiring verification notes and explicit geographic scope; match published items against registered crops and livestock.
 - [ ] Verify and configure approved source endpoints and licences before enabling ingestion.
-- [ ] Add source review and publishing controls to Command Centre.
+- [x] Add MFA-protected source registry controls and unpublished evidence review/publishing workflow to Command Centre.
 - [ ] Add non-RSS adapters for approved APIs and datasets, with source-specific validation and freshness rules.
 - [ ] Add scheduled ingestion and stale-item/opportunity expiry automation.
 - [ ] Connect Watchdog notifications to Web Push using the existing PWA subscription infrastructure.
