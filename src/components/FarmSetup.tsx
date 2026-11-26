@@ -161,8 +161,8 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
               <p className="mt-1 text-xs leading-5 text-[#66746b]">Stand at or near this farm before capturing its location. Omulimi saves the GPS coordinates and the accuracy reported by your device.</p>
             </div>
           </div>
-          <button onClick={captureLocation} disabled={locationStatus === 'detecting'} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#174432] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
-            {locationStatus === 'detecting' ? <><Loader2 className="h-4 w-4 animate-spin"/>Getting GPS location…</> : <><LocateFixed className="h-4 w-4"/> {position ? 'Capture location again' : 'Capture farm GPS location'}</>}
+          <button onClick={captureLocation} disabled={locationStatus === 'detecting' || geocoding} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#174432] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+            {locationStatus === 'detecting' ? <><Loader2 className="h-4 w-4 animate-spin"/>Getting GPS location…</> : geocoding ? <><Loader2 className="h-4 w-4 animate-spin"/>Looking up area…</> : <><LocateFixed className="h-4 w-4"/> {position ? 'Capture location again' : 'Capture farm GPS location'}</>}
           </button>
           {position && <div className="mt-3 rounded-xl bg-[#e7eddf] p-3 text-xs text-[#285b40]">
             <p className="font-semibold">GPS location captured</p>
