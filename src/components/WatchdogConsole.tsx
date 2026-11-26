@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, CircleAlert, ExternalLink, Loader2, RefreshCw, Rss, ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { CheckCircle2, CircleAlert, ExternalLink, Loader2, RefreshCw, Rss, ShieldCheck } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
 type Source = { id:string; source_key:string; name:string; source_kind:string; homepage_url:string; feed_url:string|null; access_method:string; access_status:string; commercial_use_notes:string|null; enabled:boolean; last_checked_at:string|null; last_success_at:string|null; last_error:string|null };
@@ -20,6 +20,7 @@ export default function WatchdogConsole({ session }: { session: Session }) {
   const [feedDrafts,setFeedDrafts] = useState<Record<string,string>>({});
   const [permissionDrafts,setPermissionDrafts] = useState<Record<string,string>>({});
   const [enabledDrafts,setEnabledDrafts] = useState<Record<string,boolean>>({});
+  const [permissionNotes,setPermissionNotes] = useState<Record<string,string>>({});
   const [category,setCategory] = useState('news');
   const [scope,setScope] = useState('national');
   const [region,setRegion] = useState('');
@@ -47,6 +48,7 @@ export default function WatchdogConsole({ session }: { session: Session }) {
       setFeedDrafts(Object.fromEntries((data.sources || []).map((s:Source)=>[s.id,s.feed_url || ''])));
       setPermissionDrafts(Object.fromEntries((data.sources || []).map((s:Source)=>[s.id,s.access_status])));
       setEnabledDrafts(Object.fromEntries((data.sources || []).map((s:Source)=>[s.id,s.enabled])));
+      setPermissionNotes(Object.fromEntries((data.sources || []).map((s:Source)=>[s.id,s.commercial_use_notes || ''])));
       if (selected && !(data.items || []).some((item:Item)=>item.id===selected)) setSelected('');
     } catch(e) { setError(e instanceof Error?e.message:'Could not load Watchdog review data.'); }
     finally { setLoading(false); }
@@ -68,7 +70,7 @@ export default function WatchdogConsole({ session }: { session: Session }) {
   const saveSource = async (source:Source) => {
     setBusy(true); setError(''); setNotice('');
     try {
-      const data=await request('/api/watchdog/review',{method:'PATCH',body:JSON.stringify({action:'update-source',sourceId:source.id,feedUrl:feedDrafts[source.id]||'',accessStatus:permissionDrafts[source.id],enabled:enabledDrafts[source.id]})});
+      const data=await request('/api/watchdog/review',{method:'PATCH',body:JSON.stringify({action:'update-source',sourceId:source.id,feedUrl:feedDrafts[source.id]||'',accessStatus:permissionDrafts[source.id],enabled:enabledDrafts[source.id],commercialUseNotes:permissionNotes[source.id]||''})});
       setSources(current=>current.map(item=>item.id===source.id?data.source:item));
       setNotice(source.name+' settings saved.'); 
     } catch(e) {setError(e instanceof Error?e.message:'Could not save source.');}
@@ -107,6 +109,7 @@ export default function WatchdogConsole({ session }: { session: Session }) {
       <div className="mt-4 grid gap-3 xl:grid-cols-2">{sources.map(source=><article key={source.id} className="rounded-xl border border-[#e5dccb] bg-white/70 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2"><div><h4 className="font-bold">{source.name}</h4><p className="text-[10px] uppercase tracking-wide text-[#879188]">{source.source_kind.replaceAll('_',' ')} · {source.access_method}</p></div><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${statusStyle(source.access_status)}`}>{source.access_status.replaceAll('_',' ')}</span></div>
         <div className="mt-3"><label className={label}>Approved RSS feed URL<input value={feedDrafts[source.id]??''} onChange={e=>setFeedDrafts(v=>({...v,[source.id]:e.target.value}))} placeholder="https://publisher.example/feed.xml" className={input}/></label></div>
+        <label className={label+' mt-3'}>Permission / licence basis<textarea rows={2} maxLength={1200} value={permissionNotes[source.id]??''} onChange={e=>setPermissionNotes(v=>({...v,[source.id]:e.target.value}))} placeholder="Record the open-data licence, publisher permission, terms checked and date…" className={input}/></label>
         <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]"><label className={label}>Access permission<select value={permissionDrafts[source.id]||source.access_status} onChange={e=>setPermissionDrafts(v=>({...v,[source.id]:e.target.value}))} className={input}><option value="review_required">Review required</option><option value="permission_pending">Permission pending</option><option value="approved">Approved</option><option value="blocked">Blocked</option></select></label><label className="flex items-end gap-2 pb-2 text-xs font-semibold text-[#52645a]"><input type="checkbox" checked={!!enabledDrafts[source.id]} onChange={e=>setEnabledDrafts(v=>({...v,[source.id]:e.target.checked}))}/> Enable feed</label></div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><p className="text-[10px] text-[#879188]">{source.last_success_at?'Last successful: '+new Date(source.last_success_at).toLocaleString('en-UG'):source.last_error?'Last error: '+source.last_error:'Not yet collected'} </p><button onClick={()=>void saveSource(source)} disabled={busy} className="rounded-lg border border-[#c9d9c6] px-3 py-2 text-xs font-bold text-[#285b40] disabled:opacity-50">Save source</button></div>
         <a href={source.homepage_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-[#52645a] underline">Publisher website <ExternalLink className="h-3 w-3"/></a>
