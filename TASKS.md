@@ -4,9 +4,10 @@
 - [x] Merge Kato farm-decision-context improvements (PR #18).
 - [x] Add farm-location metadata foundation to the database.
 - [x] Add farm crop and livestock record tables with owner-scoped RLS.
-- [ ] Build GPS-first farm creation during first sign-in and for every additional farm.
+- [x] Build GPS-first farm creation during first sign-in and for every additional farm.
+- [x] Add GPS recapture for existing farms that still have legacy district-centroid locations.
 - [ ] Add reverse geocoding for village/parish/subcounty labels without replacing GPS coordinates.
-- [ ] Migrate Weather and Soil to use exact saved farm coordinates.
+- [x] Use saved GPS coordinates for Weather; prevent Soil Intelligence from silently using legacy district-centroid coordinates.
 - [ ] Move disease scans and crop-care records fully onto selected-farm context.
 - [ ] Build shared farm context API consumed by all intelligence capabilities.
 - [ ] Build unified evidence/provenance model for watchdog discoveries and product catalogue.
