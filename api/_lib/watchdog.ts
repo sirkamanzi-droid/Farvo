@@ -47,7 +47,7 @@ function entryLink(xml: string) {
 
 function plainSummary(value: string) {
   return decodeXml(value.replace(/<[^>]*>/g, ' '))
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 500);
 }
