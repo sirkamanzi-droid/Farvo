@@ -13,6 +13,7 @@ export async function loadFarmContext(
   userId: string,
   farmId: string,
   soilAssessmentLimit = 5,
+  cropCarePlanLimit = 10,
 ): Promise<FarmContext | null> {
   const { data: farm, error: farmError } = await supabase
     .from('farms')
@@ -40,7 +41,7 @@ export async function loadFarmContext(
     supabase.from('crop_care_plans')
       .select('id,crop_name,issue_name,diagnosis_status,status,care_plan,source_scan,started_at,next_review_at,created_at,updated_at')
       .eq('user_id', userId).eq('farm_id', farmId)
-      .order('created_at', { ascending: false }).limit(10),
+      .order('created_at', { ascending: false }).limit(cropCarePlanLimit),
   ]);
 
   const failed = [
