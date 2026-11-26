@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { loadFarmContext } from './_lib/farmContext';
 
 type IncomingMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -269,56 +270,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(503).json({ error: 'Kato is not configured on the server yet. Please try again later.' });
     }
 
-    // Resolve the selected farm from the authenticated user's own records.
-    // Never trust crop, district or farm identity supplied by the browser.
+    // Load all selected-farm context through the shared, owner-scoped resolver.
     const requestedFarmId = typeof body.farmId === 'string' ? body.farmId.trim() : '';
-    let farmContext: { id: string; label: string; crop: string; district_name: string; region: string; latitude: number | null; longitude: number | null; location_accuracy_m: number | null; location_source: string | null; location_captured_at: string | null; location_label: string | null; village: string | null; parish: string | null; subcounty: string | null; farm_size_value: number | null; farm_size_unit: string | null } | null = null;
-    if (requestedFarmId) {
-      const { data: farm, error: farmError } = await supabase
-        .from('farms')
-        .select('id,label,crop,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at,location_label,village,parish,subcounty,farm_size_value,farm_size_unit')
-        .eq('id', requestedFarmId)
-        .eq('user_id', authData.user.id)
-        .maybeSingle();
+    const selectedFarmContext = requestedFarmId
+      ? await loadFarmContext(supabase, authData.user.id, requestedFarmId)
+      : null;
 
-      if (farmError) {
-        console.error('Kato could not load the selected farm:', farmError.message);
-        return res.status(503).json({ error: 'Kato could not load your selected farm. Please try again shortly.' });
-      }
-      if (!farm) return res.status(403).json({ error: 'That farm is not available in your account. Select one of your saved farms and try again.' });
-      farmContext = farm;
+    if (requestedFarmId && !selectedFarmContext) {
+      return res.status(403).json({ error: 'That farm is not available in your account. Select one of your saved farms and try again.' });
     }
 
-    // Load the selected farm's registered crops and livestock from the same
-    // authenticated, RLS-scoped database context. Never mix assets across farms.
-    let farmCropRows: any[] = [];
-    let farmLivestockRows: any[] = [];
-    if (farmContext) {
-      const [cropsResult, livestockResult] = await Promise.all([
-        supabase.from('farm_crops')
-          .select('crop_name,variety,planting_date,growth_stage,area_value,area_unit,notes')
-          .eq('user_id', authData.user.id)
-          .eq('farm_id', farmContext.id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: true }),
-        supabase.from('farm_livestock')
-          .select('species,breed,animal_count,production_purpose,age_group,notes')
-          .eq('user_id', authData.user.id)
-          .eq('farm_id', farmContext.id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: true }),
-      ]);
-
-      if (cropsResult.error || livestockResult.error) {
-        console.error("Kato could not load the selected farm's registered assets:", {
-          crops: cropsResult.error?.message,
-          livestock: livestockResult.error?.message,
-        });
-        return res.status(503).json({ error: 'Kato could not load the crops and livestock registered for this farm. Please try again shortly.' });
-      }
-      farmCropRows = cropsResult.data || [];
-      farmLivestockRows = livestockResult.data || [];
-    }
+    const farmContext = selectedFarmContext?.farm || null;
+    const farmCropRows = selectedFarmContext?.crops || [];
+    const farmLivestockRows = selectedFarmContext?.livestock || [];
+    const soilRows = selectedFarmContext?.soilAssessments || [];
 
     const farmCropContext = farmCropRows.length
       ? farmCropRows.map(row => ({
@@ -343,26 +308,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ageGroup: row.age_group ? cleanLabel(row.age_group, 'not recorded') : null,
       notes: cleanObservation(row.notes),
     }));
-
-    // Soil context is scoped to the selected farm, never mixed across a farmer's farms.
-    let soilRows: any[] = [];
-    let soilError: { message: string } | null = null;
-    if (farmContext) {
-      const result = await supabase
-        .from('soil_assessments')
-        .select('crop,mode,measured_ph,texture,drainage,findings,created_at,weather_snapshot,ai_report')
-        .eq('user_id', authData.user.id)
-        .eq('farm_id', farmContext.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      soilRows = result.data || [];
-      soilError = result.error;
-    }
-
-    if (soilError) {
-      console.error('Kato could not load the selected farm soil context:', soilError.message);
-      return res.status(503).json({ error: 'Kato could not load soil reports for this farm. Please try again shortly.' });
-    }
 
     const soilContext = (soilRows || []).map(row => ({
       crop: row.crop,
