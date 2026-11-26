@@ -86,6 +86,170 @@ function isInsideUgandaScreeningBounds(geometry: EonetGeometry[]) {
   );
 }
 
+function detectLivestock(text: string) {
+  const lower = text.toLowerCase();
+  const terms: Record<string, string[]> = {
+    cattle: ["cattle", "cow", "cows", "beef", "dairy"],
+    goats: ["goat", "goats"], sheep: ["sheep"],
+    poultry: ["poultry", "chicken", "chickens", "broiler", "layer"],
+    pigs: ["pig", "pigs", "swine"], fish: ["fish", "aquaculture"],
+    rabbits: ["rabbit", "rabbits"],
+  };
+  return Object.entries(terms)
+    .filter(([, values]) => values.some((term) => lower.includes(term)))
+    .map(([animal]) => animal);
+}
+
+function normalizedHttpsUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return null;
+    url.hash = "";
+    url.searchParams.sort();
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function allowedFeedUrl(feedUrl: string, homepageUrl: string) {
+  try {
+    const feed = new URL(feedUrl);
+    const homepage = new URL(homepageUrl);
+    return feed.protocol === "https:" &&
+      (feed.hostname === homepage.hostname || feed.hostname.endsWith(`.${homepage.hostname}`));
+  } catch {
+    return false;
+  }
+}
+
+function nodeText(parent: Element, names: string[]) {
+  for (const name of names) {
+    const node = parent.getElementsByTagNameNS("*", name)[0] || parent.getElementsByTagName(name)[0];
+    if (node?.textContent) return node.textContent.trim();
+  }
+  return "";
+}
+
+function parseFeedEntries(xml: string) {
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  if (!document || document.getElementsByTagName("parsererror").length) {
+    throw new Error("Publisher feed is not valid XML.");
+  }
+  const rssItems = Array.from(document.getElementsByTagName("item"));
+  const atomEntries = Array.from(document.getElementsByTagNameNS("*", "entry"));
+  return [...rssItems, ...atomEntries].slice(0, 40).map((entry) => {
+    const title = nodeText(entry, ["title"]);
+    const summary = nodeText(entry, ["description", "summary", "encoded", "content"])
+      .replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 500);
+    const linkNode = entry.getElementsByTagNameNS("*", "link")[0] || entry.getElementsByTagName("link")[0];
+    const rawLink = linkNode?.getAttribute("href") || linkNode?.textContent?.trim() || "";
+    const dateText = nodeText(entry, ["pubDate", "published", "updated", "date"]);
+    const parsed = dateText ? new Date(dateText) : null;
+    return {
+      title,
+      summary,
+      url: rawLink,
+      publishedAt: parsed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString() : null,
+    };
+  }).filter((item) => item.title.length >= 5 && item.url);
+}
+
+async function collectApprovedRss() {
+  const { data: sources, error } = await db.from("agri_sources")
+    .select("id,source_key,name,homepage_url,feed_url,country_code")
+    .eq("enabled", true)
+    .eq("access_status", "approved")
+    .eq("access_method", "rss")
+    .not("feed_url", "is", null)
+    .limit(12);
+  if (error) throw error;
+
+  let checked = 0;
+  let inserted = 0;
+  let duplicates = 0;
+  let failed = 0;
+
+  for (let offset = 0; offset < (sources || []).length; offset += 3) {
+    const batch = (sources || []).slice(offset, offset + 3);
+    const results = await Promise.all(batch.map(async (source) => {
+      try {
+        if (!source.feed_url || !allowedFeedUrl(source.feed_url, source.homepage_url)) {
+          throw new Error("Feed URL must use HTTPS and belong to the registered publisher domain.");
+        }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        let response: Response;
+        try {
+          response = await fetch(source.feed_url, {
+            headers: { Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" },
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (!response.ok) throw new Error(`Feed returned HTTP ${response.status}.`);
+        if (!allowedFeedUrl(response.url, source.homepage_url)) {
+          throw new Error("Feed redirected outside the registered publisher domain.");
+        }
+        const xml = await response.text();
+        if (xml.length > 1_500_000) throw new Error("Feed response exceeded the 1.5 MB safety limit.");
+        const entries = parseFeedEntries(xml);
+        let sourceInserted = 0;
+        let sourceDuplicates = 0;
+        for (const entry of entries) {
+          const canonicalUrl = normalizedHttpsUrl(entry.url);
+          if (!canonicalUrl) continue;
+          const combined = `${entry.title} ${entry.summary}`;
+          const dedupeKey = await sha256Hex(canonicalUrl.toLowerCase());
+          const { error: insertError } = await db.from("agri_intelligence_items").insert({
+            source_id: source.id,
+            source_name: source.name,
+            title: entry.title.slice(0, 300),
+            summary: entry.summary || null,
+            canonical_url: canonicalUrl,
+            category: classify(combined),
+            geography_scope: source.country_code === "UG" ? "national" : "global",
+            country_code: source.country_code || "UG",
+            affected_crops: detectCrops(combined),
+            affected_livestock: detectLivestock(combined),
+            published_at: entry.publishedAt,
+            verification_status: "unverified",
+            evidence_type: "source_report",
+            dedupe_key: dedupeKey,
+            is_published: false,
+            metadata: { ingestion_method: "rss", source_key: source.source_key },
+          });
+          if (insertError?.code === "23505") sourceDuplicates++;
+          else if (insertError) throw insertError;
+          else sourceInserted++;
+        }
+        await db.from("agri_sources").update({
+          last_checked_at: new Date().toISOString(),
+          last_success_at: new Date().toISOString(),
+          last_error: null,
+        }).eq("id", source.id);
+        return { checked: 1, inserted: sourceInserted, duplicates: sourceDuplicates, failed: 0 };
+      } catch (error) {
+        const message = error instanceof Error ? error.message.slice(0, 500) : "RSS collection failed.";
+        await db.from("agri_sources").update({
+          last_checked_at: new Date().toISOString(),
+          last_error: message,
+        }).eq("id", source.id);
+        return { checked: 1, inserted: 0, duplicates: 0, failed: 1 };
+      }
+    }));
+    for (const result of results) {
+      checked += result.checked;
+      inserted += result.inserted;
+      duplicates += result.duplicates;
+      failed += result.failed;
+    }
+  }
+
+  return { checked, inserted, duplicates, failed };
+}
+
 async function collectEonet() {
   const { data: source, error: sourceError } = await db
     .from("agri_sources")
@@ -236,8 +400,16 @@ Deno.serve(async (request: Request) => {
       return json({ error: "Scheduled collection is not authorised." }, 401);
     }
 
-    const result = await collectEonet();
-    return json({ ok: true, ...result, completedAt: new Date().toISOString() });
+    const [eonet, rss] = await Promise.all([collectEonet(), collectApprovedRss()]);
+    return json({
+      ok: true,
+      checked: eonet.checked + rss.checked,
+      inserted: eonet.inserted + rss.inserted,
+      duplicates: eonet.duplicates + rss.duplicates,
+      failed: rss.failed,
+      skippedOutOfArea: eonet.skippedOutOfArea || 0,
+      completedAt: new Date().toISOString(),
+    });
   } catch (error) {
     console.error("Watchdog collector failed:", error instanceof Error ? error.message : "Unknown error");
     return json({ error: "Scheduled collection failed." }, 500);
