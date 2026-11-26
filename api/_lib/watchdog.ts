@@ -111,6 +111,48 @@ function allowedFeedUrl(feedUrl: string, homepageUrl: string) {
   } catch { return false; }
 }
 
+
+async function ingestNasaEonet(db: SupabaseClient) {
+  const { data: source, error } = await db.from('agri_sources').select('id,api_base_url,access_status,enabled').eq('source_key','nasa_earthdata').maybeSingle();
+  if (error) throw error;
+  if (!source || !source.enabled || source.access_status !== 'approved' || !source.api_base_url) return { checked:0, inserted:0, duplicates:0, failed:0 };
+  const base = new URL(source.api_base_url);
+  if (base.protocol !== 'https:' || base.hostname !== 'eonet.gsfc.nasa.gov' || base.pathname.replace(/\/$/,'') !== '/api/v3') throw new Error('NASA EONET API base URL is not an approved endpoint.');
+  const endpoint = new URL('/api/v3/events',base.origin);
+  endpoint.searchParams.set('status','open'); endpoint.searchParams.set('days','30'); endpoint.searchParams.set('limit','100');
+  const controller = new AbortController(); const timeout = setTimeout(()=>controller.abort(),12000);
+  try {
+    const response = await fetch(endpoint,{headers:{Accept:'application/json','User-Agent':'Omulimi-Agricultural-Intelligence/1.0 (+https://omulimiapp.vercel.app)'},signal:controller.signal});
+    if (!response.ok) throw new Error(`NASA EONET returned HTTP ${response.status}.`);
+    const payload = await response.json() as {events?:Array<Record<string,any>>};
+    const events = Array.isArray(payload.events)?payload.events:[];
+    let inserted=0,duplicates=0;
+    for (const event of events) {
+      const title=typeof event.title==='string'?event.title.trim():'';
+      if(title.length<5||!event.id) continue;
+      const canonicalUrl=typeof event.link==='string'&&event.link.startsWith('https://')?event.link:`https://eonet.gsfc.nasa.gov/api/v3/events/${encodeURIComponent(String(event.id))}`;
+      const description=typeof event.description==='string'?event.description.slice(0,500):'';
+      const categoryNames=Array.isArray(event.categories)?event.categories.map((c:any)=>String(c.title||c.id||'')).filter(Boolean):[];
+      const geometry=Array.isArray(event.geometry)?event.geometry.slice(-5).map((g:any)=>({date:g.date||null,type:g.type||null,coordinates:g.coordinates||null})):[];
+      const assets=detectAssets(`${title} ${description} ${categoryNames.join(' ')}`);
+      const dedupeKey=createHash('sha256').update(`nasa-eonet:${String(event.id)}`).digest('hex');
+      const {error:insertError}=await db.from('agri_intelligence_items').insert({
+        source_id:source.id,source_name:'NASA EONET',title:title.slice(0,300),summary:description||null,canonical_url:canonicalUrl,
+        category:classify(title,description),geography_scope:'global',country_code:'UG',affected_crops:assets.crops,affected_livestock:assets.livestock,
+        published_at:geometry[0]?.date||null,verification_status:'unverified',evidence_type:'dataset_observation',dedupe_key,is_published:false,
+        metadata:{ingestion_method:'nasa_eonet_api',eonet_event_id:String(event.id),categories:categoryNames,geometry,attribution:'NASA Earth Observatory Natural Event Tracker (EONET)',geographic_assignment:'Not assigned; reviewer must confirm relevance and coverage.'}
+      });
+      if(insertError?.code==='23505')duplicates++; else if(insertError)throw insertError; else inserted++;
+    }
+    await db.from('agri_sources').update({last_checked_at:new Date().toISOString(),last_success_at:new Date().toISOString(),last_error:null}).eq('id',source.id);
+    return {checked:1,inserted,duplicates,failed:0};
+  } catch(e) {
+    const message=e instanceof Error?e.message.slice(0,500):'NASA EONET collection failed.';
+    await db.from('agri_sources').update({last_checked_at:new Date().toISOString(),last_error:message}).eq('id',source.id);
+    return {checked:1,inserted:0,duplicates:0,failed:1};
+  } finally {clearTimeout(timeout);}
+}
+
 export async function ingestApprovedFeeds(db: SupabaseClient) {
   const { data: sources, error } = await db.from('agri_sources')
     .select('id,source_key,name,homepage_url,feed_url,country_code,access_status,enabled')
@@ -170,7 +212,8 @@ export async function ingestApprovedFeeds(db: SupabaseClient) {
       await db.from('agri_sources').update({ last_checked_at: new Date().toISOString(), last_error: message }).eq('id', source.id);
     }
   }
-  return { checked, inserted, duplicates, failed };
+  const nasa = await ingestNasaEonet(db);
+  return { checked: checked + nasa.checked, inserted: inserted + nasa.inserted, duplicates: duplicates + nasa.duplicates, failed: failed + nasa.failed };
 }
 
 function normalise(value: unknown) {
