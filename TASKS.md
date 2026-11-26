@@ -12,8 +12,16 @@
 - [x] Give Kato the selected farm's saved GPS metadata, administrative labels, farm size, registered crops, and registered livestock; keep missing asset details explicitly unknown.
 - [x] Build a shared owner-scoped farm context resolver and authenticated endpoint; wire Kato to the shared resolver.
 - [ ] Migrate all intelligence capabilities to consume the shared farm context contract.
-- [ ] Build unified evidence/provenance model for watchdog discoveries and product catalogue.
-- [ ] Build watchdog ingestion, relevance filtering and alert delivery.
+- [x] Create the initial agricultural source registry with access/permission states and source provenance fields.
+- [x] Create the agricultural intelligence evidence-item model and farm-scoped notification records with owner-scoped RLS.
+- [x] Add an in-app notification drawer in the existing Omulimi header (no separate Watchdog page).
+- [x] Add an admin-protected RSS ingestion endpoint for approved, explicitly enabled feeds; new entries remain unpublished for review.
+- [x] Add an admin-only publishing endpoint requiring verification notes and explicit geographic scope; match published items against registered crops and livestock.
+- [ ] Verify and configure approved source endpoints and licences before enabling ingestion.
+- [ ] Add source review and publishing controls to Command Centre.
+- [ ] Add non-RSS adapters for approved APIs and datasets, with source-specific validation and freshness rules.
+- [ ] Add scheduled ingestion and stale-item/opportunity expiry automation.
+- [ ] Connect Watchdog notifications to Web Push using the existing PWA subscription infrastructure.
 - [ ] Build unified decision-support orchestration for Kato and module assessments.
 
 ## Engineering checks

@@ -16,6 +16,7 @@ import DiseaseDetection from './components/DiseaseDetection';
 import SoilCalculator from './components/SoilCalculator';
 import CommandCentre from './components/CommandCentre';
 import KnowledgeCentre from './components/KnowledgeCentre';
+import NotificationCenter from './components/NotificationCenter';
 import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain, BookOpen } from 'lucide-react';
 
 async function generateKatoCareGuidance(input: { farmId: string; cropName: string; districtName: string; issueName: string; confidence: number; observations: string; weatherContext: WeatherData | null; weatherDistrictName: string | null }) {
@@ -76,7 +77,7 @@ async function generateKatoCareGuidance(input: { farmId: string; cropName: strin
   }
 }
 
-function BrandHeader() { return (<header className="sticky top-0 z-20 flex h-14 items-center bg-[#f2ecdf]/95 px-4 backdrop-blur-md sm:px-6"><div className="mx-auto flex w-full max-w-3xl items-center gap-2.5"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e4eadc]"><Sprout className="h-5 w-5 text-[#174432]"/></div><span className="text-xl font-bold tracking-tight text-[#1d2d27]" style={{fontFamily:'Fraunces, Georgia, serif'}}>Omulimi</span><span className="ml-auto rounded-full bg-[#e4eadc] px-3 py-1 text-[11px] font-semibold text-[#285b40]">Your farm companion</span></div></header>); }
+function BrandHeader({ userId }: { userId: string }) { return (<header className="sticky top-0 z-20 flex h-14 items-center bg-[#f2ecdf]/95 px-4 backdrop-blur-md sm:px-6"><div className="mx-auto flex w-full max-w-3xl items-center gap-2.5"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e4eadc]"><Sprout className="h-5 w-5 text-[#174432]"/></div><span className="text-xl font-bold tracking-tight text-[#1d2d27]" style={{fontFamily:'Fraunces, Georgia, serif'}}>Omulimi</span><div className="ml-auto flex items-center gap-3"><NotificationCenter userId={userId}/><span className="hidden rounded-full bg-[#e4eadc] px-3 py-1 text-[11px] font-semibold text-[#285b40] sm:inline-flex">Your farm companion</span></div></div></header>); }
 function HomeDashboard({farm, farmerName, weather, loading, onOpenWeather, onOpenDisease, onOpenSoil, onOpenKnowledge, onOpenComingSoon, onOpenDistrict, onCaptureLocation}: { farm: Farm; farmerName: string; weather: WeatherData | null; loading: boolean; onOpenWeather: () => void; onOpenDisease: () => void; onOpenSoil: () => void; onOpenKnowledge: () => void; onOpenComingSoon: (title: string, description: string) => void; onOpenDistrict: () => void; onCaptureLocation: () => void; }) {
   const hour = new Date().getHours(); const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   return (<div className="px-4 pb-8 pt-5 sm:px-6"><section className="mb-5"><h1 className="text-[30px] font-semibold leading-tight text-[#1d2d27]">{greeting}, {farmerName || 'farmer'}.</h1></section>
@@ -281,7 +282,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
 
   return (
     <div className="min-h-screen bg-[#f1ebdc] flex flex-col font-sans pb-24" id="app-root">
-      <BrandHeader/>
+      <BrandHeader userId={userId}/>
       {announcement && <div role="status" className="mx-auto mt-3 w-full max-w-3xl px-4 sm:px-6"><div className="rounded-xl border border-[#ead7a8] bg-[#fff3d5] px-4 py-3 text-sm text-soil-900">{announcement}</div></div>}
       <main className="flex-1 w-full max-w-3xl mx-auto">
         {farmSyncError&&<div className="mx-4 sm:mx-6 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{farmSyncError}</div>}

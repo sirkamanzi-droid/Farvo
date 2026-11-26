@@ -7,12 +7,12 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data ? event.data.text() : 'A crop-care activity is due.' };
   }
 
-  const title = payload.title || 'Omulimi · Crop reminder';
+  const title = payload.title || 'Omulimi · Farm update';
   const options = {
-    body: payload.body || 'A crop-care activity is due. Open Omulimi to review it.',
+    body: payload.body || 'There is a new update relevant to your farm. Open Omulimi to review it.',
     icon: payload.icon || '/pwa-icon-192.png',
     badge: '/pwa-icon-192.png',
-    tag: payload.tag || 'omulimi-crop-care',
+    tag: payload.tag || 'omulimi-farm-update',
     data: { url: payload.url || '/' },
     renotify: false,
   };
