@@ -19,10 +19,10 @@
 - [x] Add an admin-only publishing endpoint requiring verification notes and explicit geographic scope; match published items against registered crops and livestock.
 - [ ] Verify and configure approved source endpoints and licences before enabling ingestion.
 - [x] Add MFA-protected source registry controls and unpublished evidence review/publishing workflow to Command Centre.
-- [x] Add the first non-RSS adapter: NASA EONET v3 natural-event metadata (registered separately from NASA Earthdata/GIBS; disabled pending deployment verification).
+- [x] Add and enable NASA EONET v3 with Uganda-area screening (separate from NASA Earthdata/GIBS); hourly polling is live through Supabase Edge Functions.
 - [ ] Add further approved API/dataset adapters, including FEWS NET only after validating Uganda coverage and each data series' usage policy.
-- [x] Add a secret-protected scheduled ingestion endpoint and register the production Supabase Cron job on an hourly UTC schedule (job remains inactive until the Vercel endpoint is deployed and verified).
-- [ ] Activate hourly scheduled ingestion after deployment; add stale-item/opportunity expiry automation.
+- [x] Deploy and activate the secret-protected Supabase Edge Function collector for NASA EONET and enabled approved RSS/licensed feeds; hourly Cron runs at 0 * * * * UTC.
+- [x] Add default evidence expiry windows and hourly stale-item expiry/unpublish sweep.
 - [ ] Connect Watchdog notifications to Web Push using the existing PWA subscription infrastructure.
 - [ ] Build unified decision-support orchestration for Kato and module assessments.
 
