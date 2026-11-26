@@ -3,7 +3,6 @@ import { supabase } from './lib/supabase';
 import AuthScreen from './components/AuthScreen';
 import AccountScreen from './components/AccountScreen';
 import React, { useState, useEffect, useRef } from 'react';
-import { DISTRICTS } from './data/districts';
 import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
 import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets } from './data/farms';
@@ -18,9 +17,6 @@ import SoilCalculator from './components/SoilCalculator';
 import CommandCentre from './components/CommandCentre';
 import KnowledgeCentre from './components/KnowledgeCentre';
 import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain, BookOpen } from 'lucide-react';
-
-
-const DEFAULT_DISTRICT = DISTRICTS[1];
 
 async function generateKatoCareGuidance(input: { farmId: string; cropName: string; districtName: string; issueName: string; confidence: number; observations: string; weatherContext: WeatherData | null; weatherDistrictName: string | null }) {
   try {
