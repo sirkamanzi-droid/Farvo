@@ -113,7 +113,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
     setSaving(true);
     setSaveError('');
     try {
-      const normaliseArea = (value: string) => value.toLowerCase().replace(/\\bdistrict\\b/g, '').replace(/[^a-z]/g, '');
+      const normaliseArea = (value: string) => value.toLowerCase().replace(/\bdistrict\b/g, '').replace(/[^a-z]/g, '');
       const mappedDistrict = area?.district
         ? DISTRICTS.find(item => normaliseArea(item.name) === normaliseArea(area.district!))
         : undefined;
