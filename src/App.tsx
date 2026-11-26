@@ -169,15 +169,19 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const fetchWeather=async(farm:Farm)=>{
     const requestId=++weatherRequestId.current;
     setLoadingWeather(true); setWeatherError(null); setWeatherData(null); setWeatherDistrictId(null);
-    if(farm.locationSource!=='phone_gps'||!Number.isFinite(farm.latitude)||!Number.isFinite(farm.longitude)){
-      setLoadingWeather(false);
-      setWeatherError('Capture this farm’s GPS location to get weather for the actual farm. The saved district location is only an older estimate.');
-      return;
-    }
     try {
       const {data:{session},error:sessionError}=await supabase.auth.getSession();
       if(sessionError||!session) throw new Error('Please sign in again to view weather.');
-      const response=await fetch(`/api/weather?latitude=${farm.latitude}&longitude=${farm.longitude}`,{headers:{Authorization:`Bearer ${session.access_token}`}});
+      const headers={Authorization:`Bearer ${session.access_token}`};
+      const contextResponse=await fetch(`/api/farm-context?farmId=${encodeURIComponent(farm.id)}`,{headers,cache:'no-store'});
+      if(contextResponse.status===401) throw new Error('Your session has expired. Please sign in again.');
+      if(!contextResponse.ok) throw new Error('Could not load this farm’s saved location.');
+      const context=await contextResponse.json() as {farm?:{latitude?:number;longitude?:number;location_source?:string}};
+      const savedFarm=context.farm;
+      if(savedFarm?.location_source!=='phone_gps'||!Number.isFinite(Number(savedFarm.latitude))||!Number.isFinite(Number(savedFarm.longitude))){
+        throw new Error('Capture this farm’s GPS location to get weather for the actual farm. The saved district location is only an older estimate.');
+      }
+      const response=await fetch(`/api/weather?latitude=${savedFarm.latitude}&longitude=${savedFarm.longitude}`,{headers});
       if(response.status===401) throw new Error('Your session has expired. Please sign in again.');
       if(!response.ok) throw new Error('Failed to retrieve weather forecast.');
       const result=await response.json() as WeatherData;
