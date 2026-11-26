@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DiagnosisKatoPanel from './DiagnosisKatoPanel';
 import DiagnosisCarePanel from './DiagnosisCarePanel';
+import DiseasePrevention from './DiseasePrevention';
 import type { WeatherData } from '../types';
 import { findMismatchedDiseaseHost, isGenericDiseaseLabel, matchesSelectedCropPlant } from '../utils/diseaseValidation';
 import { supabase } from '../lib/supabase';
@@ -18,7 +19,7 @@ const CROPS: Crop[] = SUPPORTED_CROPS.map(crop => ({ ...crop, diseaseSupported: 
 
 
 
-type DiseaseView = 'home' | 'cropSelect' | 'capture' | 'analyzing' | 'result' | 'saved';
+type DiseaseView = 'home' | 'prevention' | 'cropSelect' | 'capture' | 'analyzing' | 'result' | 'saved';
 
 interface Diagnosis {
   outcome: 'disease' | 'healthy' | 'no_match' | 'uncertain';
@@ -524,6 +525,10 @@ export default function DiseaseDetection({
 
   const filteredCrops = farmCrops.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  if (view === 'prevention') {
+    return <DiseasePrevention onBack={() => setView('home')} />;
+  }
+
   if (view === 'cropSelect') {
     return (
       <section className="mx-auto flex w-full max-w-xl flex-col gap-5">
@@ -715,6 +720,11 @@ export default function DiseaseDetection({
         <button onClick={() => setView('cropSelect')} disabled={farmContextLoading || Boolean(farmContextError)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#f3f0e5] py-3.5 text-sm font-semibold text-[#174432] disabled:cursor-not-allowed disabled:opacity-50"><Camera className="h-4 w-4" /> {farmContextLoading ? 'Loading your farm crops…' : 'Start crop check'}</button>
         {farmContextError && <div role="alert" className="mt-3 rounded-xl bg-white/10 p-3 text-xs text-white/85">{farmContextError} <button onClick={() => void loadFarmContext()} className="ml-1 underline">Try again</button></div>}
       </div>
+      <button onClick={() => setView('prevention')} className="flex w-full items-center gap-3 rounded-2xl bg-[#e7eddf] p-4 text-left transition hover:bg-[#dfe8d7]">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-[#315640]"><Lightbulb className="h-5 w-5" /></span>
+        <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-[#24382b]">Disease prevention</span><span className="mt-1 block text-xs leading-relaxed text-[#607365]">Learn how to protect your six supported crops.</span></span>
+        <ChevronLeft className="h-4 w-4 rotate-180 text-[#607365]" />
+      </button>
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e8e9e1]"><Camera className="h-5 w-5 text-[#477653]" /><p className="mt-3 text-sm font-semibold text-[#24382b]">Use a clear photo</p><p className="mt-1 text-xs leading-relaxed text-[#829084]">Focus on one affected part in good daylight.</p></div>
         <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e8e9e1]"><Lightbulb className="h-5 w-5 text-[#9a7a3d]" /><p className="mt-3 text-sm font-semibold text-[#24382b]">Check before acting</p><p className="mt-1 text-xs leading-relaxed text-[#829084]">Use results as guidance, not a confirmed diagnosis.</p></div>
