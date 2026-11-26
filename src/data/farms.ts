@@ -141,14 +141,28 @@ export async function saveFarmAssets(
   crops: string[],
   livestock: Array<{ species: string; animalCount: number | null }>
 ): Promise<void> {
-  if (crops.length > 0) {
-    const { error } = await supabase.from('farm_crops').insert(crops.map(cropName => ({
+  // GPS recapture must preserve existing farm assets without inserting duplicates.
+  const [existingCropsResult, existingLivestockResult] = await Promise.all([
+    supabase.from('farm_crops').select('crop_name').eq('farm_id', farmId).eq('user_id', userId).eq('is_active', true),
+    supabase.from('farm_livestock').select('species').eq('farm_id', farmId).eq('user_id', userId).eq('is_active', true),
+  ]);
+  if (existingCropsResult.error) throw existingCropsResult.error;
+  if (existingLivestockResult.error) throw existingLivestockResult.error;
+
+  const existingCrops = new Set((existingCropsResult.data ?? []).map(row => row.crop_name.toLowerCase()));
+  const existingLivestock = new Set((existingLivestockResult.data ?? []).map(row => row.species.toLowerCase()));
+
+  const newCrops = crops.filter(cropName => !existingCrops.has(cropName.toLowerCase()));
+  const newLivestock = livestock.filter(item => !existingLivestock.has(item.species.toLowerCase()));
+
+  if (newCrops.length > 0) {
+    const { error } = await supabase.from('farm_crops').insert(newCrops.map(cropName => ({
       user_id: userId, farm_id: farmId, crop_name: cropName,
     })));
     if (error) throw error;
   }
-  if (livestock.length > 0) {
-    const { error } = await supabase.from('farm_livestock').insert(livestock.map(item => ({
+  if (newLivestock.length > 0) {
+    const { error } = await supabase.from('farm_livestock').insert(newLivestock.map(item => ({
       user_id: userId, farm_id: farmId, species: item.species, animal_count: item.animalCount,
     })));
     if (error) throw error;
