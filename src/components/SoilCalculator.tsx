@@ -152,7 +152,7 @@ export default function SoilCalculator({ userId, farmId, initialCrop, initialLat
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
         if (sessionError || !token) throw new Error('Please sign in again to load farm reports.');
-        const response = await fetch(`/api/farm-context?farmId=${encodeURIComponent(farmId)}`, {
+        const response = await fetch(`/api/farm-context?farmId=${encodeURIComponent(farmId)}&soilHistoryLimit=30`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         });
