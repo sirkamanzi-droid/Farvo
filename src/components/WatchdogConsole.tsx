@@ -34,7 +34,10 @@ export default function WatchdogConsole({ session }: { session: Session }) {
   const [expiresAt,setExpiresAt] = useState('');
 
   const request = useCallback(async (url:string, init:RequestInit = {}) => {
-    const response = await fetch(url,{...init,headers:{Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',...(init.headers||{})},cache:'no-store'});
+    const headers = new Headers(init.headers);
+    headers.set('Authorization','Bearer '+session.access_token);
+    headers.set('Content-Type','application/json');
+    const response = await fetch(url,{...init,headers,cache:'no-store'});
     const data = await response.json().catch(()=>({}));
     if (!response.ok) throw new Error(data.error || 'Request failed.');
     return data;
