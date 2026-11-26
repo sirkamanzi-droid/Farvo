@@ -352,8 +352,30 @@ async function collectEonet() {
         },
       });
 
-      if (insertError?.code === "23505") duplicates++;
-      else if (insertError) throw insertError;
+      if (insertError?.code === "23505") {
+        duplicates++;
+        const { data: existing, error: existingError } = await db.from("agri_intelligence_items")
+          .select("id,metadata,is_published,verification_status")
+          .eq("dedupe_key", dedupeKey)
+          .maybeSingle();
+        if (existingError) throw existingError;
+        if (existing) {
+          const refreshedMetadata = {
+            ...(existing.metadata || {}),
+            categories,
+            geometry,
+            sources,
+            last_seen_at: new Date().toISOString(),
+          };
+          const refresh: Record<string, unknown> = { metadata: refreshedMetadata };
+          if (!existing.is_published && existing.verification_status !== "disputed") {
+            refresh.expires_at = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+            if (existing.verification_status === "expired") refresh.verification_status = "unverified";
+          }
+          const { error: refreshError } = await db.from("agri_intelligence_items").update(refresh).eq("id", existing.id);
+          if (refreshError) throw refreshError;
+        }
+      } else if (insertError) throw insertError;
       else inserted++;
     }
 
@@ -374,6 +396,18 @@ async function collectEonet() {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+
+async function expireStaleItems() {
+  const { data, error } = await db.from("agri_intelligence_items")
+    .update({ verification_status: "expired", is_published: false })
+    .not("expires_at", "is", null)
+    .lte("expires_at", new Date().toISOString())
+    .neq("verification_status", "expired")
+    .select("id");
+  if (error) throw error;
+  return data?.length || 0;
 }
 
 Deno.serve(async (request: Request) => {
@@ -400,13 +434,23 @@ Deno.serve(async (request: Request) => {
       return json({ error: "Scheduled collection is not authorised." }, 401);
     }
 
-    const [eonet, rss] = await Promise.all([collectEonet(), collectApprovedRss()]);
+    let eonet = { checked: 0, inserted: 0, duplicates: 0, skippedOutOfArea: 0 };
+    let rss = { checked: 0, inserted: 0, duplicates: 0, failed: 0 };
+    let failed = 0;
+    try { eonet = await collectEonet(); }
+    catch (error) { failed++; console.error("NASA EONET collection failed:", error instanceof Error ? error.message : "Unknown error"); }
+    try { rss = await collectApprovedRss(); }
+    catch (error) { failed++; console.error("Approved RSS collection failed:", error instanceof Error ? error.message : "Unknown error"); }
+    let expired = 0;
+    try { expired = await expireStaleItems(); }
+    catch (error) { failed++; console.error("Intelligence expiry sweep failed:", error instanceof Error ? error.message : "Unknown error"); }
     return json({
-      ok: true,
+      ok: failed === 0 && rss.failed === 0,
       checked: eonet.checked + rss.checked,
       inserted: eonet.inserted + rss.inserted,
       duplicates: eonet.duplicates + rss.duplicates,
-      failed: rss.failed,
+      failed: failed + rss.failed,
+      expired,
       skippedOutOfArea: eonet.skippedOutOfArea || 0,
       completedAt: new Date().toISOString(),
     });
