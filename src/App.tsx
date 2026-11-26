@@ -204,6 +204,10 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       locationAccuracyM:result.accuracyM,
       locationSource:'phone_gps',
       locationCapturedAt:result.capturedAt,
+      locationLabel:result.locationLabel,
+      village:result.village,
+      parish:result.parish,
+      subcounty:result.subcounty,
     };
     let savedFarm:Farm;
     if(farmSetupMode==='initial'||farmSetupMode==='add'){
@@ -222,6 +226,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         ...target,district:result.district,crop,
         latitude:result.latitude,longitude:result.longitude,
         locationAccuracyM:result.accuracyM,locationSource:'phone_gps',locationCapturedAt:result.capturedAt,
+        locationLabel:result.locationLabel,village:result.village,parish:result.parish,subcounty:result.subcounty,
       });
       if(target.locationSource!=='phone_gps') {
         await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock);
