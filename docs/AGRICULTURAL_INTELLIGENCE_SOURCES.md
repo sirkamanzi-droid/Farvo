@@ -43,4 +43,29 @@ No source is enabled by default. A source must have a verified endpoint, documen
 
 ## Current implementation boundary
 
-The database now contains the source registry, evidence-item model and farm-scoped notification model. The app has an in-app notification drawer. An admin-protected RSS collector imports only explicitly enabled, approved publisher feeds into an unpublished review queue. An admin/MFA-protected publish endpoint requires verification notes and explicit geographic coverage, then matches the item against registered crops and livestock to create farm-scoped notifications. The first seeded sources are all disabled because actual feed/API endpoints and licences still need configuration. The MFA-protected Command Centre now includes source endpoint/access controls, an approved-feed collection action, an unpublished evidence review queue, and a verification/geography/asset publishing form. Source review actions are audited. NASA EONET v3 is now supported as a structured API adapter and imports open natural-event records into the unpublished review queue with event IDs, categories, source attribution and geometry metadata. The geography is deliberately left for human review; NASA event geometry is not automatically converted into a farm-level diagnosis or district alert. FEWS NET's documented public REST API is registered but its market-series field mapping and Uganda dataset coverage still need validation before enabling ingestion. A secret-protected scheduled-run endpoint is available; scheduling remains inactive until WATCHDOG_CRON_SECRET is configured in the deployment and a scheduler is configured. Watchdog Web Push delivery remains follow-on work. Existing crop-care push delivery remains separate.
+The database now contains the source registry, evidence-item model and farm-scoped notification model. The app has an in-app notification drawer. An admin-protected RSS collector imports only explicitly enabled, approved publisher feeds into an unpublished review queue. An admin/MFA-protected publish endpoint requires verification notes and explicit geographic coverage, then matches the item against registered crops and livestock to create farm-scoped notifications. The first seeded sources are all disabled because actual feed/API endpoints and licences still need configuration. The MFA-protected Command Centre now includes source endpoint/access controls, an approved-feed collection action, an unpublished evidence review queue, and a verification/geography/asset publishing form. Source review actions are audited. NASA EONET v3 is now supported as a structured API adapter and imports open natural-event records into the unpublished review queue with event IDs, categories, source attribution and geometry metadata. The geography is deliberately left for human review; NASA event geometry is not automatically converted into a farm-level diagnosis or district alert. FEWS NET's documented public REST API is registered but its market-series field mapping and Uganda dataset coverage still need validation before enabling ingestion. A secret-protected scheduled-run endpoint is available. A 256-bit bearer secret is stored in Supabase Vault, while only its SHA-256 hash is held in a service-role-only table. Supabase Cron can call the endpoint every six hours using the Vault secret; the cron job is activated after the endpoint is deployed. Watchdog Web Push delivery remains follow-on work. Existing crop-care push delivery remains separate.
+
+
+## Scheduled collection
+
+After deploying the scheduled runner, the production Supabase project can schedule collection through pg_cron + pg_net. The shared bearer secret is stored in Supabase Vault under `watchdog_cron_secret`; do not copy it into source control or client code. Schedule command:
+
+```sql
+select cron.schedule(
+  'omulimi-watchdog-collection',
+  '15 */6 * * *',
+  $$
+  select net.http_post(
+    url := 'https://omulimiapp.vercel.app/api/watchdog/cron',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'watchdog_cron_secret')
+    ),
+    body := '{}'::jsonb,
+    timeout_milliseconds := 25000
+  );
+  $$
+);
+```
+
+The endpoint checks the bearer token against the stored hash before running ingestion. Cron runs every six hours (UTC); inspect `cron.job_run_details` for execution history. Only explicitly enabled and approved sources are collected.
