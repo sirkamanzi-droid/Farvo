@@ -36,11 +36,11 @@ function decodeXml(value: string) {
 
 function textTag(xml: string, tag: string) {
   const match = xml.match(new RegExp(`<(?:[\\w.-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)<\\/(?:[\\w.-]+:)?${tag}\\s*>`, 'i'));
-  return match ? decodeXml(match[1]).replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim() : '';
+  return match ? decodeXml(match[1]).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 }
 
 function entryLink(xml: string) {
-  const atom = xml.match(/<(?:[\\w.-]+:)?link\\b[^>]*href=["']([^"']+)["'][^>]*>/i);
+  const atom = xml.match(/<(?:[\w.-]+:)?link\b[^>]*href=["']([^"']+)["'][^>]*>/i);
   if (atom?.[1]) return decodeXml(atom[1]).trim();
   return textTag(xml, 'link');
 }
@@ -81,7 +81,7 @@ function detectAssets(text: string) {
 }
 
 function feedEntries(xml: string) {
-  const matches = [...xml.matchAll(/<(item|entry)\\b[^>]*>([\\s\\S]*?)<\\/\\1\\s*>/gi)];
+  const matches = [...xml.matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi)];
   return matches.slice(0, 40).map(match => {
     const body = match[2];
     const title = textTag(body, 'title');
@@ -131,7 +131,8 @@ export async function ingestApprovedFeeds(db: SupabaseClient) {
           signal: controller.signal,
         });
       } finally { clearTimeout(timeout); }
-      if (!response.ok) throw new Error(`Feed returned HTTP ${response.status}.`);\n      if (!allowedFeedUrl(response.url, source.homepage_url)) throw new Error('Feed redirected outside the registered publisher domain.');
+      if (!response.ok) throw new Error(`Feed returned HTTP ${response.status}.`);
+      if (!allowedFeedUrl(response.url, source.homepage_url)) throw new Error('Feed redirected outside the registered publisher domain.');
       const xml = await response.text();
       if (xml.length > 1_500_000) throw new Error('Feed response exceeded the 1.5 MB safety limit.');
       const entries = feedEntries(xml);
@@ -173,7 +174,7 @@ export async function ingestApprovedFeeds(db: SupabaseClient) {
 }
 
 function normalise(value: unknown) {
-  return typeof value === 'string' ? value.trim().toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ') : '';
+  return typeof value === 'string' ? value.trim().toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ') : '';
 }
 
 function geographyMatches(farm: any, item: any) {
