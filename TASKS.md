@@ -10,7 +10,8 @@
 - [x] Use saved GPS coordinates for Weather; prevent Soil Intelligence from silently using legacy district-centroid coordinates.
 - [x] Scope disease scan history and newly created crop-care records to the selected farm; preserve the farm used when a scan starts.
 - [x] Give Kato the selected farm's saved GPS metadata, administrative labels, farm size, registered crops, and registered livestock; keep missing asset details explicitly unknown.
-- [ ] Build shared farm context API consumed by all intelligence capabilities.
+- [x] Build a shared owner-scoped farm context resolver and authenticated endpoint; wire Kato to the shared resolver.
+- [ ] Migrate all intelligence capabilities to consume the shared farm context contract.
 - [ ] Build unified evidence/provenance model for watchdog discoveries and product catalogue.
 - [ ] Build watchdog ingestion, relevance filtering and alert delivery.
 - [ ] Build unified decision-support orchestration for Kato and module assessments.
