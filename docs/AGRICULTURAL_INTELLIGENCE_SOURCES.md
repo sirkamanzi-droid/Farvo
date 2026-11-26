@@ -49,30 +49,15 @@ The database now contains the source registry, evidence-item model and farm-scop
 
 ## Scheduled collection
 
-The production Supabase project has the hourly job registered through pg_cron + pg_net. The shared bearer secret is stored in Supabase Vault under `watchdog_cron_secret`; do not copy it into source control or client code. The job is currently inactive because Vercel has not accepted the deployment yet. After the endpoint is live and returns the expected unauthorised response to a request without a bearer token, activate the existing job:
+The production Supabase project has the hourly job registered through pg_cron + pg_net. The shared bearer secret is stored in Supabase Vault under `watchdog_cron_secret`; do not copy it into source control or client code. The job is currently inactive because Vercel has not accepted the deployment yet.
+
+After the endpoint is deployed, verify that an unauthenticated request returns HTTP 401 (rather than 404 or 5xx), then activate the existing job:
 
 ```sql
 select cron.alter_job(
   job_id := (select jobid from cron.job where jobname = 'omulimi-watchdog-collection'),
   active := true
 );
-
--- The existing job's command is shown below for reference:
--- select cron.schedule(
---   'omulimi-watchdog-collection',
---   '0 * * * *',
---   $
-  select net.http_post(
-    url := 'https://omulimiapp.vercel.app/api/watchdog/cron',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'watchdog_cron_secret')
-    ),
-    body := '{}'::jsonb,
-    timeout_milliseconds := 25000
-  );
---   $
--- );
 ```
 
-The endpoint checks the bearer token against the stored hash before running ingestion. Once activated, the Cron job runs at the start of every hour (UTC); inspect `cron.job_run_details` for execution history. Only explicitly enabled and approved sources are collected.
+The registered job calls `https://omulimiapp.vercel.app/api/watchdog/cron` with the bearer secret read from Vault. It runs at the start of every hour (UTC). Inspect `cron.job_run_details` for execution history. Only explicitly enabled and approved sources are collected; collected evidence remains unpublished until an administrator reviews it.
