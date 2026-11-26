@@ -174,7 +174,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
           {area && <div className="mt-3 rounded-xl border border-[#d8e2d0] bg-white p-3 text-xs text-[#405148]">
             <p className="font-semibold text-[#174432]">Mapped area (where available)</p>
             <p className="mt-1">{[area.village, area.parish, area.subcounty, area.district, area.region].filter(Boolean).join(' · ') || area.displayName || 'No administrative labels found'}</p>
-            <p className="mt-1 text-[11px] text-[#7b867d]">Area names come from OpenStreetMap and may be incomplete. GPS coordinates remain the location reference.</p>
+            <p className="mt-1 text-[11px] text-[#7b867d]">Area names come from OpenStreetMap and may be incomplete. GPS coordinates remain the location reference. © OpenStreetMap contributors.</p>
           </div>}
           {locationError && <p role="alert" className="mt-3 text-xs text-rose-700">{locationError}</p>}
         </section>
