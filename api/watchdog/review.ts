@@ -10,14 +10,12 @@ function validApiBaseUrl(value: unknown, sourceKey: string) {
   if (typeof value !== 'string' || !value.trim()) return null;
   const allowed: Record<string,string> = {
     nasa_earthdata: 'eonet.gsfc.nasa.gov',
-    fews_net: 'fdw.fews.net'
   };
   try {
     const url = new URL(value.trim());
     const expected = allowed[sourceKey];
     if (!expected || url.protocol !== 'https:' || url.hostname !== expected) return null;
     if (sourceKey === 'nasa_earthdata' && url.pathname.replace(/\\/$/,'') !== '/api/v3') return null;
-    if (sourceKey === 'fews_net' && url.pathname.replace(/\\/$/,'') !== '/api') return null;
     return url.toString().replace(/\\/$/,'');
   } catch { return null; }
 }
