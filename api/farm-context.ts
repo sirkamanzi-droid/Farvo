@@ -35,7 +35,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const requestedSoilHistoryLimit = req.query.soilHistoryLimit;
     const soilHistoryLimit = requestedSoilHistoryLimit === '30' ? 30 : 5;
-    const context = await loadFarmContext(supabase, authData.user.id, farmId, soilHistoryLimit);
+    const requestedCarePlanLimit = req.query.cropCarePlanLimit;
+    const cropCarePlanLimit = requestedCarePlanLimit === '30' ? 30 : 10;
+    const context = await loadFarmContext(supabase, authData.user.id, farmId, soilHistoryLimit, cropCarePlanLimit);
     if (!context) return res.status(404).json({ error: 'That farm is not available in your account.' });
 
     res.setHeader('Cache-Control', 'private, no-store');
