@@ -15,8 +15,8 @@ function validApiBaseUrl(value: unknown, sourceKey: string) {
     const url = new URL(value.trim());
     const expected = allowed[sourceKey];
     if (!expected || url.protocol !== 'https:' || url.hostname !== expected) return null;
-    if (sourceKey === 'nasa_earthdata' && url.pathname.replace(/\\/$/,'') !== '/api/v3') return null;
-    return url.toString().replace(/\\/$/,'');
+    if (sourceKey === 'nasa_earthdata' && url.pathname.replace(/\/$/,'') !== '/api/v3') return null;
+    return url.toString().replace(/\/$/,'');
   } catch { return null; }
 }
 
