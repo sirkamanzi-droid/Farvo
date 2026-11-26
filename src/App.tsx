@@ -6,11 +6,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DISTRICTS } from './data/districts';
 import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
-import { detectNearestDistrict, LocationStatus } from './data/geolocation';
 import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets } from './data/farms';
 import FarmSetup, { type FarmSetupResult } from './components/FarmSetup';
 import SkyHero from './components/SkyHero';
-import DistrictPicker from './components/DistrictPicker';
 import WeatherDashboard from './components/WeatherDashboard';
 import KatoChat from './components/KatoChat';
 import BottomNav, { Tab } from './components/BottomNav';
@@ -101,14 +99,11 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
-  const [districtPickerOpen, setDistrictPickerOpen] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherDistrictId, setWeatherDistrictId] = useState<string | null>(null);
   const weatherRequestId = useRef(0);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
-  const [locationDetected, setLocationDetected] = useState(false);
   const [comingSoon, setComingSoon] = useState<{title:string;description:string}|null>(null);
   const [showSoilCalculator, setShowSoilCalculator] = useState(false);
   const [showKnowledgeCentre, setShowKnowledgeCentre] = useState(false);
@@ -272,11 +267,6 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       setFarmSyncError('Your farm changes could not be saved. Please try again.');
     }
   };
-  const detectLocationForActiveFarm=()=>{
-    setLocationStatus('detecting');
-    detectNearestDistrict(DISTRICTS).then(({district,status})=>{handleUpdateActiveFarm(district,activeFarm.crop);setLocationStatus(status);setLocationDetected(true);}).catch((status:LocationStatus)=>setLocationStatus(status));
-  };
-
   if(!activeFarm) {
     if(farmSetupMode==='initial') return <FarmSetup title="Create your first farm" onSave={handleSaveFarmSetup}/>;
     return <div className="min-h-screen bg-parchment-100 flex items-center justify-center px-6 text-center text-sm text-soil-700">{farmSyncError || 'Loading your farm…'}</div>;
@@ -288,9 +278,9 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       {announcement && <div role="status" className="mx-auto mt-3 w-full max-w-3xl px-4 sm:px-6"><div className="rounded-xl border border-[#ead7a8] bg-[#fff3d5] px-4 py-3 text-sm text-soil-900">{announcement}</div></div>}
       <main className="flex-1 w-full max-w-3xl mx-auto">
         {farmSyncError&&<div className="mx-4 sm:mx-6 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{farmSyncError}</div>}
-        {activeTab==='home' && <HomeDashboard farm={activeFarm} farmerName={farmerName} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenSoil={()=>activeFarm.locationSource==='phone_gps'?setShowSoilCalculator(true):setComingSoon({title:'Set farm location first',description:'Capture this farm’s GPS location before using Soil Intelligence. This keeps soil estimates tied to the actual farm, not a district centre.'})} onOpenKnowledge={()=>setShowKnowledgeCentre(true)} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={()=>setDistrictPickerOpen(true)} onCaptureLocation={handleCaptureFarmLocation}/>}
+        {activeTab==='home' && <HomeDashboard farm={activeFarm} farmerName={farmerName} weather={weatherData} loading={loadingWeather} onOpenWeather={()=>setActiveTab('weather')} onOpenDisease={()=>setActiveTab('disease')} onOpenSoil={()=>activeFarm.locationSource==='phone_gps'?setShowSoilCalculator(true):setComingSoon({title:'Set farm location first',description:'Capture this farm’s GPS location before using Soil Intelligence. This keeps soil estimates tied to the actual farm, not a district centre.'})} onOpenKnowledge={()=>setShowKnowledgeCentre(true)} onOpenComingSoon={(title,description)=>setComingSoon({title,description})} onOpenDistrict={handleCaptureFarmLocation} onCaptureLocation={handleCaptureFarmLocation}/>}
         {activeTab==='weather' && <div className="flex flex-col gap-4">
-          <SkyHero farms={farms} activeFarm={activeFarm} onSelectFarm={handleSelectFarm} onAddFarm={handleAddFarm} onOpenDistrictPicker={()=>setDistrictPickerOpen(true)} onSelectCrop={c=>handleUpdateActiveFarm(activeFarm.district,c)} onDeleteFarm={handleDeleteActiveFarm} weatherCode={weatherData?.current.weatherCode??1} temperature={weatherData?.current.temperature??0} wasGeoDetected={locationStatus==='success'&&locationDetected}/>
+          <SkyHero farms={farms} activeFarm={activeFarm} onSelectFarm={handleSelectFarm} onAddFarm={handleAddFarm} onOpenDistrictPicker={handleCaptureFarmLocation} onSelectCrop={c=>handleUpdateActiveFarm(activeFarm.district,c)} onDeleteFarm={handleDeleteActiveFarm} weatherCode={weatherData?.current.weatherCode??1} temperature={weatherData?.current.temperature??0} wasGeoDetected={activeFarm.locationSource==='phone_gps'}/>
           <div className="px-0 sm:px-0 flex flex-col gap-0 pb-4">
             
             {loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-[#e6dcc8] p-8 text-center"><Loader2 className="h-7 w-7 text-leaf-600 animate-spin mx-auto"/><p className="text-xs text-soil-600 mt-2">Loading your local forecast…</p></div>}
@@ -316,7 +306,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       {!showSoilCalculator&&!showKnowledgeCentre&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
       {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} initialCrop={activeFarm.crop} initialLatitude={activeFarm.latitude ?? 0} initialLongitude={activeFarm.longitude ?? 0} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
-      <DistrictPicker isOpen={districtPickerOpen} onClose={()=>setDistrictPickerOpen(false)} selectedDistrict={activeFarm.district} onSelect={d=>handleUpdateActiveFarm(d,SUPPORTED_CROP_NAMES.includes(activeFarm.crop)?activeFarm.crop:DEFAULT_CROP)} onUseMyLocation={detectLocationForActiveFarm} locationStatus={locationStatus}/>
+
     </div>
   );
 }
