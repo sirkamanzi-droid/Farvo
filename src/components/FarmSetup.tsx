@@ -113,7 +113,13 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
     setSaving(true);
     setSaveError('');
     try {
-      const district = findNearestDistrict(position.latitude, position.longitude, DISTRICTS);
+      const normaliseArea = (value: string) => value.toLowerCase().replace(/\\bdistrict\\b/g, '').replace(/[^a-z]/g, '');
+      const mappedDistrict = area?.district
+        ? DISTRICTS.find(item => normaliseArea(item.name) === normaliseArea(area.district!))
+        : undefined;
+      // Use a district name returned by the map when it matches our district registry.
+      // Otherwise retain the nearest-centroid value only as a compatibility fallback.
+      const district = mappedDistrict ?? findNearestDistrict(position.latitude, position.longitude, DISTRICTS);
       await onSave({
         ...position,
         district,
@@ -161,6 +167,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
           {position && <div className="mt-3 rounded-xl bg-[#e7eddf] p-3 text-xs text-[#285b40]">
             <p className="font-semibold">GPS location captured</p>
             <p className="mt-1">Accuracy reported: ±{Math.round(position.accuracyM)} metres</p>
+            <p className="mt-1 break-all">Coordinates: {position.latitude.toFixed(6)}, {position.longitude.toFixed(6)}</p>
             {position.accuracyM > 100 && <p className="mt-1">This reading is not very precise. Try again in a more open area if possible.</p>}
           </div>}
           {geocoding && <p className="mt-2 text-xs text-[#66746b]">Looking up nearby area names…</p>}
