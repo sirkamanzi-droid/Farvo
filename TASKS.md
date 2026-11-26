@@ -9,6 +9,7 @@
 - [x] Add optional reverse-geocoded village/parish/subcounty labels without replacing GPS coordinates; labels are explicitly approximate and source-attributed.
 - [x] Use saved GPS coordinates for Weather; prevent Soil Intelligence from silently using legacy district-centroid coordinates.
 - [x] Scope disease scan history and newly created crop-care records to the selected farm; preserve the farm used when a scan starts.
+- [x] Give Kato the selected farm's saved GPS metadata, administrative labels, farm size, registered crops, and registered livestock; keep missing asset details explicitly unknown.
 - [ ] Build shared farm context API consumed by all intelligence capabilities.
 - [ ] Build unified evidence/provenance model for watchdog discoveries and product catalogue.
 - [ ] Build watchdog ingestion, relevance filtering and alert delivery.
