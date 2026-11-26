@@ -44,18 +44,24 @@ No source is enabled by default. A source must have a verified endpoint, documen
 
 ## Current implementation boundary
 
-The database now contains the source registry, evidence-item model and farm-scoped notification model. The app has an in-app notification drawer. An admin-protected RSS collector imports only explicitly enabled, approved publisher feeds into an unpublished review queue. An admin/MFA-protected publish endpoint requires verification notes and explicit geographic coverage, then matches the item against registered crops and livestock to create farm-scoped notifications. The first seeded sources are all disabled because actual feed/API endpoints and licences still need configuration. The MFA-protected Command Centre now includes source endpoint/access controls, an approved-feed collection action, an unpublished evidence review queue, and a verification/geography/asset publishing form. Source review actions are audited. NASA EONET v3 is registered separately from NASA Earthdata/GIBS and supported as a structured API adapter. It imports open natural-event records into the unpublished review queue with event IDs, categories, source attribution and geometry metadata. The geography is deliberately left for human review; NASA event geometry is not automatically converted into a farm-level diagnosis or district alert. FEWS NET's documented public REST API is registered but its market-series field mapping and Uganda dataset coverage still need validation before enabling ingestion. A secret-protected scheduled-run endpoint is available. A 256-bit bearer secret is stored in Supabase Vault, while only its SHA-256 hash is held in a service-role-only table. The hourly Supabase Cron schedule is documented but is not active until the runner is deployed and the job is registered. Watchdog Web Push delivery remains follow-on work. Existing crop-care push delivery remains separate.
+The database now contains the source registry, evidence-item model and farm-scoped notification model. The app has an in-app notification drawer. An admin-protected RSS collector imports only explicitly enabled, approved publisher feeds into an unpublished review queue. An admin/MFA-protected publish endpoint requires verification notes and explicit geographic coverage, then matches the item against registered crops and livestock to create farm-scoped notifications. The first seeded sources are all disabled because actual feed/API endpoints and licences still need configuration. The MFA-protected Command Centre now includes source endpoint/access controls, an approved-feed collection action, an unpublished evidence review queue, and a verification/geography/asset publishing form. Source review actions are audited. NASA EONET v3 is registered separately from NASA Earthdata/GIBS and supported as a structured API adapter. It imports open natural-event records into the unpublished review queue with event IDs, categories, source attribution and geometry metadata. The geography is deliberately left for human review; NASA event geometry is not automatically converted into a farm-level diagnosis or district alert. FEWS NET's documented public REST API is registered but its market-series field mapping and Uganda dataset coverage still need validation before enabling ingestion. A secret-protected scheduled-run endpoint is available. A 256-bit bearer secret is stored in Supabase Vault, while only its SHA-256 hash is held in a service-role-only table. The hourly Supabase Cron job is registered in production but deliberately inactive until the Vercel runner is deployed and verified. Its database schedule is `0 * * * *` (top of each UTC hour). Watchdog Web Push delivery remains follow-on work. Existing crop-care push delivery remains separate.
 
 
 ## Scheduled collection
 
-After deploying the scheduled runner, the production Supabase project can schedule collection through pg_cron + pg_net. The shared bearer secret is stored in Supabase Vault under `watchdog_cron_secret`; do not copy it into source control or client code. Schedule command:
+The production Supabase project has the hourly job registered through pg_cron + pg_net. The shared bearer secret is stored in Supabase Vault under `watchdog_cron_secret`; do not copy it into source control or client code. The job is currently inactive because Vercel has not accepted the deployment yet. After the endpoint is live and returns the expected unauthorised response to a request without a bearer token, activate the existing job:
 
 ```sql
-select cron.schedule(
-  'omulimi-watchdog-collection',
-  '0 * * * *',
-  $$
+select cron.alter_job(
+  job_id := (select jobid from cron.job where jobname = 'omulimi-watchdog-collection'),
+  active := true
+);
+
+-- The existing job's command is shown below for reference:
+-- select cron.schedule(
+--   'omulimi-watchdog-collection',
+--   '0 * * * *',
+--   $
   select net.http_post(
     url := 'https://omulimiapp.vercel.app/api/watchdog/cron',
     headers := jsonb_build_object(
@@ -65,8 +71,8 @@ select cron.schedule(
     body := '{}'::jsonb,
     timeout_milliseconds := 25000
   );
-  $$
-);
+--   $
+-- );
 ```
 
-The endpoint checks the bearer token against the stored hash before running ingestion. Once registered, the Cron job runs at the start of every hour (UTC); inspect `cron.job_run_details` for execution history. Only explicitly enabled and approved sources are collected.
+The endpoint checks the bearer token against the stored hash before running ingestion. Once activated, the Cron job runs at the start of every hour (UTC); inspect `cron.job_run_details` for execution history. Only explicitly enabled and approved sources are collected.
