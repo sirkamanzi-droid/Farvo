@@ -4,6 +4,7 @@ import { DISTRICTS } from '../data/districts';
 import { findNearestDistrict, type LocationStatus } from '../data/geolocation';
 import { SUPPORTED_CROP_NAMES } from '../data/supportedCrops';
 import type { District } from '../types';
+import { supabase } from '../lib/supabase';
 
 export type FarmSetupResult = {
   latitude: number;
@@ -13,6 +14,10 @@ export type FarmSetupResult = {
   district: District;
   crops: string[];
   livestock: Array<{ species: string; animalCount: number | null }>;
+  locationLabel: string | null;
+  village: string | null;
+  parish: string | null;
+  subcounty: string | null;
 };
 
 type Props = {
@@ -28,6 +33,8 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
   const [position, setPosition] = useState<{ latitude: number; longitude: number; accuracyM: number; capturedAt: string } | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [locationError, setLocationError] = useState('');
+  const [geocoding, setGeocoding] = useState(false);
+  const [area, setArea] = useState<{ displayName: string | null; village: string | null; parish: string | null; subcounty: string | null; district: string | null; region: string | null } | null>(null);
   const [crops, setCrops] = useState<string[]>(initialCrops);
   const [livestock, setLivestock] = useState<Array<{ species: string; animalCount: string }>>([]);
   const [saving, setSaving] = useState(false);
@@ -42,14 +49,41 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
     setLocationStatus('detecting');
     setLocationError('');
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setPosition({
+      async ({ coords }) => {
+        const captured = {
           latitude: coords.latitude,
           longitude: coords.longitude,
           accuracyM: coords.accuracy,
           capturedAt: new Date().toISOString(),
-        });
+        };
+        setPosition(captured);
+        setArea(null);
         setLocationStatus('success');
+        setGeocoding(true);
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) return;
+          const response = await fetch(`/api/geocode?latitude=${captured.latitude}&longitude=${captured.longitude}`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (!response.ok) return;
+          const result = await response.json() as {
+            found?: boolean; displayName?: string | null; village?: string | null;
+            parish?: string | null; subcounty?: string | null; district?: string | null; region?: string | null;
+          };
+          if (result.found) setArea({
+            displayName: result.displayName ?? null,
+            village: result.village ?? null,
+            parish: result.parish ?? null,
+            subcounty: result.subcounty ?? null,
+            district: result.district ?? null,
+            region: result.region ?? null,
+          });
+        } catch {
+          // Reverse geocoding is optional; the captured GPS coordinates remain authoritative.
+        } finally {
+          setGeocoding(false);
+        }
       },
       error => {
         const status: LocationStatus = error.code === error.PERMISSION_DENIED ? 'denied' : 'error';
@@ -79,11 +113,21 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
     setSaving(true);
     setSaveError('');
     try {
-      const district = findNearestDistrict(position.latitude, position.longitude, DISTRICTS);
+      const normaliseArea = (value: string) => value.toLowerCase().replace(/\bdistrict\b/g, '').replace(/[^a-z]/g, '');
+      const mappedDistrict = area?.district
+        ? DISTRICTS.find(item => normaliseArea(item.name) === normaliseArea(area.district!))
+        : undefined;
+      // Use a district name returned by the map when it matches our district registry.
+      // Otherwise retain the nearest-centroid value only as a compatibility fallback.
+      const district = mappedDistrict ?? findNearestDistrict(position.latitude, position.longitude, DISTRICTS);
       await onSave({
         ...position,
         district,
         crops,
+        locationLabel: area?.displayName ?? null,
+        village: area?.village ?? null,
+        parish: area?.parish ?? null,
+        subcounty: area?.subcounty ?? null,
         livestock: livestock.map(item => ({
           species: item.species,
           animalCount: item.animalCount.trim() && Number.isFinite(Number(item.animalCount))
@@ -117,13 +161,20 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
               <p className="mt-1 text-xs leading-5 text-[#66746b]">Stand at or near this farm before capturing its location. Omulimi saves the GPS coordinates and the accuracy reported by your device.</p>
             </div>
           </div>
-          <button onClick={captureLocation} disabled={locationStatus === 'detecting'} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#174432] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
-            {locationStatus === 'detecting' ? <><Loader2 className="h-4 w-4 animate-spin"/>Getting GPS location…</> : <><LocateFixed className="h-4 w-4"/> {position ? 'Capture location again' : 'Capture farm GPS location'}</>}
+          <button onClick={captureLocation} disabled={locationStatus === 'detecting' || geocoding} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#174432] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+            {locationStatus === 'detecting' ? <><Loader2 className="h-4 w-4 animate-spin"/>Getting GPS location…</> : geocoding ? <><Loader2 className="h-4 w-4 animate-spin"/>Looking up area…</> : <><LocateFixed className="h-4 w-4"/> {position ? 'Capture location again' : 'Capture farm GPS location'}</>}
           </button>
           {position && <div className="mt-3 rounded-xl bg-[#e7eddf] p-3 text-xs text-[#285b40]">
             <p className="font-semibold">GPS location captured</p>
             <p className="mt-1">Accuracy reported: ±{Math.round(position.accuracyM)} metres</p>
+            <p className="mt-1 break-all">Coordinates: {position.latitude.toFixed(6)}, {position.longitude.toFixed(6)}</p>
             {position.accuracyM > 100 && <p className="mt-1">This reading is not very precise. Try again in a more open area if possible.</p>}
+          </div>}
+          {geocoding && <p className="mt-2 text-xs text-[#66746b]">Looking up nearby area names…</p>}
+          {area && <div className="mt-3 rounded-xl border border-[#d8e2d0] bg-white p-3 text-xs text-[#405148]">
+            <p className="font-semibold text-[#174432]">Mapped area (where available)</p>
+            <p className="mt-1">{[area.village, area.parish, area.subcounty, area.district, area.region].filter(Boolean).join(' · ') || area.displayName || 'No administrative labels found'}</p>
+            <p className="mt-1 text-[11px] text-[#7b867d]">Area names come from OpenStreetMap and may be incomplete. GPS coordinates remain the location reference. © OpenStreetMap contributors.</p>
           </div>}
           {locationError && <p role="alert" className="mt-3 text-xs text-rose-700">{locationError}</p>}
         </section>

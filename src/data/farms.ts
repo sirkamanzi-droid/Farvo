@@ -17,6 +17,10 @@ type FarmRow = {
   location_accuracy_m: number | null;
   location_source: 'phone_gps' | 'manual_pin' | 'legacy_district';
   location_captured_at: string | null;
+  location_label: string | null;
+  village: string | null;
+  parish: string | null;
+  subcounty: string | null;
 };
 
 function fromRow(row: FarmRow): Farm {
@@ -36,6 +40,10 @@ function fromRow(row: FarmRow): Farm {
     locationAccuracyM: row.location_accuracy_m,
     locationSource: row.location_source || 'legacy_district',
     locationCapturedAt: row.location_captured_at,
+    locationLabel: row.location_label,
+    village: row.village,
+    parish: row.parish,
+    subcounty: row.subcounty,
   };
 }
 
@@ -52,13 +60,17 @@ function toRow(userId: string, farm: Farm) {
     location_accuracy_m: farm.locationAccuracyM ?? null,
     location_source: farm.locationSource ?? 'legacy_district',
     location_captured_at: farm.locationCapturedAt ?? null,
+    location_label: farm.locationLabel ?? null,
+    village: farm.village ?? null,
+    parish: farm.parish ?? null,
+    subcounty: farm.subcounty ?? null,
   };
 }
 
 export async function fetchFarms(userId: string): Promise<Farm[]> {
   const { data, error } = await supabase
     .from('farms')
-    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at')
+    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at,location_label,village,parish,subcounty')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -69,7 +81,7 @@ export async function insertFarm(userId: string, farm: Farm): Promise<Farm> {
   const { data, error } = await supabase
     .from('farms')
     .insert(toRow(userId, farm))
-    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at')
+    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at,location_label,village,parish,subcounty')
     .single();
   if (error) throw error;
   return fromRow(data as FarmRow);
@@ -81,7 +93,7 @@ export async function updateFarm(userId: string, farm: Farm): Promise<Farm> {
     .update(toRow(userId, farm))
     .eq('id', farm.id)
     .eq('user_id', userId)
-    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at')
+    .select('id,label,crop,district_id,district_name,region,latitude,longitude,location_accuracy_m,location_source,location_captured_at,location_label,village,parish,subcounty')
     .single();
   if (error) throw error;
   return fromRow(data as FarmRow);
