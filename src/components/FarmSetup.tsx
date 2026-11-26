@@ -74,7 +74,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, onSave
 
   const submit = async () => {
     if (!position) { setSaveError('Capture this farm’s GPS location first.'); return; }
-    if (crops.length === 0 && livestock.length === 0) { setSaveError('Select at least one crop or livestock type on this farm.'); return; }
+    if (crops.length === 0) { setSaveError('Select at least one crop grown on this farm.'); return; }
     setSaving(true);
     setSaveError('');
     try {
@@ -148,7 +148,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, onSave
         </section>
 
         {saveError && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{saveError}</p>}
-        <button onClick={submit} disabled={saving || !position || (crops.length === 0 && livestock.length === 0)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#174432] px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-50">
+        <button onClick={submit} disabled={saving || !position || crops.length === 0} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#174432] px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-50">
           {saving ? <><Loader2 className="h-4 w-4 animate-spin"/>Saving farm…</> : <><Sprout className="h-4 w-4"/>Save farm profile</>}
         </button>
         {onCancel && <button onClick={onCancel} className="mt-3 w-full py-2 text-sm text-[#66746b]">Cancel</button>}
