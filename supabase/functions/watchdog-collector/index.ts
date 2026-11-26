@@ -50,7 +50,10 @@ function constantTimeEqual(left: string, right: string) {
 
 function classify(text: string): "threat" | "news" | "opportunity" | "market" | "research" | "environment" {
   const lower = text.toLowerCase();
-  if (/flood|drought|wildfire|volcano|severe storm|cyclone|landslide|dust storm/.test(lower)) return "threat";
+  if (/grant|funding|call for applications|training|workshop|subsid|scholarship|buyer|market access|programme opportunity/.test(lower)) return "opportunity";
+  if (/outbreak|epidemic|pest|locust|disease|flood|drought|wildfire|volcano|severe storm|cyclone|landslide|dust storm/.test(lower)) return "threat";
+  if (/market price|commodity price|farm-gate price|trade price|price update/.test(lower)) return "market";
+  if (/research|study finds|new variety|new breed|trial results|scientists|discovery/.test(lower)) return "research";
   if (/climate|weather|rainfall|temperature|vegetation|environment/.test(lower)) return "environment";
   return "news";
 }
@@ -160,7 +163,7 @@ async function collectApprovedRss() {
     .select("id,source_key,name,homepage_url,feed_url,country_code")
     .eq("enabled", true)
     .eq("access_status", "approved")
-    .eq("access_method", "rss")
+    .in("access_method", ["rss", "licensed_feed"])
     .not("feed_url", "is", null)
     .limit(12);
   if (error) throw error;
