@@ -361,12 +361,14 @@ async function computeDiagnosis(
 export default function DiseaseDetection({
   onCreateCarePlan,
   userId,
+  farmId,
   districtName,
   weatherData,
   weatherDistrictName,
 }: {
-  onCreateCarePlan: (input: { cropName: string; diagnosis: Diagnosis }) => Promise<string>;
+  onCreateCarePlan: (input: { farmId: string; cropName: string; diagnosis: Diagnosis }) => Promise<string>;
   userId: string;
+  farmId: string;
   districtName: string;
   weatherData: WeatherData | null;
   weatherDistrictName: string | null;
@@ -392,12 +394,12 @@ export default function DiseaseDetection({
   const loadSavedDiagnoses = async () => {
     const { data, error } = await supabase.from('crop_care_plans')
       .select('id,crop_name,district_name,issue_name,started_at,source_scan,care_plan')
-      .eq('user_id', userId).order('started_at', { ascending: false }).limit(30);
+      .eq('user_id', userId).eq('farm_id', farmId).order('started_at', { ascending: false }).limit(30);
     if (error) console.warn('Could not load saved crop diagnoses:', error.message);
     else setSavedDiagnoses((data || []) as SavedDiagnosis[]);
   };
 
-  useEffect(() => { void loadSavedDiagnoses(); }, [userId]);
+  useEffect(() => { void loadSavedDiagnoses(); }, [userId, farmId]);
 
   async function handleDeleteDiagnosis(item: SavedDiagnosis) {
     const confirmed = window.confirm(`Delete this ${item.crop_name} crop check? Its care plan, activities and check-ins will also be deleted. This cannot be undone.`);
@@ -461,7 +463,7 @@ export default function DiseaseDetection({
       setView('result');
       if (result.outcome === 'disease' && selectedCrop) {
         setCarePlanStatus('creating');
-        void onCreateCarePlan({ cropName: selectedCrop.name, diagnosis: result })
+        void onCreateCarePlan({ farmId, cropName: selectedCrop.name, diagnosis: result })
           .then(async (id) => { setCarePlanId(id); setCarePlanStatus('created'); await loadSavedDiagnoses(); })
           .catch((error) => { console.error('Automatic crop-care plan creation failed:', error); setCarePlanStatus('error'); });
       }
