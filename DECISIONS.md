@@ -19,3 +19,11 @@ Farmers can initiate disease scans, soil assessments and questions whenever they
 ## 005 — Farm Asset Data Model
 Status: Implemented (database foundation)
 The farms table remains the parent. Multiple crop records live in farm_crops and animal records in farm_livestock. Legacy farms.crop remains temporarily for backward compatibility.
+
+## 006 — Agricultural Intelligence Source Registry
+Status: Implemented (initial foundation)
+Omulimi monitors agricultural threats, news, opportunities, market developments, research and environmental information. Sources have explicit access and permission states. No source is enabled until its actual endpoint and commercial reuse conditions are checked. News reports are evidence leads, not automatically verified facts.
+
+## 007 — Watchdog Is Background Intelligence
+Status: Accepted
+The Watchdog runs in the background and its alerts appear through the existing notification interface. It is not a separate page or standalone chatbot. Notifications are matched using both farm geography and registered crops/livestock. Nationally relevant alerts are not restricted to the district where a report originated.
