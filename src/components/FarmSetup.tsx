@@ -18,16 +18,17 @@ export type FarmSetupResult = {
 type Props = {
   title?: string;
   onCancel?: () => void;
+  initialCrops?: string[];
   onSave: (result: FarmSetupResult) => Promise<void>;
 };
 
 const LIVESTOCK_OPTIONS = ['Cattle', 'Goats', 'Sheep', 'Pigs', 'Chicken', 'Ducks', 'Turkeys', 'Rabbits', 'Fish'];
 
-export default function FarmSetup({ title = 'Set up your farm', onCancel, onSave }: Props) {
+export default function FarmSetup({ title = 'Set up your farm', onCancel, initialCrops = [], onSave }: Props) {
   const [position, setPosition] = useState<{ latitude: number; longitude: number; accuracyM: number; capturedAt: string } | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [locationError, setLocationError] = useState('');
-  const [crops, setCrops] = useState<string[]>([]);
+  const [crops, setCrops] = useState<string[]>(initialCrops);
   const [livestock, setLivestock] = useState<Array<{ species: string; animalCount: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
