@@ -8,7 +8,7 @@
 - [x] Add GPS recapture for existing farms that still have legacy district-centroid locations.
 - [x] Add optional reverse-geocoded village/parish/subcounty labels without replacing GPS coordinates; labels are explicitly approximate and source-attributed.
 - [x] Use saved GPS coordinates for Weather; prevent Soil Intelligence from silently using legacy district-centroid coordinates.
-- [ ] Move disease scans and crop-care records fully onto selected-farm context.
+- [x] Scope disease scan history and newly created crop-care records to the selected farm; preserve the farm used when a scan starts.
 - [ ] Build shared farm context API consumed by all intelligence capabilities.
 - [ ] Build unified evidence/provenance model for watchdog discoveries and product catalogue.
 - [ ] Build watchdog ingestion, relevance filtering and alert delivery.
