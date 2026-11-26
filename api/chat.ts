@@ -310,7 +310,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ]);
 
       if (cropsResult.error || livestockResult.error) {
-        console.error('Kato could not load the selected farm's registered assets:', {
+        console.error("Kato could not load the selected farm's registered assets:", {
           crops: cropsResult.error?.message,
           livestock: livestockResult.error?.message,
         });
