@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, LocateFixed, Loader2, Sprout, Plus, X } from 'lucide-react';
+import { MapPin, LocateFixed, Loader2, Sprout, X } from 'lucide-react';
 import { DISTRICTS } from '../data/districts';
 import { findNearestDistrict, type LocationStatus } from '../data/geolocation';
 import { SUPPORTED_CROP_NAMES } from '../data/supportedCrops';
