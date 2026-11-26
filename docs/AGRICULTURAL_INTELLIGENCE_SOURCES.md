@@ -23,6 +23,7 @@ No source is enabled by default. A source must have a verified endpoint, documen
 | FAO | Development/statistics | Approved route; dataset review pending | Agricultural statistics, livestock and food security |
 | ICPAC | Climate | Review required | East African climate outlooks and early warnings |
 | NASA Earthdata/GIBS | Earth observation | Approved route; dataset setup pending | Satellite observations and environmental indicators |
+| NASA EONET | Earth observation | Approved metadata API; endpoint setup pending | Near-real-time natural-event metadata and event geometry |
 | Copernicus Data Space | Earth observation | Approved route; dataset setup pending | Sentinel imagery and environmental observations |
 | Daily Monitor | News | Permission pending | Ugandan news and business developments with agricultural relevance |
 | New Vision | News | Permission pending | Ugandan news, agriculture and policy |
@@ -43,7 +44,7 @@ No source is enabled by default. A source must have a verified endpoint, documen
 
 ## Current implementation boundary
 
-The database now contains the source registry, evidence-item model and farm-scoped notification model. The app has an in-app notification drawer. An admin-protected RSS collector imports only explicitly enabled, approved publisher feeds into an unpublished review queue. An admin/MFA-protected publish endpoint requires verification notes and explicit geographic coverage, then matches the item against registered crops and livestock to create farm-scoped notifications. The first seeded sources are all disabled because actual feed/API endpoints and licences still need configuration. The MFA-protected Command Centre now includes source endpoint/access controls, an approved-feed collection action, an unpublished evidence review queue, and a verification/geography/asset publishing form. Source review actions are audited. NASA EONET v3 is now supported as a structured API adapter and imports open natural-event records into the unpublished review queue with event IDs, categories, source attribution and geometry metadata. The geography is deliberately left for human review; NASA event geometry is not automatically converted into a farm-level diagnosis or district alert. FEWS NET's documented public REST API is registered but its market-series field mapping and Uganda dataset coverage still need validation before enabling ingestion. A secret-protected scheduled-run endpoint is available. A 256-bit bearer secret is stored in Supabase Vault, while only its SHA-256 hash is held in a service-role-only table. The six-hour Supabase Cron schedule is documented but is not active until the runner is deployed and the job is registered. Watchdog Web Push delivery remains follow-on work. Existing crop-care push delivery remains separate.
+The database now contains the source registry, evidence-item model and farm-scoped notification model. The app has an in-app notification drawer. An admin-protected RSS collector imports only explicitly enabled, approved publisher feeds into an unpublished review queue. An admin/MFA-protected publish endpoint requires verification notes and explicit geographic coverage, then matches the item against registered crops and livestock to create farm-scoped notifications. The first seeded sources are all disabled because actual feed/API endpoints and licences still need configuration. The MFA-protected Command Centre now includes source endpoint/access controls, an approved-feed collection action, an unpublished evidence review queue, and a verification/geography/asset publishing form. Source review actions are audited. NASA EONET v3 is registered separately from NASA Earthdata/GIBS and supported as a structured API adapter. It imports open natural-event records into the unpublished review queue with event IDs, categories, source attribution and geometry metadata. The geography is deliberately left for human review; NASA event geometry is not automatically converted into a farm-level diagnosis or district alert. FEWS NET's documented public REST API is registered but its market-series field mapping and Uganda dataset coverage still need validation before enabling ingestion. A secret-protected scheduled-run endpoint is available. A 256-bit bearer secret is stored in Supabase Vault, while only its SHA-256 hash is held in a service-role-only table. The hourly Supabase Cron schedule is documented but is not active until the runner is deployed and the job is registered. Watchdog Web Push delivery remains follow-on work. Existing crop-care push delivery remains separate.
 
 
 ## Scheduled collection
@@ -53,7 +54,7 @@ After deploying the scheduled runner, the production Supabase project can schedu
 ```sql
 select cron.schedule(
   'omulimi-watchdog-collection',
-  '15 */6 * * *',
+  '0 * * * *',
   $$
   select net.http_post(
     url := 'https://omulimiapp.vercel.app/api/watchdog/cron',
@@ -68,4 +69,4 @@ select cron.schedule(
 );
 ```
 
-The endpoint checks the bearer token against the stored hash before running ingestion. Once registered, the Cron job runs every six hours (UTC); inspect `cron.job_run_details` for execution history. Only explicitly enabled and approved sources are collected.
+The endpoint checks the bearer token against the stored hash before running ingestion. Once registered, the Cron job runs at the start of every hour (UTC); inspect `cron.job_run_details` for execution history. Only explicitly enabled and approved sources are collected.
