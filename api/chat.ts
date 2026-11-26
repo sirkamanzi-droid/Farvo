@@ -285,6 +285,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const farmLivestockRows = selectedFarmContext?.livestock || [];
     const soilRows = selectedFarmContext?.soilAssessments || [];
 
+    const farmCropContext = farmCropRows.length
+      ? farmCropRows.map(row => ({
+          crop: cleanLabel(row.crop_name, 'Unlabelled crop'),
+          variety: row.variety ? cleanLabel(row.variety, 'not recorded') : null,
+          plantingDate: row.planting_date || null,
+          growthStage: row.growth_stage ? cleanLabel(row.growth_stage, 'not recorded') : null,
+          area: row.area_value === null ? null : Number(row.area_value),
+          areaUnit: row.area_unit ? cleanLabel(row.area_unit, 'not recorded') : null,
+          notes: cleanObservation(row.notes),
+          recordSource: 'farmer-registered farm crop record',
+        }))
+      : farmContext?.crop
+        ? [{ crop: cleanLabel(farmContext.crop, 'Unspecified crop'), recordSource: 'legacy farm crop field; details not recorded' }]
+        : [];
+
+    const farmLivestockContext = farmLivestockRows.map(row => ({
+      species: cleanLabel(row.species, 'Unspecified livestock'),
+      breed: row.breed ? cleanLabel(row.breed, 'not recorded') : null,
+      animalCount: row.animal_count === null ? null : Number(row.animal_count),
+      productionPurpose: row.production_purpose ? cleanLabel(row.production_purpose, 'not recorded') : null,
+      ageGroup: row.age_group ? cleanLabel(row.age_group, 'not recorded') : null,
+      notes: cleanObservation(row.notes),
+    }));
+
     const soilContext = (soilRows || []).map(row => ({
       crop: row.crop,
       assessmentType: row.mode === 'tested' ? 'measured soil test' : 'guided field observations (not a lab test)',
