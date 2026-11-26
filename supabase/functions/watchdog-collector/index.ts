@@ -67,6 +67,25 @@ function detectCrops(text: string) {
     .map(([crop]) => crop);
 }
 
+
+function coordinatesFrom(value: unknown, found: Array<[number, number]> = []): Array<[number, number]> {
+  if (!Array.isArray(value)) return found;
+  if (value.length >= 2 && typeof value[0] === "number" && typeof value[1] === "number") {
+    found.push([value[0], value[1]]);
+    return found;
+  }
+  for (const child of value) coordinatesFrom(child, found);
+  return found;
+}
+
+function isInsideUgandaScreeningBounds(geometry: EonetGeometry[]) {
+  return geometry.some((point) =>
+    coordinatesFrom(point.coordinates).some(([longitude, latitude]) =>
+      longitude >= 29.5 && longitude <= 35.1 && latitude >= -1.6 && latitude <= 4.3
+    )
+  );
+}
+
 async function collectEonet() {
   const { data: source, error: sourceError } = await db
     .from("agri_sources")
@@ -92,6 +111,7 @@ async function collectEonet() {
   endpoint.searchParams.set("status", "open");
   endpoint.searchParams.set("days", "30");
   endpoint.searchParams.set("limit", "100");
+  endpoint.searchParams.set("bbox", "29.5,4.3,35.1,-1.6");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
@@ -109,6 +129,7 @@ async function collectEonet() {
     const events = Array.isArray(payload.events) ? payload.events : [];
     let inserted = 0;
     let duplicates = 0;
+    let skippedOutOfArea = 0;
 
     for (const event of events) {
       const id = typeof event.id === "string" ? event.id.trim() : "";
@@ -122,13 +143,16 @@ async function collectEonet() {
       const categories = Array.isArray(event.categories)
         ? event.categories.map((category) => String(category.title || category.id || "")).filter(Boolean)
         : [];
-      const geometry = Array.isArray(event.geometry)
-        ? event.geometry.slice(-5).map((point) => ({
-            date: point.date || null,
-            type: point.type || null,
-            coordinates: point.coordinates || null,
-          }))
-        : [];
+      const fullGeometry = Array.isArray(event.geometry) ? event.geometry : [];
+      if (!isInsideUgandaScreeningBounds(fullGeometry)) {
+        skippedOutOfArea++;
+        continue;
+      }
+      const geometry = fullGeometry.slice(-5).map((point) => ({
+        date: point.date || null,
+        type: point.type || null,
+        coordinates: point.coordinates || null,
+      }));
       const sources = Array.isArray(event.sources)
         ? event.sources.slice(0, 5).map((item) => ({ id: item.id || null, url: item.url || null }))
         : [];
@@ -143,7 +167,7 @@ async function collectEonet() {
         summary: description || null,
         canonical_url: canonicalUrl,
         category: classify(combinedText),
-        geography_scope: "global",
+        geography_scope: "national",
         country_code: "UG",
         affected_crops: detectCrops(combinedText),
         affected_livestock: [],
@@ -159,7 +183,8 @@ async function collectEonet() {
           geometry,
           sources,
           attribution: "NASA Earth Observatory Natural Event Tracker (EONET)",
-          geographic_assignment: "Unassigned. A reviewer must confirm Uganda relevance and coverage before publication.",
+          geographic_assignment: "Event geometry falls within the Uganda screening bounding box; reviewer must confirm exact administrative location and agricultural relevance before publication.",
+          screening_bounds: { min_longitude: 29.5, max_longitude: 35.1, min_latitude: -1.6, max_latitude: 4.3 },
         },
       });
 
@@ -174,7 +199,7 @@ async function collectEonet() {
       last_error: null,
     }).eq("id", source.id);
 
-    return { checked: 1, inserted, duplicates, skipped: false };
+    return { checked: 1, inserted, duplicates, skippedOutOfArea, skipped: false };
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 500) : "NASA EONET collection failed.";
     await db.from("agri_sources").update({
