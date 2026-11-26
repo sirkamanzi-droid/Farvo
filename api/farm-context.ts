@@ -33,7 +33,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Your session is invalid. Please sign in again.' });
     }
 
-    const context = await loadFarmContext(supabase, authData.user.id, farmId);
+    const requestedSoilHistoryLimit = req.query.soilHistoryLimit;
+    const soilHistoryLimit = requestedSoilHistoryLimit === '30' ? 30 : 5;
+    const context = await loadFarmContext(supabase, authData.user.id, farmId, soilHistoryLimit);
     if (!context) return res.status(404).json({ error: 'That farm is not available in your account.' });
 
     res.setHeader('Cache-Control', 'private, no-store');
