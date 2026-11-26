@@ -7,7 +7,8 @@ import { DISTRICTS } from './data/districts';
 import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
 import { detectNearestDistrict, LocationStatus } from './data/geolocation';
-import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm } from './data/farms';
+import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets } from './data/farms';
+import FarmSetup, { type FarmSetupResult } from './components/FarmSetup';
 import SkyHero from './components/SkyHero';
 import DistrictPicker from './components/DistrictPicker';
 import WeatherDashboard from './components/WeatherDashboard';
@@ -94,6 +95,7 @@ function HomeDashboard({farm, farmerName, weather, loading, onOpenWeather, onOpe
 function AuthenticatedApp({ userId }: { userId: string }) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmSyncError, setFarmSyncError] = useState<string | null>(null);
+  const [farmSetupMode, setFarmSetupMode] = useState<'initial' | 'add' | null>(null);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
@@ -145,20 +147,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
           saved = await fetchFarms(userId);
         }
         if (saved.length === 0) {
-          setLocationStatus('detecting');
-          let district = DEFAULT_DISTRICT;
-          try {
-            const detected = await detectNearestDistrict(DISTRICTS);
-            district = detected.district;
-            if (!cancelled) {
-              setLocationStatus(detected.status);
-              setLocationDetected(true);
-            }
-          } catch (status) {
-            if (!cancelled) setLocationStatus(status as LocationStatus);
-          }
-          const firstFarm = await insertFarm(userId, createFarm(district, DEFAULT_CROP, 0));
-          saved = [firstFarm];
+          if (!cancelled) setFarmSetupMode('initial');
+          saved = [];
         }
         if (cancelled) return;
         const normalized = saved.map(farm => SUPPORTED_CROP_NAMES.includes(farm.crop) ? farm : { ...farm, crop: DEFAULT_CROP });
@@ -172,11 +162,9 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         console.error('Farm cloud sync error:', error);
         if (cancelled) return;
         const legacy = loadLegacyFarms(userId);
-        const fallback = legacy.length > 0
-          ? legacy.map(farm => SUPPORTED_CROP_NAMES.includes(farm.crop) ? farm : { ...farm, crop: DEFAULT_CROP })
-          : [createFarm(DEFAULT_DISTRICT, DEFAULT_CROP, 0)];
+        const fallback = legacy.map(farm => SUPPORTED_CROP_NAMES.includes(farm.crop) ? farm : { ...farm, crop: DEFAULT_CROP });
         setFarms(fallback);
-        setActiveFarmId(fallback[0].id);
+        setActiveFarmId(fallback[0]?.id ?? null);
         setFarmSyncError('Your farm information could not sync. Check your connection and reload to try again.');
       }
     };
@@ -185,19 +173,24 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   }, [userId]);
 
   const activeFarm=farms.find(f=>f.id===activeFarmId)||farms[0];
-  const fetchWeather=async(district:District)=>{
+  const fetchWeather=async(farm:Farm)=>{
     const requestId=++weatherRequestId.current;
     setLoadingWeather(true); setWeatherError(null); setWeatherData(null); setWeatherDistrictId(null);
+    if(farm.locationSource!=='phone_gps'||!Number.isFinite(farm.latitude)||!Number.isFinite(farm.longitude)){
+      setLoadingWeather(false);
+      setWeatherError('Capture this farm’s GPS location to get weather for the actual farm. The saved district location is only an older estimate.');
+      return;
+    }
     try {
       const {data:{session},error:sessionError}=await supabase.auth.getSession();
       if(sessionError||!session) throw new Error('Please sign in again to view weather.');
-      const response=await fetch(`/api/weather?latitude=${district.latitude}&longitude=${district.longitude}`,{headers:{Authorization:`Bearer ${session.access_token}`}});
+      const response=await fetch(`/api/weather?latitude=${farm.latitude}&longitude=${farm.longitude}`,{headers:{Authorization:`Bearer ${session.access_token}`}});
       if(response.status===401) throw new Error('Your session has expired. Please sign in again.');
       if(!response.ok) throw new Error('Failed to retrieve weather forecast.');
       const result=await response.json() as WeatherData;
       if(requestId!==weatherRequestId.current) return;
       setWeatherData(result);
-      setWeatherDistrictId(district.id);
+      setWeatherDistrictId(farm.district.id);
     } catch(err:unknown) {
       if(requestId!==weatherRequestId.current) return;
       console.error('Weather fetch error:',err);
@@ -206,17 +199,35 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if(requestId===weatherRequestId.current) setLoadingWeather(false);
     }
   };
-  useEffect(()=>{if(activeFarm) void fetchWeather(activeFarm.district);},[activeFarm?.district.id]);
+  useEffect(()=>{if(activeFarm) void fetchWeather(activeFarm);},[activeFarm?.id,activeFarm?.latitude,activeFarm?.longitude,activeFarm?.locationSource]);
 
-  const handleAddFarm=async()=>{
-    try {
-      const farm=await insertFarm(userId,createFarm(DEFAULT_DISTRICT,DEFAULT_DISTRICT.mainCrops[0]||'Maize',farms.length));
-      const updated=[...farms,farm];
-      setFarms(updated); setActiveFarmId(farm.id); setFarmSyncError(null); setDistrictPickerOpen(true);
-    } catch(error) {
-      console.error('Could not create farm:',error);
-      setFarmSyncError('Could not save this farm. Please check your connection and try again.');
+  const handleAddFarm=()=>setFarmSetupMode('add');
+  const handleSaveFarmSetup=async(result:FarmSetupResult)=>{
+    const crop=result.crops[0] || DEFAULT_CROP;
+    const farm:Farm={
+      ...createFarm(result.district,crop,farms.length),
+      latitude:result.latitude,
+      longitude:result.longitude,
+      locationAccuracyM:result.accuracyM,
+      locationSource:'phone_gps',
+      locationCapturedAt:result.capturedAt,
+    };
+    let savedFarm:Farm;
+    if(farmSetupMode==='initial'||farmSetupMode==='add'){
+      savedFarm=await insertFarm(userId,farm);
+      try {
+        await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock);
+      } catch(error) {
+        await deleteFarm(userId,savedFarm.id).catch(()=>undefined);
+        throw error;
+      }
+      setFarms(current=>[...current,savedFarm]);
+    } else {
+      throw new Error('This farm setup action is not supported.');
     }
+    setActiveFarmId(savedFarm.id);
+    setFarmSyncError(null);
+    setFarmSetupMode(null);
   };
   const handleSelectFarm=(farm:Farm)=>setActiveFarmId(farm.id);
   const handleDeleteActiveFarm=async()=>{
@@ -249,7 +260,10 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     detectNearestDistrict(DISTRICTS).then(({district,status})=>{handleUpdateActiveFarm(district,activeFarm.crop);setLocationStatus(status);setLocationDetected(true);}).catch((status:LocationStatus)=>setLocationStatus(status));
   };
 
-  if(!activeFarm) return <div className="min-h-screen bg-parchment-100 flex items-center justify-center"><Loader2 className="h-8 w-8 text-leaf-600 animate-spin"/></div>;
+  if(!activeFarm) {
+    if(farmSetupMode==='initial') return <FarmSetup title="Create your first farm" onSave={handleSaveFarmSetup}/>;
+    return <div className="min-h-screen bg-parchment-100 flex items-center justify-center px-6 text-center text-sm text-soil-700">{farmSyncError || 'Loading your farm…'}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-[#f1ebdc] flex flex-col font-sans pb-24" id="app-root">
@@ -263,7 +277,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
           <div className="px-0 sm:px-0 flex flex-col gap-0 pb-4">
             
             {loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-[#e6dcc8] p-8 text-center"><Loader2 className="h-7 w-7 text-leaf-600 animate-spin mx-auto"/><p className="text-xs text-soil-600 mt-2">Loading your local forecast…</p></div>}
-            {weatherError&&!loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-rose-100 p-5"><AlertCircle className="h-6 w-6 text-rose-600"/><p className="text-sm font-bold text-soil-900 mt-2">Weather unavailable</p><p className="text-xs text-soil-600 mt-1">{weatherError}</p><button onClick={()=>void fetchWeather(activeFarm.district)} className="mt-3 bg-leaf-700 text-white rounded-xl px-4 py-2 text-xs font-bold"><RefreshCw className="inline h-3 w-3 mr-1"/>Try again</button></div>}
+            {weatherError&&!loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-rose-100 p-5"><AlertCircle className="h-6 w-6 text-rose-600"/><p className="text-sm font-bold text-soil-900 mt-2">Weather unavailable</p><p className="text-xs text-soil-600 mt-1">{weatherError}</p><button onClick={()=>void fetchWeather(activeFarm)} className="mt-3 bg-leaf-700 text-white rounded-xl px-4 py-2 text-xs font-bold"><RefreshCw className="inline h-3 w-3 mr-1"/>Try again</button></div>}
             {!loadingWeather&&!weatherError&&weatherData&&<><WeatherDashboard weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} onAskKato={()=>setActiveTab('kato')}/></>}
           </div>
         </div>}
@@ -280,9 +294,10 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         </div></div>}
       </main>
       {showKnowledgeCentre&&<KnowledgeCentre onBack={()=>setShowKnowledgeCentre(false)} onAskKato={(question)=>{setPendingKatoQuestion(question);setShowKnowledgeCentre(false);setActiveTab('kato');}}/>}
+      {farmSetupMode==='add'&&<FarmSetup title="Add another farm" onCancel={()=>setFarmSetupMode(null)} onSave={handleSaveFarmSetup}/>}
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       {!showSoilCalculator&&!showKnowledgeCentre&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
-      {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} initialCrop={activeFarm.crop} initialLatitude={activeFarm.district.latitude} initialLongitude={activeFarm.district.longitude} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
+      {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} initialCrop={activeFarm.crop} initialLatitude={activeFarm.latitude ?? activeFarm.district.latitude} initialLongitude={activeFarm.longitude ?? activeFarm.district.longitude} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
       <DistrictPicker isOpen={districtPickerOpen} onClose={()=>setDistrictPickerOpen(false)} selectedDistrict={activeFarm.district} onSelect={d=>handleUpdateActiveFarm(d,SUPPORTED_CROP_NAMES.includes(activeFarm.crop)?activeFarm.crop:DEFAULT_CROP)} onUseMyLocation={detectLocationForActiveFarm} locationStatus={locationStatus}/>
     </div>
   );
