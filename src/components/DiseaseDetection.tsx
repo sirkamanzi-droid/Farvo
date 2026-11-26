@@ -400,6 +400,13 @@ export default function DiseaseDetection({
   };
 
   useEffect(() => { void loadSavedDiagnoses(); }, [userId, farmId]);
+  useEffect(() => {
+    setView('home');
+    setSelectedCrop(null);
+    setPhotoDataUrl(null);
+    setPhotoError(null);
+    setDiagnosis(null);
+  }, [farmId]);
 
   async function handleDeleteDiagnosis(item: SavedDiagnosis) {
     const confirmed = window.confirm(`Delete this ${item.crop_name} crop check? Its care plan, activities and check-ins will also be deleted. This cannot be undone.`);
