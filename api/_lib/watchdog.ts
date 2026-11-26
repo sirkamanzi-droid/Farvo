@@ -113,7 +113,7 @@ function allowedFeedUrl(feedUrl: string, homepageUrl: string) {
 
 
 async function ingestNasaEonet(db: SupabaseClient) {
-  const { data: source, error } = await db.from('agri_sources').select('id,api_base_url,access_status,enabled').eq('source_key','nasa_earthdata').maybeSingle();
+  const { data: source, error } = await db.from('agri_sources').select('id,api_base_url,access_status,enabled').eq('source_key','nasa_eonet').maybeSingle();
   if (error) throw error;
   if (!source || !source.enabled || source.access_status !== 'approved' || !source.api_base_url) return { checked:0, inserted:0, duplicates:0, failed:0 };
   const base = new URL(source.api_base_url);
