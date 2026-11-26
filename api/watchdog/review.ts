@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (body.action === 'update-source') {
       const sourceId = typeof body.sourceId === 'string' ? body.sourceId : '';
       if (!sourceId) return res.status(400).json({ error: 'A source ID is required.' });
-      const { data: source, error: readError } = await db.from('agri_sources').select('id,homepage_url').eq('id', sourceId).maybeSingle();
+      const { data: source, error: readError } = await db.from('agri_sources').select('id,homepage_url,access_status,commercial_use_notes,feed_url').eq('id', sourceId).maybeSingle();
       if (readError) throw readError;
       if (!source) return res.status(404).json({ error: 'Source not found.' });
 
@@ -54,16 +54,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Feed URL must use HTTPS and belong to the registered publisher domain.' });
       }
       const requestedEnabled = typeof body.enabled === 'boolean' ? body.enabled : undefined;
-      const nextStatus = accessStatus || undefined;
+      const nextStatus = accessStatus || source.access_status;
+      const permissionNotes = typeof body.commercialUseNotes === 'string' ? body.commercialUseNotes.trim() : (source.commercial_use_notes || '');
+      if ((accessStatus === 'approved' || requestedEnabled === true) && permissionNotes.length < 15) {
+        return res.status(400).json({ error: 'Record the open-data licence or publisher permission basis (at least 15 characters) before approving or enabling this source.' });
+      }
       if (requestedEnabled && (nextStatus ? nextStatus !== 'approved' : accessStatus !== 'approved')) {
-        const effectiveStatus = nextStatus || (await db.from('agri_sources').select('access_status').eq('id', sourceId).single()).data?.access_status;
+        const effectiveStatus = nextStatus;
         if (effectiveStatus !== 'approved') return res.status(403).json({ error: 'Approve the source access terms before enabling collection.' });
       }
       const update: Record<string, unknown> = {};
       if (accessStatus) update.access_status = accessStatus;
       if (body.feedUrl !== undefined) update.feed_url = feedUrl || null;
-      if (typeof body.commercialUseNotes === 'string') update.commercial_use_notes = body.commercialUseNotes.slice(0, 1200);
-      if (requestedEnabled !== undefined) update.enabled = requestedEnabled && (nextStatus || (await db.from('agri_sources').select('access_status').eq('id', sourceId).single()).data?.access_status) === 'approved' && Boolean(feedUrl || body.feedUrl === undefined);
+      if (typeof body.commercialUseNotes === 'string') update.commercial_use_notes = body.commercialUseNotes.trim().slice(0, 1200);
+      if (requestedEnabled !== undefined) update.enabled = requestedEnabled && nextStatus === 'approved' && Boolean(feedUrl || (body.feedUrl === undefined && source.feed_url));
       if (accessStatus && accessStatus !== 'approved') update.enabled = false;
       const { data, error } = await db.from('agri_sources').update(update).eq('id', sourceId).select('id,source_key,name,source_kind,homepage_url,feed_url,access_method,access_status,commercial_use_notes,enabled,last_checked_at,last_success_at,last_error').single();
       if (error) throw error;
