@@ -391,15 +391,60 @@ export default function DiseaseDetection({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const loadSavedDiagnoses = async () => {
-    const { data, error } = await supabase.from('crop_care_plans')
-      .select('id,crop_name,district_name,issue_name,started_at,source_scan,care_plan')
-      .eq('user_id', userId).eq('farm_id', farmId).order('started_at', { ascending: false }).limit(30);
-    if (error) console.warn('Could not load saved crop diagnoses:', error.message);
-    else setSavedDiagnoses((data || []) as SavedDiagnosis[]);
+  const [farmCrops, setFarmCrops] = useState<Crop[]>([]);
+  const [farmContextLoading, setFarmContextLoading] = useState(true);
+  const [farmContextError, setFarmContextError] = useState<string | null>(null);
+
+  const cropKey = (value: string) => {
+    const normalized = value.toLowerCase().replace(/[^a-z]/g, '');
+    if (normalized.includes('banana') || normalized.includes('matooke')) return 'banana';
+    if (normalized.includes('potato')) return 'potato';
+    if (normalized.includes('maize')) return 'maize';
+    if (normalized.includes('bean')) return 'beans';
+    if (normalized.includes('coffee')) return 'coffee';
+    if (normalized.includes('tomato')) return 'tomato';
+    return normalized;
   };
 
-  useEffect(() => { void loadSavedDiagnoses(); }, [userId, farmId]);
+  const loadFarmContext = async () => {
+    setFarmContextLoading(true);
+    setFarmContextError(null);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (sessionError || !token) throw new Error('Please sign in again to load this farm.');
+      const response = await fetch(`/api/farm-context?farmId=${encodeURIComponent(farmId)}&cropCarePlanLimit=30`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Could not load this farm’s crop information.');
+      }
+      const context = await response.json() as {
+        farm?: { crop?: string };
+        crops?: Array<{ id: string; crop_name: string }>;
+        cropCarePlans?: SavedDiagnosis[];
+      };
+      const registeredNames = (context.crops || []).map(crop => crop.crop_name);
+      const farmCropNames = registeredNames.length ? registeredNames : (context.farm?.crop ? [context.farm.crop] : []);
+      const registeredCrops = CROPS.filter(crop => farmCropNames.some(name => cropKey(name) === crop.id));
+      setFarmCrops(registeredCrops);
+      setSavedDiagnoses((context.cropCarePlans || []) as SavedDiagnosis[]);
+      if (registeredCrops.length === 0) {
+        setFarmContextError('No supported crops are registered for this farm yet. Update the farm’s crop details before starting a scan.');
+      }
+    } catch (error) {
+      console.warn('Could not load shared farm context for crop checks:', error);
+      setFarmContextError(error instanceof Error ? error.message : 'Farm information is temporarily unavailable.');
+      setFarmCrops([]);
+      setSavedDiagnoses([]);
+    } finally {
+      setFarmContextLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadFarmContext(); }, [userId, farmId]);
   useEffect(() => {
     setView('home');
     setSelectedCrop(null);
@@ -471,13 +516,13 @@ export default function DiseaseDetection({
       if (result.outcome === 'disease' && selectedCrop) {
         setCarePlanStatus('creating');
         void onCreateCarePlan({ farmId, cropName: selectedCrop.name, diagnosis: result })
-          .then(async (id) => { setCarePlanId(id); setCarePlanStatus('created'); await loadSavedDiagnoses(); })
+          .then(async (id) => { setCarePlanId(id); setCarePlanStatus('created'); await loadFarmContext(); })
           .catch((error) => { console.error('Automatic crop-care plan creation failed:', error); setCarePlanStatus('error'); });
       }
     }, minimumDisplayTime);
   }
 
-  const filteredCrops = CROPS.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredCrops = farmCrops.filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   if (view === 'cropSelect') {
     return (
@@ -488,12 +533,14 @@ export default function DiseaseDetection({
         </div>
         <div className="rounded-3xl bg-[#1d4b35] p-4 text-white">
           <div className="flex items-center gap-2"><Sprout className="h-5 w-5 text-[#d8c58c]" /><span className="text-sm font-semibold">What are you growing?</span></div>
-          <p className="mt-1 text-xs leading-relaxed text-white/75">Select the crop shown in your photo. The scan checks supported crops only.</p>
+          <p className="mt-1 text-xs leading-relaxed text-white/75">Choose a crop registered on this farm. The scan checks supported crops only.</p>
         </div>
         <div className="relative">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#829084]" />
           <input type="search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search crops" className="w-full rounded-2xl border-0 bg-white py-3.5 pl-11 pr-4 text-sm text-[#24392b] shadow-sm outline-none ring-1 ring-[#e5e9df] focus:ring-2 focus:ring-[#527a55]" />
         </div>
+        {farmContextLoading && <p className="text-sm text-[#718074]">Loading crops registered on this farm…</p>}
+        {farmContextError && <div role="alert" className="rounded-xl bg-[#fff6df] p-3 text-xs text-[#735523]">{farmContextError} <button onClick={() => void loadFarmContext()} className="ml-1 font-semibold underline">Try again</button></div>}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {filteredCrops.map(crop => {
             const active = selectedCrop?.id === crop.id;
@@ -665,7 +712,8 @@ export default function DiseaseDetection({
           <div><p className="text-base font-semibold">Crop health check</p><p className="mt-0.5 text-xs text-white/70">Photo-based · Preliminary guidance</p></div>
         </div>
         <p className="mt-4 text-sm leading-relaxed text-white/80">Choose your crop, then take a clear photo of the affected leaf or plant part.</p>
-        <button onClick={() => setView('cropSelect')} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#f3f0e5] py-3.5 text-sm font-semibold text-[#174432]"><Camera className="h-4 w-4" /> Start crop check</button>
+        <button onClick={() => setView('cropSelect')} disabled={farmContextLoading || Boolean(farmContextError)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#f3f0e5] py-3.5 text-sm font-semibold text-[#174432] disabled:cursor-not-allowed disabled:opacity-50"><Camera className="h-4 w-4" /> {farmContextLoading ? 'Loading your farm crops…' : 'Start crop check'}</button>
+        {farmContextError && <div role="alert" className="mt-3 rounded-xl bg-white/10 p-3 text-xs text-white/85">{farmContextError} <button onClick={() => void loadFarmContext()} className="ml-1 underline">Try again</button></div>}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl bg-white p-4 ring-1 ring-[#e8e9e1]"><Camera className="h-5 w-5 text-[#477653]" /><p className="mt-3 text-sm font-semibold text-[#24382b]">Use a clear photo</p><p className="mt-1 text-xs leading-relaxed text-[#829084]">Focus on one affected part in good daylight.</p></div>
