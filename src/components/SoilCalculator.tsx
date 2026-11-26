@@ -148,23 +148,33 @@ export default function SoilCalculator({ userId, farmId, initialCrop, initialLat
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const { data, error: loadError } = await supabase.from('soil_assessments')
-        .select('id,created_at,crop,mode,measured_ph,texture,drainage,findings,location_label,latitude,longitude,ai_report,weather_snapshot')
-        .eq('user_id', userId).eq('farm_id', farmId).order('created_at', { ascending: false }).limit(30);
-      if (!active || loadError) {
-        if (loadError) console.warn('Could not load soil reports:', loadError.message);
-        return;
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (sessionError || !token) throw new Error('Please sign in again to load farm reports.');
+        const response = await fetch(`/api/farm-context?farmId=${encodeURIComponent(farmId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'Could not load this farm’s information.');
+        }
+        const context = await response.json() as { soilAssessments?: any[] };
+        if (!active) return;
+        setSavedAssessments((context.soilAssessments || []).map((row: any) => ({
+          id: row.id, createdAt: row.created_at, crop: row.crop, mode: row.mode,
+          ph: row.measured_ph === null ? null : Number(row.measured_ph),
+          texture: row.texture, drainage: row.drainage,
+          findings: Array.isArray(row.findings) ? row.findings : [],
+          locationLabel: row.location_label || 'Farm location not recorded',
+          latitude: row.latitude === null ? null : Number(row.latitude),
+          longitude: row.longitude === null ? null : Number(row.longitude),
+          aiReport: row.ai_report || null, weatherSnapshot: row.weather_snapshot || null,
+        })));
+      } catch (loadError) {
+        if (active) console.warn('Could not load shared farm context for soil reports:', loadError);
       }
-      setSavedAssessments((data || []).map((row: any) => ({
-        id: row.id, createdAt: row.created_at, crop: row.crop, mode: row.mode,
-        ph: row.measured_ph === null ? null : Number(row.measured_ph),
-        texture: row.texture, drainage: row.drainage,
-        findings: Array.isArray(row.findings) ? row.findings : [],
-        locationLabel: row.location_label || 'Farm location not recorded',
-        latitude: row.latitude === null ? null : Number(row.latitude),
-        longitude: row.longitude === null ? null : Number(row.longitude),
-        aiReport: row.ai_report || null, weatherSnapshot: row.weather_snapshot || null,
-      })));
     };
     void load();
     return () => { active = false; };
