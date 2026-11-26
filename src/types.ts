@@ -81,4 +81,8 @@ export interface Farm {
   locationAccuracyM?: number | null;
   locationSource?: 'phone_gps' | 'manual_pin' | 'legacy_district';
   locationCapturedAt?: string | null;
+  locationLabel?: string | null;
+  village?: string | null;
+  parish?: string | null;
+  subcounty?: string | null;
 }
