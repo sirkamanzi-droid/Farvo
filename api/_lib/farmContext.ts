@@ -12,6 +12,7 @@ export async function loadFarmContext(
   supabase: SupabaseClient,
   userId: string,
   farmId: string,
+  soilAssessmentLimit = 5,
 ): Promise<FarmContext | null> {
   const { data: farm, error: farmError } = await supabase
     .from('farms')
@@ -35,7 +36,7 @@ export async function loadFarmContext(
     supabase.from('soil_assessments')
       .select('id,crop,mode,measured_ph,texture,drainage,findings,created_at,location_label,latitude,longitude,weather_snapshot,ai_report')
       .eq('user_id', userId).eq('farm_id', farmId)
-      .order('created_at', { ascending: false }).limit(5),
+      .order('created_at', { ascending: false }).limit(soilAssessmentLimit),
     supabase.from('crop_care_plans')
       .select('id,crop_name,issue_name,diagnosis_status,status,care_plan,source_scan,started_at,next_review_at,created_at,updated_at')
       .eq('user_id', userId).eq('farm_id', farmId)
