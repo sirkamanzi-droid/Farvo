@@ -42,11 +42,11 @@ export async function loadFarmContext(
       .eq('user_id', userId).eq('farm_id', farmId).eq('is_active', true)
       .order('created_at', { ascending: true }),
     supabase.from('soil_assessments')
-      .select('id,crop,mode,measured_ph,texture,drainage,findings,created_at,location_label,latitude,longitude,weather_snapshot,ai_report')
+      .select('id,plot_id,crop,mode,measured_ph,texture,drainage,findings,created_at,location_label,latitude,longitude,weather_snapshot,ai_report')
       .eq('user_id', userId).eq('farm_id', farmId)
       .order('created_at', { ascending: false }).limit(soilAssessmentLimit),
     supabase.from('crop_care_plans')
-      .select('id,crop_name,issue_name,diagnosis_status,status,care_plan,source_scan,started_at,next_review_at,created_at,updated_at')
+      .select('id,plot_id,crop_name,issue_name,diagnosis_status,status,care_plan,source_scan,started_at,next_review_at,created_at,updated_at')
       .eq('user_id', userId).eq('farm_id', farmId)
       .order('created_at', { ascending: false }).limit(cropCarePlanLimit),
     supabase.from('farm_events')
