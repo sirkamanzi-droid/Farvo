@@ -327,7 +327,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       plotName: cleanLabel(row.label, 'Unnamed plot'),
       boundaryStatus: row.boundary_status,
       mappingMethod: row.mapping_method,
-      centroid: { latitude: Number(row.centroid_latitude), longitude: Number(row.centroid_longitude) },
+      centroid: { latitude: Number(row.centroid_latitude), longitude: Number(row.centroid_longitude), source: row.centroid_source, accuracyMetres: row.centroid_accuracy_m === null ? null : Number(row.centroid_accuracy_m) },
       areaAcres: row.area_acres === null ? null : Number(row.area_acres),
       areaHectares: row.area_hectares === null ? null : Number(row.area_hectares),
     }));
