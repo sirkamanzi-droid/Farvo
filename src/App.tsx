@@ -21,6 +21,18 @@ import KnowledgeCentre from './components/KnowledgeCentre';
 import NotificationCenter from './components/NotificationCenter';
 import { Loader2, AlertCircle, RefreshCw, Sprout, CloudSun, Leaf, Wrench, ChevronRight, MapPin, Droplets, Sun, CloudRain, BookOpen } from 'lucide-react';
 
+type ActiveFarmPlot = {
+  id: string;
+  label: string;
+  boundary_status: 'needs_boundary' | 'mapped';
+  mapping_method: 'point' | 'gps_walk' | 'manual_draw';
+  centroid_latitude: number;
+  centroid_longitude: number;
+  area_acres: number | null;
+  area_hectares: number | null;
+  cropName: string;
+};
+
 async function generateKatoCareGuidance(input: { farmId: string; cropName: string; districtName: string; issueName: string; confidence: number; observations: string; weatherContext: WeatherData | null; weatherDistrictName: string | null }) {
   try {
     const { data, error } = await supabase.auth.getSession();
@@ -101,6 +113,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [farmSetupInitialQuestionnaire, setFarmSetupInitialQuestionnaire] = useState<FarmQuestionnaireInput | undefined>(undefined);
   const [farmSetupInitialCropDetails, setFarmSetupInitialCropDetails] = useState<FarmCropDetailsInput[]>([]);
   const [showFarmPlotsManager, setShowFarmPlotsManager] = useState(false);
+  const [activePlot, setActivePlot] = useState<ActiveFarmPlot | null>(null);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
@@ -195,7 +208,34 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   }, [userId]);
 
   const activeFarm=farms.find(f=>f.id===activeFarmId)||farms[0];
-  const fetchWeather=async(farm:Farm)=>{
+  useEffect(()=>{
+    if(!activeFarmId){setActivePlot(null);return;}
+    let cancelled=false;
+    const loadActivePlot=async()=>{
+      const {data:plots,error}=await supabase.from('farm_plots')
+        .select('id,label,boundary_status,mapping_method,centroid_latitude,centroid_longitude,area_acres,area_hectares')
+        .eq('farm_id',activeFarmId).eq('user_id',userId).order('created_at',{ascending:true});
+      if(cancelled)return;
+      if(error||!plots?.length){setActivePlot(null);return;}
+      const selected=plots[0];
+      const {data:crops}=await supabase.from('farm_crops').select('crop_name')
+        .eq('farm_id',activeFarmId).eq('user_id',userId).eq('plot_id',selected.id).eq('is_active',true)
+        .order('created_at',{ascending:true});
+      if(cancelled)return;
+      setActivePlot({
+        id:selected.id,label:selected.label,boundary_status:selected.boundary_status,
+        mapping_method:selected.mapping_method,centroid_latitude:Number(selected.centroid_latitude),
+        centroid_longitude:Number(selected.centroid_longitude),
+        area_acres:selected.area_acres===null?null:Number(selected.area_acres),
+        area_hectares:selected.area_hectares===null?null:Number(selected.area_hectares),
+        cropName:crops?.[0]?.crop_name || activeFarm?.crop || DEFAULT_CROP,
+      });
+    };
+    void loadActivePlot();
+    return ()=>{cancelled=true;};
+  },[activeFarmId,userId]);
+
+  const fetchWeather=async(farm:Farm,plot:ActiveFarmPlot|null=activePlot)=>{
     const requestId=++weatherRequestId.current;
     setLoadingWeather(true); setWeatherError(null); setWeatherData(null); setWeatherDistrictId(null);
     try {
@@ -207,10 +247,15 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if(!contextResponse.ok) throw new Error('Could not load this farm’s saved location.');
       const context=await contextResponse.json() as {farm?:{latitude?:number;longitude?:number;location_source?:string}};
       const savedFarm=context.farm;
-      if(savedFarm?.location_source!=='phone_gps'||!Number.isFinite(Number(savedFarm.latitude))||!Number.isFinite(Number(savedFarm.longitude))){
-        throw new Error('Capture this farm’s GPS location to get weather for the actual farm. The saved district location is only an older estimate.');
+      const useMappedBoundary=plot?.boundary_status==='mapped';
+      const useVerifiedPoint=plot?.mapping_method==='point'&&savedFarm?.location_source==='phone_gps';
+      if(!useMappedBoundary&&!useVerifiedPoint){
+        throw new Error('Map this plot boundary or capture its GPS point before requesting field-specific weather.');
       }
-      const response=await fetch(`/api/weather?latitude=${savedFarm.latitude}&longitude=${savedFarm.longitude}`,{headers});
+      const latitude=plot ? plot.centroid_latitude : Number(savedFarm?.latitude);
+      const longitude=plot ? plot.centroid_longitude : Number(savedFarm?.longitude);
+      if(!Number.isFinite(latitude)||!Number.isFinite(longitude)) throw new Error('This plot does not have a usable location yet.');
+      const response=await fetch(`/api/weather?latitude=${latitude}&longitude=${longitude}`,{headers});
       if(response.status===401) throw new Error('Your session has expired. Please sign in again.');
       if(!response.ok) throw new Error('Failed to retrieve weather forecast.');
       const result=await response.json() as WeatherData;
@@ -225,7 +270,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if(requestId===weatherRequestId.current) setLoadingWeather(false);
     }
   };
-  useEffect(()=>{if(activeFarm) void fetchWeather(activeFarm);},[activeFarm?.id,activeFarm?.latitude,activeFarm?.longitude,activeFarm?.locationSource]);
+  useEffect(()=>{if(activeFarm) void fetchWeather(activeFarm,activePlot);},[activeFarm?.id,activeFarm?.latitude,activeFarm?.longitude,activeFarm?.locationSource,activePlot?.id,activePlot?.centroid_latitude,activePlot?.centroid_longitude,activePlot?.boundary_status]);
 
   const handleAddFarm=()=>setFarmSetupMode('add');
   const handleSaveFarmSetup=async(result:FarmSetupResult)=>{
@@ -372,17 +417,17 @@ function AuthenticatedApp({ userId }: { userId: string }) {
           <div className="px-0 sm:px-0 flex flex-col gap-0 pb-4">
             
             {loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-[#e6dcc8] p-8 text-center"><Loader2 className="h-7 w-7 text-leaf-600 animate-spin mx-auto"/><p className="text-xs text-soil-600 mt-2">Loading your local forecast…</p></div>}
-            {weatherError&&!loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-rose-100 p-5"><AlertCircle className="h-6 w-6 text-rose-600"/><p className="text-sm font-bold text-soil-900 mt-2">Weather unavailable</p><p className="text-xs text-soil-600 mt-1">{weatherError}</p><button onClick={()=>void fetchWeather(activeFarm)} className="mt-3 bg-leaf-700 text-white rounded-xl px-4 py-2 text-xs font-bold"><RefreshCw className="inline h-3 w-3 mr-1"/>Try again</button></div>}
-            {!loadingWeather&&!weatherError&&weatherData&&<><WeatherDashboard weatherData={weatherData} district={activeFarm.district} cropName={activeFarm.crop} onAskKato={()=>setActiveTab('kato')}/></>}
+            {weatherError&&!loadingWeather&&<div className="rounded-2xl bg-[#f8f4eb] border border-rose-100 p-5"><AlertCircle className="h-6 w-6 text-rose-600"/><p className="text-sm font-bold text-soil-900 mt-2">Weather unavailable</p><p className="text-xs text-soil-600 mt-1">{weatherError}</p><button onClick={()=>void fetchWeather(activeFarm,activePlot)} className="mt-3 bg-leaf-700 text-white rounded-xl px-4 py-2 text-xs font-bold"><RefreshCw className="inline h-3 w-3 mr-1"/>Try again</button></div>}
+            {!loadingWeather&&!weatherError&&weatherData&&<><WeatherDashboard weatherData={weatherData} district={activeFarm.district} cropName={activePlot?.cropName ?? activeFarm.crop} onAskKato={()=>setActiveTab('kato')}/></>}
           </div>
         </div>}
-        <div className={activeTab==='disease'?'px-4 sm:px-6 py-5':'hidden'}><DiseaseDetection farmId={activeFarm.id} onCreateCarePlan={async ({farmId,cropName,diagnosis})=>{const scanFarm=farms.find(farm=>farm.id===farmId);if(!scanFarm)throw new Error('The farm used for this scan is no longer available.');const scanWeather=activeFarm.id===farmId?weatherData:null;const scanWeatherDistrictName=activeFarm.id===farmId&&weatherDistrictId===scanFarm.district.id?scanFarm.district.name:null;const now=new Date();const {data:plan,error:planError}=await supabase.from('crop_care_plans').insert({user_id:userId,farm_id:farmId,crop_name:cropName,district_name:scanFarm.district.name,issue_name:diagnosis.simpleDiseaseName||diagnosis.diseaseName||'Possible crop issue',diagnosis_status:'unconfirmed',status:'active',care_plan:{summary:`Monitor ${cropName}: ${diagnosis.simpleDiseaseName||diagnosis.diseaseName||'possible crop issue'}`,source:'disease_scan',provider_match_score:diagnosis.confidence,observations:diagnosis.whatObserved},source_scan:{outcome:diagnosis.outcome,disease_name:diagnosis.diseaseName||null,simple_disease_name:diagnosis.simpleDiseaseName||null,match_score:diagnosis.confidence,observations:diagnosis.whatObserved,scanned_at:now.toISOString(),weather_district:scanWeatherDistrictName,weather_snapshot:scanWeatherDistrictName?scanWeather:null}}).select('id').single();if(planError||!plan)throw planError||new Error('Could not create crop-care plan');const specs=[{days:0,title:'Check the symptoms on the affected plant',instructions:'Compare the visible signs with the scan notes. Do not apply a treatment until the problem is better verified.',task_type:'inspect'},{days:2,title:'Inspect nearby plants',instructions:'Look for similar signs on nearby plants and record what you find.',task_type:'inspect'},{days:5,title:'Review the crop condition',instructions:'Check whether the affected area is spreading, staying the same or improving. Record your observations.',task_type:'inspect'},{days:7,title:'Follow up with a new crop photo',instructions:'Take a clear photo from a similar angle so the crop can be reviewed again.',task_type:'photo_check'}];const {error:taskError}=await supabase.from('crop_care_tasks').insert(specs.map(t=>({plan_id:plan.id,user_id:userId,title:t.title,instructions:t.instructions,task_type:t.task_type,due_at:new Date(now.getTime()+t.days*86400000+3600000).toISOString(),status:'pending'})));if(taskError){
+        <div className={activeTab==='disease'?'px-4 sm:px-6 py-5':'hidden'}><DiseaseDetection farmId={activeFarm.id} plotId={activePlot?.id} onCreateCarePlan={async ({farmId,plotId,cropName,diagnosis})=>{const scanFarm=farms.find(farm=>farm.id===farmId);if(!scanFarm)throw new Error('The farm used for this scan is no longer available.');const scanWeather=activeFarm.id===farmId?weatherData:null;const scanWeatherDistrictName=activeFarm.id===farmId&&weatherDistrictId===scanFarm.district.id?scanFarm.district.name:null;const now=new Date();const {data:plan,error:planError}=await supabase.from('crop_care_plans').insert({user_id:userId,farm_id:farmId,plot_id:plotId??null,crop_name:cropName,district_name:scanFarm.district.name,issue_name:diagnosis.simpleDiseaseName||diagnosis.diseaseName||'Possible crop issue',diagnosis_status:'unconfirmed',status:'active',care_plan:{summary:`Monitor ${cropName}: ${diagnosis.simpleDiseaseName||diagnosis.diseaseName||'possible crop issue'}`,source:'disease_scan',provider_match_score:diagnosis.confidence,observations:diagnosis.whatObserved},source_scan:{outcome:diagnosis.outcome,disease_name:diagnosis.diseaseName||null,simple_disease_name:diagnosis.simpleDiseaseName||null,match_score:diagnosis.confidence,observations:diagnosis.whatObserved,scanned_at:now.toISOString(),weather_district:scanWeatherDistrictName,weather_snapshot:scanWeatherDistrictName?scanWeather:null}}).select('id').single();if(planError||!plan)throw planError||new Error('Could not create crop-care plan');const specs=[{days:0,title:'Check the symptoms on the affected plant',instructions:'Compare the visible signs with the scan notes. Do not apply a treatment until the problem is better verified.',task_type:'inspect'},{days:2,title:'Inspect nearby plants',instructions:'Look for similar signs on nearby plants and record what you find.',task_type:'inspect'},{days:5,title:'Review the crop condition',instructions:'Check whether the affected area is spreading, staying the same or improving. Record your observations.',task_type:'inspect'},{days:7,title:'Follow up with a new crop photo',instructions:'Take a clear photo from a similar angle so the crop can be reviewed again.',task_type:'photo_check'}];const {error:taskError}=await supabase.from('crop_care_tasks').insert(specs.map(t=>({plan_id:plan.id,user_id:userId,title:t.title,instructions:t.instructions,task_type:t.task_type,due_at:new Date(now.getTime()+t.days*86400000+3600000).toISOString(),status:'pending'})));if(taskError){
           console.error('Care plan saved, but follow-up calendar tasks could not be saved:',{code:taskError.code,message:taskError.message,details:taskError.details});
           const safeFallback=specs.map(t=>({plan_id:plan.id,user_id:userId,title:t.title,instructions:t.instructions,task_type:t.task_type==='photo_check'?'photo_check':'inspect',due_at:new Date(now.getTime()+t.days*86400000+3600000).toISOString(),status:'pending'}));
           const {error:retryError}=await supabase.from('crop_care_tasks').insert(safeFallback);
           if(retryError)console.error('Care calendar retry failed:',{code:retryError.code,message:retryError.message,details:retryError.details});
         }const katoGuidance=await generateKatoCareGuidance({farmId,cropName,districtName:scanFarm.district.name,issueName:diagnosis.simpleDiseaseName||diagnosis.diseaseName||'Possible crop issue',confidence:diagnosis.confidence,observations:diagnosis.whatObserved||'No scan observations available',weatherContext:scanWeatherDistrictName?scanWeather:null,weatherDistrictName:scanWeatherDistrictName});if(katoGuidance){const {error:guidanceError}=await supabase.from('crop_care_plans').update({care_plan:{summary:`Monitor ${cropName}: ${diagnosis.simpleDiseaseName||diagnosis.diseaseName||'possible crop issue'}`,source:'disease_scan',provider_match_score:diagnosis.confidence,observations:diagnosis.whatObserved,kato_guidance:katoGuidance,kato_generated_at:new Date().toISOString()}}).eq('id',plan.id).eq('user_id',userId);if(guidanceError)console.warn('Could not save Kato guidance to crop-care plan:',guidanceError);}return plan.id;}} userId={userId} districtName={activeFarm.district.name} weatherData={weatherDistrictId===activeFarm.district.id?weatherData:null} weatherDistrictName={weatherDistrictId===activeFarm.district.id?activeFarm.district.name:null}/></div>
-        <div className={activeTab==='kato'?'':'hidden'}><KatoChat userId={userId} farmId={activeFarm.id} district={activeFarm.district} cropName={activeFarm.crop} weatherData={weatherDistrictId===activeFarm.district.id?weatherData:null} weatherDistrictName={weatherDistrictId===activeFarm.district.id?activeFarm.district.name:null} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)} farmerName={farmerName}/></div>
+        <div className={activeTab==='kato'?'':'hidden'}><KatoChat userId={userId} farmId={activeFarm.id} plotId={activePlot?.id ?? null} district={activeFarm.district} cropName={activePlot?.cropName ?? activeFarm.crop} weatherData={weatherDistrictId===activeFarm.district.id?weatherData:null} weatherDistrictName={weatherDistrictId===activeFarm.district.id?activeFarm.district.name:null} initialQuestion={pendingKatoQuestion} onInitialQuestionHandled={()=>setPendingKatoQuestion(null)} farmerName={farmerName}/></div>
         {activeTab==='account'&&<div className="px-4 sm:px-6 py-5"><AccountScreen/><div className="mt-5 grid grid-cols-2 gap-2">
           <button onClick={()=>activeFarm.locationSource==='phone_gps'?setShowSoilCalculator(true):setComingSoon({title:'Set farm location first',description:'Capture this farm’s GPS location before using Soil Intelligence.'})} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Wrench className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Farm tools</span></button>
           <button onClick={()=>setComingSoon({title:'Livestock advisor',description:'Livestock care guidance is being prepared for a future Omulimi update.'})} className="rounded-xl border border-[#e6dcc8] bg-[#f8f4eb] p-3 text-left"><Sprout className="h-4 w-4 text-leaf-700 mb-2"/><span className="text-xs font-bold text-soil-900">Livestock advisor</span></button>
@@ -391,12 +436,12 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       {showKnowledgeCentre&&<KnowledgeCentre onBack={()=>setShowKnowledgeCentre(false)} onAskKato={(question)=>{setPendingKatoQuestion(question);setShowKnowledgeCentre(false);setActiveTab('kato');}}/>}
       {pinCheckComplete && requiresPinSetup && <FarmerPinSetup onComplete={()=>setRequiresPinSetup(false)}/>}
       {pinCheckError && !requiresPinSetup && <div role="status" className="fixed bottom-24 left-4 right-4 z-30 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">We could not check your farmer PIN. Your account is still available; open Account and try again later.</div>}
-      {showFarmPlotsManager&&<FarmPlotsManager userId={userId} farmId={activeFarm.id} farmLatitude={activeFarm.latitude ?? activeFarm.district.latitude} farmLongitude={activeFarm.longitude ?? activeFarm.district.longitude} onClose={()=>setShowFarmPlotsManager(false)}/>}
+      {showFarmPlotsManager&&<FarmPlotsManager userId={userId} farmId={activeFarm.id} farmLatitude={activeFarm.latitude ?? activeFarm.district.latitude} farmLongitude={activeFarm.longitude ?? activeFarm.district.longitude} activePlotId={activePlot?.id ?? null} onSelectPlot={(plot,cropName)=>{setActivePlot({...plot,cropName:cropName||activeFarm.crop});setShowFarmPlotsManager(false);}} onClose={()=>setShowFarmPlotsManager(false)}/>}
       {farmSetupMode==='add'&&<FarmSetup title="Add another farm" initialLabel={`Farm ${farms.length + 1}`} onCancel={()=>setFarmSetupMode(null)} onSave={handleSaveFarmSetup}/>}
       {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s details" initialLabel={activeFarm.label} initialCrops={farmSetupInitialCrops} initialLivestock={farmSetupInitialLivestock} initialFarmQuestionnaire={farmSetupInitialQuestionnaire} initialCropDetails={farmSetupInitialCropDetails} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       {!showSoilCalculator&&!showKnowledgeCentre&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
-      {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} initialCrop={activeFarm.crop} initialLatitude={activeFarm.latitude ?? 0} initialLongitude={activeFarm.longitude ?? 0} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
+      {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} plotId={activePlot?.id ?? null} initialCrop={activePlot?.cropName ?? activeFarm.crop} initialLatitude={activePlot?.centroid_latitude ?? activeFarm.latitude ?? 0} initialLongitude={activePlot?.centroid_longitude ?? activeFarm.longitude ?? 0} initialLocation={`${activePlot?.label ?? activeFarm.district.name} · ${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
 
     </div>
   );
