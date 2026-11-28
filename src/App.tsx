@@ -29,6 +29,8 @@ type ActiveFarmPlot = {
   mapping_method: 'point' | 'gps_walk' | 'manual_draw';
   centroid_latitude: number;
   centroid_longitude: number;
+  centroid_source: 'farm_point' | 'phone_gps' | 'gps_walk' | 'manual_draw';
+  centroid_accuracy_m: number | null;
   area_acres: number | null;
   area_hectares: number | null;
   cropName: string;
@@ -215,7 +217,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     let cancelled=false;
     const loadActivePlot=async()=>{
       const {data:plots,error}=await supabase.from('farm_plots')
-        .select('id,label,boundary_status,mapping_method,centroid_latitude,centroid_longitude,area_acres,area_hectares')
+        .select('id,label,boundary_status,mapping_method,centroid_latitude,centroid_longitude,centroid_source,centroid_accuracy_m,area_acres,area_hectares')
         .eq('farm_id',activeFarmId).eq('user_id',userId).order('created_at',{ascending:true});
       if(cancelled)return;
       if(error||!plots?.length){setActivePlot(null);return;}
@@ -228,6 +230,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         id:selected.id,farmId:activeFarmId,label:selected.label,boundary_status:selected.boundary_status,
         mapping_method:selected.mapping_method,centroid_latitude:Number(selected.centroid_latitude),
         centroid_longitude:Number(selected.centroid_longitude),
+        centroid_source:selected.centroid_source,centroid_accuracy_m:selected.centroid_accuracy_m===null?null:Number(selected.centroid_accuracy_m),
         area_acres:selected.area_acres===null?null:Number(selected.area_acres),
         area_hectares:selected.area_hectares===null?null:Number(selected.area_hectares),
         cropName:crops?.[0]?.crop_name || activeFarm?.crop || DEFAULT_CROP,
@@ -251,7 +254,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       const context=await contextResponse.json() as {farm?:{latitude?:number;longitude?:number;location_source?:string}};
       const savedFarm=context.farm;
       const useMappedBoundary=selectedPlot?.boundary_status==='mapped';
-      const useVerifiedPoint=selectedPlot?.mapping_method==='point'&&savedFarm?.location_source==='phone_gps';
+      const useVerifiedPoint=selectedPlot?.mapping_method==='point'&&selectedPlot.centroid_source==='phone_gps'&&selectedPlot.centroid_accuracy_m!==null&&selectedPlot.centroid_accuracy_m<=100;
       if(!useMappedBoundary&&!useVerifiedPoint){
         throw new Error('Map this plot boundary or capture its GPS point before requesting field-specific weather.');
       }
