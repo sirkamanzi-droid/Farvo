@@ -202,9 +202,11 @@ export async function syncFarmCrops(
   farmId: string,
   selectedCrops: string[],
 ): Promise<void> {
-  const desired = new Map(
-    selectedCrops.map(name => [name.trim().toLowerCase(), name.trim()]).filter(([key, name]) => Boolean(key && name))
-  );
+  const desired = new Map<string, string>();
+  for (const name of selectedCrops) {
+    const trimmed = name.trim();
+    if (trimmed) desired.set(trimmed.toLowerCase(), trimmed);
+  }
   if (desired.size === 0) throw new Error('Select at least one crop grown on this farm.');
 
   const { data: existing, error: lookupError } = await supabase
