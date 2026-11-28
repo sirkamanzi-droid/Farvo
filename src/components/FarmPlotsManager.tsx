@@ -13,6 +13,8 @@ type PlotRow = {
   mapping_method: 'point' | 'gps_walk' | 'manual_draw';
   centroid_latitude: number;
   centroid_longitude: number;
+  centroid_source: 'farm_point' | 'phone_gps' | 'gps_walk' | 'manual_draw';
+  centroid_accuracy_m: number | null;
   area_acres: number | null;
   area_hectares: number | null;
   created_at: string;
