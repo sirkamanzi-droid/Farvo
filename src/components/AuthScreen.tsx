@@ -14,6 +14,7 @@ export default function AuthScreen() {
   const [preferredLanguage, setPreferredLanguage] = useState('en');
   const [preferredChannel, setPreferredChannel] = useState('in_app');
   const [preferredContactTime, setPreferredContactTime] = useState('');
+  const [decisionStyle, setDecisionStyle] = useState('unknown');
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [proactiveContactConsent, setProactiveContactConsent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +42,7 @@ export default function AuthScreen() {
               preferred_language: preferredLanguage,
               preferred_channel: preferredChannel,
               preferred_contact_time: preferredContactTime,
+              decision_style: decisionStyle,
               privacy_consent: privacyConsent,
               proactive_contact_consent: proactiveContactConsent,
             },
@@ -197,11 +199,30 @@ export default function AuthScreen() {
                 >
                   <option value="en">English</option>
                   <option value="lg">Luganda</option>
-                  <option value="nyn">Runyankole</option>
+                  <option value="ach">Luo / Acholi</option>
+                  <option value="nyn">Runyakitara</option>
+                  <option value="teo">Ateso</option>
+                  <option value="other">Other</option>
                   <option value="cgg">Rukiga</option>
                   <option value="sw">Swahili</option>
                 </select>
                 <p className="mt-1 text-xs text-soil-500">Some Kato replies may still appear in English while language support is being improved.</p>
+              </div>
+
+              <div>
+                <label htmlFor="decisionStyle" className="block text-sm font-medium text-soil-800 mb-1">
+                  Do you make farming decisions alone or with someone?
+                </label>
+                <select
+                  id="decisionStyle"
+                  value={decisionStyle}
+                  onChange={(e) => setDecisionStyle(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                >
+                  <option value="unknown">I don't know / skip</option>
+                  <option value="alone">I decide alone</option>
+                  <option value="with_someone">I decide with someone</option>
+                </select>
               </div>
 
               <div>
@@ -227,13 +248,17 @@ export default function AuthScreen() {
                 <label htmlFor="preferredContactTime" className="block text-sm font-medium text-soil-800 mb-1">
                   Best time to receive updates (optional)
                 </label>
-                <input
+                <select
                   id="preferredContactTime"
-                  type="time"
                   value={preferredContactTime}
                   onChange={(e) => setPreferredContactTime(e.target.value)}
                   className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
-                />
+                >
+                  <option value="">I don't know / skip</option>
+                  <option value="08:00">Morning</option>
+                  <option value="12:00">Midday</option>
+                  <option value="18:00">Evening</option>
+                </select>
               </div>
 
               <label className="flex items-start gap-3 text-sm text-soil-700">
