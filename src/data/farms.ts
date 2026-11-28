@@ -2,6 +2,32 @@ import { supabase } from '../lib/supabase';
 import { DISTRICTS } from './districts';
 import { Farm, District } from '../types';
 
+export type FarmQuestionnaireInput = {
+  yearsFarmedLand: string;
+  previousSeasonCrops: string[];
+  seasonBeforePreviousCrops: string[];
+  waterPoolsAfterRain: boolean | null;
+  waterAccess: string;
+};
+
+export type FarmCropDetailsInput = {
+  cropName: string;
+  variety: string | null;
+  plantingDate: string | null;
+  areaSharePercent: number | null;
+  inputSource: string | null;
+  fertiliserManureApplied: string | null;
+};
+
+export type FarmLivestockInput = {
+  species: string;
+  animalCount: number | null;
+  ageGroup: string | null;
+  cattleStatus: string | null;
+  vaccinatedThisYear: boolean | null;
+  vaccinationDetails: string | null;
+};
+
 export type FarmPlotBoundary = {
   coordinates: [number, number][];
   centroidLatitude: number;
@@ -160,7 +186,7 @@ export async function saveFarmAssets(
   userId: string,
   farmId: string,
   crops: string[],
-  livestock: Array<{ species: string; animalCount: number | null }>,
+  livestock: FarmLivestockInput[],
   plotId?: string | null,
 ): Promise<void> {
   // GPS recapture must preserve existing farm assets without inserting duplicates.
@@ -186,7 +212,42 @@ export async function saveFarmAssets(
   if (newLivestock.length > 0) {
     const { error } = await supabase.from('farm_livestock').insert(newLivestock.map(item => ({
       user_id: userId, farm_id: farmId, species: item.species, animal_count: item.animalCount,
+      age_group: item.ageGroup, cattle_status: item.cattleStatus,
+      vaccinated_this_year: item.vaccinatedThisYear, vaccination_details: item.vaccinationDetails,
     })));
+    if (error) throw error;
+  }
+}
+
+export async function saveFarmQuestionnaire(
+  userId: string,
+  farmId: string,
+  answers: FarmQuestionnaireInput,
+): Promise<void> {
+  const { error } = await supabase.from('farms').update({
+    years_farmed_land: answers.yearsFarmedLand || null,
+    previous_season_crops: answers.previousSeasonCrops,
+    season_before_previous_crops: answers.seasonBeforePreviousCrops,
+    water_pools_after_rain: answers.waterPoolsAfterRain,
+    water_access: answers.waterAccess || null,
+  }).eq('id', farmId).eq('user_id', userId);
+  if (error) throw error;
+}
+
+export async function saveFarmCropDetails(
+  userId: string,
+  farmId: string,
+  plotId: string,
+  details: FarmCropDetailsInput[],
+): Promise<void> {
+  for (const item of details) {
+    const { error } = await supabase.from('farm_crops').update({
+      variety: item.variety,
+      planting_date: item.plantingDate,
+      area_share_percent: item.areaSharePercent,
+      input_source: item.inputSource,
+      fertiliser_manure_applied: item.fertiliserManureApplied,
+    }).eq('user_id', userId).eq('farm_id', farmId).eq('plot_id', plotId).eq('crop_name', item.cropName).eq('is_active', true);
     if (error) throw error;
   }
 }
@@ -367,17 +428,17 @@ export async function syncPrimaryFarmCrop(
 export async function syncFarmLivestock(
   userId: string,
   farmId: string,
-  selectedLivestock: Array<{ species: string; animalCount: number | null }>,
+  selectedLivestock: FarmLivestockInput[],
 ): Promise<void> {
-  const desired = new Map<string, { species: string; animalCount: number | null }>();
+  const desired = new Map<string, FarmLivestockInput>();
   for (const item of selectedLivestock) {
     const species = item.species.trim();
-    if (species) desired.set(species.toLowerCase(), { species, animalCount: item.animalCount });
+    if (species) desired.set(species.toLowerCase(), { ...item, species });
   }
 
   const { data: existing, error: lookupError } = await supabase
     .from('farm_livestock')
-    .select('id,species,is_active')
+     .select('id,species,is_active')
     .eq('farm_id', farmId)
     .eq('user_id', userId);
   if (lookupError) throw lookupError;
@@ -394,7 +455,13 @@ export async function syncFarmLivestock(
     }
     if (selected) {
       const { error } = await supabase.from('farm_livestock')
-        .update({ animal_count: selected.animalCount })
+        .update({
+          animal_count: selected.animalCount,
+          age_group: selected.ageGroup,
+          cattle_status: selected.cattleStatus,
+          vaccinated_this_year: selected.vaccinatedThisYear,
+          vaccination_details: selected.vaccinationDetails,
+        })
         .eq('id', row.id).eq('farm_id', farmId).eq('user_id', userId);
       if (error) throw error;
     }
@@ -404,7 +471,9 @@ export async function syncFarmLivestock(
     .filter(([key]) => !existingBySpecies.has(key))
     .map(([, item]) => ({
       user_id: userId, farm_id: farmId, species: item.species,
-      animal_count: item.animalCount, is_active: true,
+      animal_count: item.animalCount, age_group: item.ageGroup,
+      cattle_status: item.cattleStatus, vaccinated_this_year: item.vaccinatedThisYear,
+      vaccination_details: item.vaccinationDetails, is_active: true,
     }));
   if (missing.length) {
     const { error } = await supabase.from('farm_livestock').insert(missing);
