@@ -488,19 +488,20 @@ export default function DiseaseDetection({
     setPhotoError(null);
     setCarePlanStatus('idle');
     setCarePlanId(null);
-    setScannedAt(new Date().toISOString());
+    const scanStartedAt = new Date().toISOString();
+    setScannedAt(scanStartedAt);
     try {
       const dataUrl = await prepareDiseasePhoto(file);
       setPhotoDataUrl(dataUrl);
       setView('analyzing');
       setCheckedSteps(0);
-      runAnalysisSequence(dataUrl);
+      runAnalysisSequence(dataUrl, scanStartedAt);
     } catch (error) {
       setPhotoError(error instanceof Error ? error.message : 'This photo could not be prepared. Please try another.');
     }
   }
 
-  async function runAnalysisSequence(dataUrl: string) {
+  async function runAnalysisSequence(dataUrl: string, scanStartedAt: string) {
     const delays = [400, 900, 1400];
     delays.forEach((delay, idx) => {
       setTimeout(() => setCheckedSteps(idx + 1), delay);
@@ -509,7 +510,7 @@ export default function DiseaseDetection({
     const cropId = selectedCrop?.id || 'maize';
     const result = await computeDiagnosis(cropId, dataUrl);
     const eventKey = `disease-scan:${crypto.randomUUID()}`;
-    const scanTimestamp = scannedAt || new Date().toISOString();
+    const scanTimestamp = scanStartedAt;
 
     const saveScanEvent = async (sourceRecordId: string | null = null) => {
       const { error } = await supabase.from('farm_events').insert({
