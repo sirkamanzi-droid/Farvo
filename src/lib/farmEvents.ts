@@ -46,7 +46,8 @@ export async function recordFarmEvent(input: RecordFarmEventInput): Promise<void
     return;
   }
 
-  const { error } = await supabase.from('farm_events').insert({
+  try {
+    const { error } = await supabase.from('farm_events').insert({
     user_id: input.userId,
     farm_id: input.farmId,
     event_type: input.eventType,
@@ -59,7 +60,8 @@ export async function recordFarmEvent(input: RecordFarmEventInput): Promise<void
     payload,
   });
 
-  if (error) {
-    console.error('Could not add an item to farm history:', error.message);
+    if (error) console.error('Could not add an item to farm history:', error.message);
+  } catch (error) {
+    console.error('Farm history is temporarily unavailable:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
