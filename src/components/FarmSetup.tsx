@@ -26,12 +26,13 @@ type Props = {
   onCancel?: () => void;
   initialCrops?: string[];
   initialLabel?: string;
+  initialLivestock?: Array<{ species: string; animalCount: number | null }>;
   onSave: (result: FarmSetupResult) => Promise<void>;
 };
 
 const LIVESTOCK_OPTIONS = ['Cattle', 'Goats', 'Sheep', 'Pigs', 'Chicken', 'Ducks', 'Turkeys', 'Rabbits', 'Fish'];
 
-export default function FarmSetup({ title = 'Set up your farm', onCancel, initialCrops = [], initialLabel = 'My farm', onSave }: Props) {
+export default function FarmSetup({ title = 'Set up your farm', onCancel, initialCrops = [], initialLabel = 'My farm', initialLivestock = [], onSave }: Props) {
   const [position, setPosition] = useState<{ latitude: number; longitude: number; accuracyM: number; capturedAt: string } | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [locationError, setLocationError] = useState('');
@@ -39,7 +40,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
   const [area, setArea] = useState<{ displayName: string | null; village: string | null; parish: string | null; subcounty: string | null; district: string | null; region: string | null } | null>(null);
   const [farmName, setFarmName] = useState(initialLabel);
   const [crops, setCrops] = useState<string[]>(initialCrops);
-  const [livestock, setLivestock] = useState<Array<{ species: string; animalCount: string }>>([]);
+  const [livestock, setLivestock] = useState<Array<{ species: string; animalCount: string }>>(() => initialLivestock.map(item => ({ species: item.species, animalCount: item.animalCount === null ? '' : String(item.animalCount) })));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
