@@ -240,7 +240,7 @@ export default function AuthScreen() {
                 >
                   <option value="in_app">Inside Omulimi</option>
                   <option value="whatsapp">WhatsApp</option>
-                  <option value="none">No proactive messages</option>
+                  <option value="none">I will come to Kato myself</option>
                 </select>
               </div>
 
