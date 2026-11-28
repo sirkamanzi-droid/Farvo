@@ -9,7 +9,9 @@ export type FarmEventType =
   | 'soil_assessment'
   | 'crop_update'
   | 'livestock_update'
-  | 'follow_up';
+  | 'follow_up'
+  | 'questionnaire_answer'
+  | 'vigour_reading';
 
 export type FarmEventSource = 'farmer' | 'kato' | 'system' | 'agronomist' | 'external_service';
 
