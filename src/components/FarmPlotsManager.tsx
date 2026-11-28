@@ -26,9 +26,11 @@ type Props = {
   farmLatitude: number;
   farmLongitude: number;
   onClose: () => void;
+  activePlotId: string | null;
+  onSelectPlot: (plot: PlotRow, cropName: string) => void;
 };
 
-export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLongitude, onClose }: Props) {
+export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLongitude, onClose, activePlotId, onSelectPlot }: Props) {
   const [plots, setPlots] = useState<PlotRow[]>([]);
   const [crops, setCrops] = useState<CropRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,6 +200,13 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
       });
       setNotice('Plot and crop saved.');
       await load();
+      onSelectPlot({
+        id: plot.id, label: label.trim(), boundary_status: boundary ? 'mapped' : 'needs_boundary',
+        mapping_method: boundary?.mappingMethod ?? 'point',
+        centroid_latitude: latitude, centroid_longitude: longitude,
+        area_acres: boundary?.areaAcres ?? null, area_hectares: boundary?.areaHectares ?? null,
+        created_at: new Date().toISOString(),
+      }, cropName);
       resetForm();
       setNotice('Plot and crop saved.');
     } catch (cause) {
@@ -235,6 +244,7 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
                 <p className="mt-1 text-xs text-[#66746b]">{cropNamesFor(plot.id).join(', ') || 'No crop linked yet'}</p>
                 <p className="mt-1 text-[11px] text-[#879188]">{plot.boundary_status === 'mapped' ? 'Boundary mapped' : 'Point location only · boundary not mapped'}</p>
                 {plot.area_acres !== null && <p className="mt-1 text-xs text-[#52645a]">Approx. {Number(plot.area_acres).toFixed(2)} acres · {Number(plot.area_hectares || 0).toFixed(2)} hectares</p>}
+                <button type="button" onClick={()=>onSelectPlot(plot,cropNamesFor(plot.id)[0] || '')} className={activePlotId===plot.id ? 'mt-2 rounded-lg bg-[#174432] px-3 py-2 text-[11px] font-semibold text-white' : 'mt-2 rounded-lg border border-[#c6d4c0] bg-white px-3 py-2 text-[11px] font-semibold text-[#285b40]'}>{activePlotId===plot.id ? 'Currently selected' : 'Use for weather and soil'}</button>
               </div>
               <span className={plot.boundary_status === 'mapped' ? 'rounded-full bg-[#e7eddf] px-2 py-1 text-[10px] font-semibold text-[#285b40]' : 'rounded-full bg-[#f5ebd2] px-2 py-1 text-[10px] font-semibold text-[#8b6531]'}>
                 {plot.boundary_status === 'mapped' ? 'Mapped' : 'Needs mapping'}
