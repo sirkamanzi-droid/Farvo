@@ -2,6 +2,7 @@ import FormattedResponse from './FormattedResponse';
 import React, { useEffect, useState } from 'react';
 import { MessageCircle, Send, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { recordFarmEvent } from '../lib/farmEvents';
 import type { WeatherData } from '../types';
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -70,6 +71,11 @@ export default function DiagnosisKatoPanel(props: Props) {
     setMessages(next); setDraft(''); setSending(true); setError('');
     try {
       await saveMessages(next);
+      if (farmId) await recordFarmEvent({
+        userId: props.userId, farmId, eventType: 'farmer_reply', source: 'farmer',
+        sourceRecordType: 'crop_care_plans', sourceRecordId: props.planId,
+        payload: { crop_name: props.cropName, context: 'diagnosis_kato_question', message_length: question.length },
+      });
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (sessionError || !token) throw new Error('Please sign in again to speak with Kato.');
@@ -113,6 +119,11 @@ export default function DiagnosisKatoPanel(props: Props) {
       const completed = [...next, { role: 'assistant' as const, content: answer.trim() }].slice(-24);
       setMessages(completed);
       await saveMessages(completed);
+      if (farmId) await recordFarmEvent({
+        userId: props.userId, farmId, eventType: 'advice', source: 'kato',
+        sourceRecordType: 'crop_care_plans', sourceRecordId: props.planId,
+        payload: { crop_name: props.cropName, context: 'diagnosis_kato_answer' },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kato could not answer right now.');
     } finally { setSending(false); }
