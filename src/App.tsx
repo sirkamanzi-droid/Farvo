@@ -5,7 +5,7 @@ import AccountScreen from './components/AccountScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
-import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop, syncFarmCrops, syncFarmLivestock, getMainFarmPlotId, saveFarmPlotBoundary } from './data/farms';
+import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop, syncFarmCrops, syncFarmLivestock, getMainFarmPlotId, saveFarmPlotBoundary, saveFarmQuestionnaire, saveFarmCropDetails, type FarmQuestionnaireInput, type FarmCropDetailsInput, type FarmLivestockInput } from './data/farms';
 import FarmSetup, { type FarmSetupResult } from './components/FarmSetup';
 import FarmPlotsManager from './components/FarmPlotsManager';
 import SkyHero from './components/SkyHero';
@@ -96,7 +96,9 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [farmSetupMode, setFarmSetupMode] = useState<'initial' | 'add' | 'recapture' | null>(null);
   const [farmSetupTargetId, setFarmSetupTargetId] = useState<string | null>(null);
   const [farmSetupInitialCrops, setFarmSetupInitialCrops] = useState<string[]>([]);
-  const [farmSetupInitialLivestock, setFarmSetupInitialLivestock] = useState<Array<{ species: string; animalCount: number | null }>>([]);
+  const [farmSetupInitialLivestock, setFarmSetupInitialLivestock] = useState<FarmLivestockInput[]>([]);
+  const [farmSetupInitialQuestionnaire, setFarmSetupInitialQuestionnaire] = useState<FarmQuestionnaireInput | undefined>(undefined);
+  const [farmSetupInitialCropDetails, setFarmSetupInitialCropDetails] = useState<FarmCropDetailsInput[]>([]);
   const [showFarmPlotsManager, setShowFarmPlotsManager] = useState(false);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
@@ -229,6 +231,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         const plotId=await getMainFarmPlotId(userId,savedFarm.id);
         if(result.boundary) await saveFarmPlotBoundary(userId,savedFarm.id,result.boundary);
         await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock,plotId);
+        await saveFarmQuestionnaire(userId,savedFarm.id,result.farmQuestionnaire);
+        await saveFarmCropDetails(userId,savedFarm.id,plotId,result.cropDetails);
       } catch(error) {
         await deleteFarm(userId,savedFarm.id).catch(()=>undefined);
         throw error;
@@ -247,6 +251,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if(result.boundary) await saveFarmPlotBoundary(userId,savedFarm.id,result.boundary);
       await syncFarmCrops(userId,savedFarm.id,result.crops,plotId);
       await syncFarmLivestock(userId,savedFarm.id,result.livestock);
+      await saveFarmQuestionnaire(userId,savedFarm.id,result.farmQuestionnaire);
+      await saveFarmCropDetails(userId,savedFarm.id,plotId,result.cropDetails);
       setFarms(current=>current.map(item=>item.id===savedFarm.id?savedFarm:item));
     } else {
       throw new Error('This farm setup action is not supported.');
@@ -267,11 +273,30 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if(error) throw error;
       const selected = (data ?? []).map(row=>row.crop_name);
       setFarmSetupInitialCrops(selected.length ? selected : [activeFarm.crop]);
-      const { data: livestockRows, error: livestockError } = await supabase.from('farm_livestock')
-        .select('species,animal_count').eq('farm_id',activeFarm.id).eq('user_id',userId).eq('is_active',true)
-        ;
-      if(livestockError) throw livestockError;
-      setFarmSetupInitialLivestock((livestockRows ?? []).map(row=>({species:row.species,animalCount:row.animal_count===null?null:Number(row.animal_count)})));
+      const plotId=await getMainFarmPlotId(userId,activeFarm.id);
+      const [{data:livestockRows,error:livestockError},{data:farmAnswers,error:farmAnswersError},{data:cropRows,error:cropRowsError}]=await Promise.all([
+        supabase.from('farm_livestock').select('species,animal_count,age_group,cattle_status,vaccinated_this_year,vaccination_details').eq('farm_id',activeFarm.id).eq('user_id',userId).eq('is_active',true),
+        supabase.from('farms').select('years_farmed_land,previous_season_crops,season_before_previous_crops,water_pools_after_rain,water_access').eq('id',activeFarm.id).eq('user_id',userId).single(),
+        supabase.from('farm_crops').select('crop_name,variety,planting_date,area_share_percent,input_source,fertiliser_manure_applied').eq('farm_id',activeFarm.id).eq('user_id',userId).eq('plot_id',plotId).eq('is_active',true),
+      ]);
+      if(livestockError||farmAnswersError||cropRowsError) throw livestockError||farmAnswersError||cropRowsError;
+      setFarmSetupInitialLivestock((livestockRows ?? []).map(row=>({
+        species:row.species,animalCount:row.animal_count===null?null:Number(row.animal_count),
+        ageGroup:row.age_group,cattleStatus:row.cattle_status,
+        vaccinatedThisYear:row.vaccinated_this_year,vaccinationDetails:row.vaccination_details,
+      })));
+      setFarmSetupInitialQuestionnaire({
+        yearsFarmedLand:farmAnswers?.years_farmed_land||'unknown',
+        previousSeasonCrops:farmAnswers?.previous_season_crops||[],
+        seasonBeforePreviousCrops:farmAnswers?.season_before_previous_crops||[],
+        waterPoolsAfterRain:farmAnswers?.water_pools_after_rain,
+        waterAccess:farmAnswers?.water_access||'unknown',
+      });
+      setFarmSetupInitialCropDetails((cropRows??[]).map(row=>({
+        cropName:row.crop_name,variety:row.variety,plantingDate:row.planting_date,
+        areaSharePercent:row.area_share_percent===null?null:Number(row.area_share_percent),
+        inputSource:row.input_source,fertiliserManureApplied:row.fertiliser_manure_applied,
+      })));
       setFarmSetupTargetId(activeFarm.id);
       setFarmSetupMode('recapture');
       setFarmSyncError(null);
@@ -345,7 +370,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       {showKnowledgeCentre&&<KnowledgeCentre onBack={()=>setShowKnowledgeCentre(false)} onAskKato={(question)=>{setPendingKatoQuestion(question);setShowKnowledgeCentre(false);setActiveTab('kato');}}/>}
       {showFarmPlotsManager&&<FarmPlotsManager userId={userId} farmId={activeFarm.id} farmLatitude={activeFarm.latitude ?? activeFarm.district.latitude} farmLongitude={activeFarm.longitude ?? activeFarm.district.longitude} onClose={()=>setShowFarmPlotsManager(false)}/>}
       {farmSetupMode==='add'&&<FarmSetup title="Add another farm" initialLabel={`Farm ${farms.length + 1}`} onCancel={()=>setFarmSetupMode(null)} onSave={handleSaveFarmSetup}/>}
-      {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s details" initialLabel={activeFarm.label} initialCrops={farmSetupInitialCrops} initialLivestock={farmSetupInitialLivestock} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
+      {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s details" initialLabel={activeFarm.label} initialCrops={farmSetupInitialCrops} initialLivestock={farmSetupInitialLivestock} initialFarmQuestionnaire={farmSetupInitialQuestionnaire} initialCropDetails={farmSetupInitialCropDetails} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       {!showSoilCalculator&&!showKnowledgeCentre&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
       {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} initialCrop={activeFarm.crop} initialLatitude={activeFarm.latitude ?? 0} initialLongitude={activeFarm.longitude ?? 0} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
