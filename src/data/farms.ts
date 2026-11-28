@@ -191,6 +191,52 @@ export async function deleteFarm(userId: string, farmId: string): Promise<void> 
 }
 
 
+
+/**
+ * Reconcile the farm's active crop registrations with the complete selection
+ * made in the farm editor. Existing records are reactivated where possible,
+ * and crops removed from the selection are marked inactive rather than deleted.
+ */
+export async function syncFarmCrops(
+  userId: string,
+  farmId: string,
+  selectedCrops: string[],
+): Promise<void> {
+  const desired = new Map(
+    selectedCrops.map(name => [name.trim().toLowerCase(), name.trim()]).filter(([key, name]) => Boolean(key && name))
+  );
+  if (desired.size === 0) throw new Error('Select at least one crop grown on this farm.');
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('farm_crops')
+    .select('id,crop_name,is_active')
+    .eq('farm_id', farmId)
+    .eq('user_id', userId);
+  if (lookupError) throw lookupError;
+
+  const existingByName = new Map((existing ?? []).map(row => [row.crop_name.trim().toLowerCase(), row]));
+  for (const row of existing ?? []) {
+    const shouldBeActive = desired.has(row.crop_name.trim().toLowerCase());
+    if (row.is_active !== shouldBeActive) {
+      const { error } = await supabase
+        .from('farm_crops')
+        .update({ is_active: shouldBeActive })
+        .eq('id', row.id)
+        .eq('farm_id', farmId)
+        .eq('user_id', userId);
+      if (error) throw error;
+    }
+  }
+
+  const missing = [...desired.entries()]
+    .filter(([key]) => !existingByName.has(key))
+    .map(([, crop_name]) => ({ user_id: userId, farm_id: farmId, crop_name, is_active: true }));
+  if (missing.length > 0) {
+    const { error } = await supabase.from('farm_crops').insert(missing);
+    if (error) throw error;
+  }
+}
+
 /**
  * Keep the farm's primary crop registration in sync when the farmer changes
  * the crop selector. Other registered crops on the same farm are preserved.
