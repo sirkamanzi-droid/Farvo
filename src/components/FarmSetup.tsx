@@ -5,7 +5,7 @@ import { findNearestDistrict, type LocationStatus } from '../data/geolocation';
 import { SUPPORTED_CROP_NAMES } from '../data/supportedCrops';
 import type { District } from '../types';
 import { supabase } from '../lib/supabase';
-import type { FarmPlotBoundary } from '../data/farms';
+import type { FarmPlotBoundary, FarmQuestionnaireInput, FarmCropDetailsInput, FarmLivestockInput } from '../data/farms';
 import { buildGpsBoundary, distanceMetres, type BoundaryPoint } from '../utils/farmBoundary';
 
 export type FarmSetupResult = {
@@ -16,7 +16,9 @@ export type FarmSetupResult = {
   district: District;
   label: string;
   crops: string[];
-  livestock: Array<{ species: string; animalCount: number | null }>;
+  livestock: FarmLivestockInput[];
+  farmQuestionnaire: FarmQuestionnaireInput;
+  cropDetails: FarmCropDetailsInput[];
   locationLabel: string | null;
   village: string | null;
   parish: string | null;
@@ -29,13 +31,15 @@ type Props = {
   onCancel?: () => void;
   initialCrops?: string[];
   initialLabel?: string;
-  initialLivestock?: Array<{ species: string; animalCount: number | null }>;
+  initialLivestock?: FarmLivestockInput[];
+  initialFarmQuestionnaire?: FarmQuestionnaireInput;
+  initialCropDetails?: FarmCropDetailsInput[];
   onSave: (result: FarmSetupResult) => Promise<void>;
 };
 
 const LIVESTOCK_OPTIONS = ['Cattle', 'Goats', 'Sheep', 'Pigs', 'Chicken', 'Ducks', 'Turkeys', 'Rabbits', 'Fish'];
 
-export default function FarmSetup({ title = 'Set up your farm', onCancel, initialCrops = [], initialLabel = 'My farm', initialLivestock = [], onSave }: Props) {
+export default function FarmSetup({ title = 'Set up your farm', onCancel, initialCrops = [], initialLabel = 'My farm', initialLivestock = [], initialFarmQuestionnaire, initialCropDetails = [], onSave }: Props) {
   const [position, setPosition] = useState<{ latitude: number; longitude: number; accuracyM: number; capturedAt: string } | null>(null);
   const [boundaryPoints, setBoundaryPoints] = useState<BoundaryPoint[]>([]);
   const [boundary, setBoundary] = useState<FarmPlotBoundary | null>(null);
@@ -48,7 +52,17 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
   const [area, setArea] = useState<{ displayName: string | null; village: string | null; parish: string | null; subcounty: string | null; district: string | null; region: string | null } | null>(null);
   const [farmName, setFarmName] = useState(initialLabel);
   const [crops, setCrops] = useState<string[]>(initialCrops);
-  const [livestock, setLivestock] = useState<Array<{ species: string; animalCount: string }>>(() => initialLivestock.map(item => ({ species: item.species, animalCount: item.animalCount === null ? '' : String(item.animalCount) })));
+  const [yearsFarmedLand, setYearsFarmedLand] = useState(initialFarmQuestionnaire?.yearsFarmedLand || 'unknown');
+  const [previousSeasonCrops, setPreviousSeasonCrops] = useState<string[]>(initialFarmQuestionnaire?.previousSeasonCrops || []);
+  const [seasonBeforePreviousCrops, setSeasonBeforePreviousCrops] = useState<string[]>(initialFarmQuestionnaire?.seasonBeforePreviousCrops || []);
+  const [waterPoolsAfterRain, setWaterPoolsAfterRain] = useState(initialFarmQuestionnaire?.waterPoolsAfterRain === true ? 'yes' : initialFarmQuestionnaire?.waterPoolsAfterRain === false ? 'no' : 'unknown');
+  const [waterAccess, setWaterAccess] = useState(initialFarmQuestionnaire?.waterAccess || 'unknown');
+  const [cropDetails, setCropDetails] = useState<Record<string, { variety: string; plantingDate: string; areaSharePercent: string; inputSource: string; fertiliserManureApplied: string }>>(() => Object.fromEntries(initialCropDetails.map(item => [item.cropName, {
+    variety: item.variety || '', plantingDate: item.plantingDate || '',
+    areaSharePercent: item.areaSharePercent === null ? '' : String(item.areaSharePercent),
+    inputSource: item.inputSource || 'unknown', fertiliserManureApplied: item.fertiliserManureApplied || '',
+  }])));
+  const [livestock, setLivestock] = useState<FarmLivestockInput[]>(() => initialLivestock.map(item => ({ ...item })));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -190,14 +204,30 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
     );
   };
 
-  const toggleCrop = (crop: string) => setCrops(current =>
-    current.includes(crop) ? current.filter(item => item !== crop) : [...current, crop]
-  );
+  const toggleCrop = (crop: string) => {
+    setCrops(current => current.includes(crop) ? current.filter(item => item !== crop) : [...current, crop]);
+    setCropDetails(current => current[crop] ? current : ({
+      ...current,
+      [crop]: { variety: '', plantingDate: '', areaSharePercent: '', inputSource: 'unknown', fertiliserManureApplied: '' },
+    }));
+  };
+
+  const updateCropDetail = (crop: string, field: keyof (typeof cropDetails)[string], value: string) => {
+    setCropDetails(current => ({
+      ...current,
+      [crop]: { ...(current[crop] || { variety: '', plantingDate: '', areaSharePercent: '', inputSource: 'unknown', fertiliserManureApplied: '' }), [field]: value },
+    }));
+  };
+
+  const togglePreviousCrop = (crop: string, target: 'last' | 'before') => {
+    const setter = target === 'last' ? setPreviousSeasonCrops : setSeasonBeforePreviousCrops;
+    setter(current => current.includes(crop) ? current.filter(item => item !== crop) : [...current, crop]);
+  };
 
   const addLivestock = (species: string) => {
     setLivestock(current => current.some(item => item.species === species)
       ? current.filter(item => item.species !== species)
-      : [...current, { species, animalCount: '' }]
+      : [...current, { species, animalCount: null, ageGroup: null, cattleStatus: species === 'Cattle' ? 'unknown' : null, vaccinatedThisYear: null, vaccinationDetails: null }]
     );
   };
 
@@ -225,11 +255,25 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
         parish: area?.parish ?? null,
         subcounty: area?.subcounty ?? null,
         boundary,
-        livestock: livestock.map(item => ({
-          species: item.species,
-          animalCount: item.animalCount.trim() && Number.isFinite(Number(item.animalCount))
-            ? Math.max(0, Math.floor(Number(item.animalCount))) : null,
-        })),
+        farmQuestionnaire: {
+          yearsFarmedLand,
+          previousSeasonCrops,
+          seasonBeforePreviousCrops,
+          waterPoolsAfterRain: waterPoolsAfterRain === 'yes' ? true : waterPoolsAfterRain === 'no' ? false : null,
+          waterAccess,
+        },
+        cropDetails: crops.map(cropName => {
+          const item = cropDetails[cropName] || { variety: '', plantingDate: '', areaSharePercent: '', inputSource: 'unknown', fertiliserManureApplied: '' };
+          return {
+            cropName,
+            variety: item.variety.trim() || null,
+            plantingDate: item.plantingDate || null,
+            areaSharePercent: item.areaSharePercent.trim() && Number.isFinite(Number(item.areaSharePercent)) ? Math.min(100, Math.max(0, Number(item.areaSharePercent))) : null,
+            inputSource: item.inputSource || 'unknown',
+            fertiliserManureApplied: item.fertiliserManureApplied.trim() || null,
+          };
+        }),
+        livestock: livestock.map(item => ({ ...item, vaccinationDetails: item.vaccinationDetails?.trim() || null })),
       });
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Could not save this farm. Please try again.');
@@ -307,6 +351,27 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
         </section>
 
         <section className="mt-4 rounded-2xl border border-[#e6dcc8] bg-[#faf7ef] p-4">
+          <h2 className="font-semibold text-[#1d2d27]">About this land</h2>
+          <p className="mt-1 text-xs text-[#66746b]">Answer what you know. Every question can be skipped.</p>
+          <label className="mt-3 block text-xs font-semibold text-[#52645a]">How long have you farmed this land?</label>
+          <select value={yearsFarmedLand} onChange={event => setYearsFarmedLand(event.target.value)} className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-3 text-sm">
+            <option value="unknown">I don't know / skip</option><option value="under_1_year">Less than 1 year</option><option value="1_to_5_years">1–5 years</option><option value="6_to_10_years">6–10 years</option><option value="over_10_years">More than 10 years</option>
+          </select>
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-[#52645a]">Which crops did you grow last season?</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">{SUPPORTED_CROP_NAMES.map(crop => <button key={'last-'+crop} type="button" onClick={() => togglePreviousCrop(crop,'last')} className={`rounded-lg border px-2 py-2 text-left text-xs ${previousSeasonCrops.includes(crop) ? 'border-[#285b40] bg-[#e7eddf] font-semibold text-[#174432]' : 'border-[#e6dcc8] bg-white text-[#536158]'}`}>{previousSeasonCrops.includes(crop) ? '✓ ' : ''}{crop}</button>)}</div>
+          </div>
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-[#52645a]">Which crops did you grow the season before that?</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">{SUPPORTED_CROP_NAMES.map(crop => <button key={'before-'+crop} type="button" onClick={() => togglePreviousCrop(crop,'before')} className={`rounded-lg border px-2 py-2 text-left text-xs ${seasonBeforePreviousCrops.includes(crop) ? 'border-[#285b40] bg-[#e7eddf] font-semibold text-[#174432]' : 'border-[#e6dcc8] bg-white text-[#536158]'}`}>{seasonBeforePreviousCrops.includes(crop) ? '✓ ' : ''}{crop}</button>)}</div>
+          </div>
+          <label className="mt-4 block text-xs font-semibold text-[#52645a]">Does water pool anywhere after heavy rain?</label>
+          <select value={waterPoolsAfterRain} onChange={event => setWaterPoolsAfterRain(event.target.value)} className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-3 text-sm"><option value="unknown">I don't know / skip</option><option value="yes">Yes</option><option value="no">No</option></select>
+          <label className="mt-4 block text-xs font-semibold text-[#52645a]">What water source can you access?</label>
+          <select value={waterAccess} onChange={event => setWaterAccess(event.target.value)} className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-3 text-sm"><option value="unknown">I don't know / skip</option><option value="stream">Stream</option><option value="well">Well</option><option value="dam">Dam</option><option value="none">No water source</option></select>
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-[#e6dcc8] bg-[#faf7ef] p-4">
           <h2 className="font-semibold text-[#1d2d27]">What do you grow here?</h2>
           <p className="mt-1 text-xs text-[#66746b]">Select all crops grown on this farm.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -314,16 +379,42 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
           </div>
         </section>
 
+        {crops.length > 0 && <section className="mt-4 rounded-2xl border border-[#e6dcc8] bg-[#faf7ef] p-4">
+          <h2 className="font-semibold text-[#1d2d27]">Crop details</h2>
+          <p className="mt-1 text-xs text-[#66746b]">These details help Kato time advice. Skip anything you do not know.</p>
+          {crops.map(crop => <div key={crop} className="mt-4 border-t border-[#e6dcc8] pt-3 first:border-0 first:pt-0">
+            <h3 className="text-sm font-semibold text-[#174432]">{crop}</h3>
+            <label className="mt-2 block text-xs font-medium text-[#52645a]">Variety (if known)</label>
+            <input value={cropDetails[crop]?.variety || ''} onChange={event => updateCropDetail(crop,'variety',event.target.value)} placeholder="Variety name or leave blank" className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/>
+            <label className="mt-2 block text-xs font-medium text-[#52645a]">Planting date (actual or planned)</label>
+            <input type="date" value={cropDetails[crop]?.plantingDate || ''} onChange={event => updateCropDetail(crop,'plantingDate',event.target.value)} className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/>
+            <label className="mt-2 block text-xs font-medium text-[#52645a]">Share of this farm under {crop} (%)</label>
+            <input type="number" min="0" max="100" step="1" value={cropDetails[crop]?.areaSharePercent || ''} onChange={event => updateCropDetail(crop,'areaSharePercent',event.target.value)} placeholder="I don't know / skip" className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/>
+            <label className="mt-2 block text-xs font-medium text-[#52645a]">Where do you get seed and inputs?</label>
+            <select value={cropDetails[crop]?.inputSource || 'unknown'} onChange={event => updateCropDetail(crop,'inputSource',event.target.value)} className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"><option value="unknown">I don't know / skip</option><option value="shop">Shop</option><option value="cooperative">Cooperative</option><option value="saved_seed">Saved seed</option><option value="other">Other</option></select>
+            <label className="mt-2 block text-xs font-medium text-[#52645a]">Fertiliser or manure applied this season?</label>
+            <input value={cropDetails[crop]?.fertiliserManureApplied || ''} onChange={event => updateCropDetail(crop,'fertiliserManureApplied',event.target.value)} placeholder="Name it, or leave blank" className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/>
+          </div>)}
+        </section>}
+
         <section className="mt-4 rounded-2xl border border-[#e6dcc8] bg-[#faf7ef] p-4">
           <h2 className="font-semibold text-[#1d2d27]">Do you keep livestock here?</h2>
           <p className="mt-1 text-xs text-[#66746b]">Choose any that apply. Animal counts are optional.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {LIVESTOCK_OPTIONS.map(species => <button key={species} type="button" onClick={() => addLivestock(species)} className={`rounded-full border px-3 py-2 text-xs ${livestock.some(item => item.species === species) ? 'border-[#285b40] bg-[#e7eddf] font-semibold text-[#174432]' : 'border-[#e6dcc8] bg-white text-[#536158]'}`}>{species}</button>)}
           </div>
-          {livestock.map(item => <label key={item.species} className="mt-3 flex items-center justify-between gap-3 text-sm text-[#405148]">
-            <span>{item.species}</span>
-            <input inputMode="numeric" type="number" min="0" step="1" placeholder="Number (optional)" value={item.animalCount} onChange={event => setLivestock(current => current.map(row => row.species === item.species ? { ...row, animalCount: event.target.value } : row))} className="w-40 rounded-lg border border-[#e6dcc8] bg-white px-3 py-2 text-right text-xs"/>
-          </label>)}
+          {livestock.map(item => <div key={item.species} className="mt-3 rounded-xl bg-white p-3">
+            <label className="flex items-center justify-between gap-3 text-sm text-[#405148]"><span className="font-medium">{item.species}</span>
+              <input inputMode="numeric" type="number" min="0" step="1" placeholder="Number (optional)" value={item.animalCount ?? ''} onChange={event => setLivestock(current => current.map(row => row.species === item.species ? { ...row, animalCount: event.target.value.trim() && Number.isFinite(Number(event.target.value)) ? Math.max(0, Math.floor(Number(event.target.value))) : null } : row))} className="w-40 rounded-lg border border-[#e6dcc8] bg-white px-3 py-2 text-right text-xs"/>
+            </label>
+            {item.species === 'Cattle' && <>
+              <label className="mt-3 block text-xs font-medium text-[#52645a]">Cattle status (not birthdays)</label>
+              <select value={item.cattleStatus || 'unknown'} onChange={event => setLivestock(current => current.map(row => row.species === item.species ? { ...row, cattleStatus: event.target.value } : row))} className="mt-1 w-full rounded-lg border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"><option value="unknown">I don't know / skip</option><option value="milking">Milking</option><option value="pregnant">Pregnant</option><option value="young">Young</option></select>
+            </>}
+            <label className="mt-3 block text-xs font-medium text-[#52645a]">Vaccinated this year?</label>
+            <select value={item.vaccinatedThisYear === true ? 'yes' : item.vaccinatedThisYear === false ? 'no' : 'unknown'} onChange={event => setLivestock(current => current.map(row => row.species === item.species ? { ...row, vaccinatedThisYear: event.target.value === 'yes' ? true : event.target.value === 'no' ? false : null } : row))} className="mt-1 w-full rounded-lg border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"><option value="unknown">I don't know / skip</option><option value="yes">Yes</option><option value="no">No</option></select>
+            {item.vaccinatedThisYear === true && <><label className="mt-2 block text-xs font-medium text-[#52645a]">Against what, if known?</label><input value={item.vaccinationDetails || ''} onChange={event => setLivestock(current => current.map(row => row.species === item.species ? { ...row, vaccinationDetails: event.target.value } : row))} placeholder="Vaccine or disease name" className="mt-1 w-full rounded-lg border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/></>}
+          </div>)}
         </section>
 
         {saveError && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{saveError}</p>}
