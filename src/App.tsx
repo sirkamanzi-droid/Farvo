@@ -8,6 +8,7 @@ import { District, WeatherData, Farm } from './types';
 import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop, syncFarmCrops, syncFarmLivestock, getMainFarmPlotId, saveFarmPlotBoundary, saveFarmQuestionnaire, saveFarmCropDetails, type FarmQuestionnaireInput, type FarmCropDetailsInput, type FarmLivestockInput } from './data/farms';
 import FarmSetup, { type FarmSetupResult } from './components/FarmSetup';
 import FarmPlotsManager from './components/FarmPlotsManager';
+import FarmerPinSetup from './components/FarmerPinSetup';
 import SkyHero from './components/SkyHero';
 import WeatherDashboard from './components/WeatherDashboard';
 import KatoChat from './components/KatoChat';
@@ -113,6 +114,26 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [showKnowledgeCentre, setShowKnowledgeCentre] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [farmerName, setFarmerName] = useState('');
+  const [pinCheckComplete, setPinCheckComplete] = useState(false);
+  const [requiresPinSetup, setRequiresPinSetup] = useState(false);
+  const [pinCheckError, setPinCheckError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkFarmerPin = async () => {
+      const { data, error } = await supabase.rpc('has_my_farmer_pin');
+      if (cancelled) return;
+      if (error) {
+        console.error('Could not check farmer PIN setup:', error);
+        setPinCheckError(true);
+      } else {
+        setRequiresPinSetup(data === false);
+      }
+      setPinCheckComplete(true);
+    };
+    void checkFarmerPin();
+    return () => { cancelled = true; };
+  }, [userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -368,6 +389,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         </div></div>}
       </main>
       {showKnowledgeCentre&&<KnowledgeCentre onBack={()=>setShowKnowledgeCentre(false)} onAskKato={(question)=>{setPendingKatoQuestion(question);setShowKnowledgeCentre(false);setActiveTab('kato');}}/>}
+      {pinCheckComplete && requiresPinSetup && <FarmerPinSetup onComplete={()=>setRequiresPinSetup(false)}/>}
+      {pinCheckError && !requiresPinSetup && <div role="status" className="fixed bottom-24 left-4 right-4 z-30 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">We could not check your farmer PIN. Your account is still available; open Account and try again later.</div>}
       {showFarmPlotsManager&&<FarmPlotsManager userId={userId} farmId={activeFarm.id} farmLatitude={activeFarm.latitude ?? activeFarm.district.latitude} farmLongitude={activeFarm.longitude ?? activeFarm.district.longitude} onClose={()=>setShowFarmPlotsManager(false)}/>}
       {farmSetupMode==='add'&&<FarmSetup title="Add another farm" initialLabel={`Farm ${farms.length + 1}`} onCancel={()=>setFarmSetupMode(null)} onSave={handleSaveFarmSetup}/>}
       {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s details" initialLabel={activeFarm.label} initialCrops={farmSetupInitialCrops} initialLivestock={farmSetupInitialLivestock} initialFarmQuestionnaire={farmSetupInitialQuestionnaire} initialCropDetails={farmSetupInitialCropDetails} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
