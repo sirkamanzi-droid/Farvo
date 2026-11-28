@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, Building2, BadgeCheck, Loader2, AlertCircle, LogOut } from 'lucide-react';
 
-type FarmerProfile = { full_name: string; cooperative_name: string; farmer_code: string; };
+type FarmerProfile = { full_name: string; cooperative_name: string; farmer_code: string; phone_number: string | null; preferred_language: string; preferred_channel: string; preferred_contact_time: string | null; privacy_consent_at: string | null; proactive_contact_consent_at: string | null; };
 
 export default function AccountScreen() {
   const [profile, setProfile] = useState<FarmerProfile | null>(null);
@@ -40,6 +40,8 @@ export default function AccountScreen() {
         <div className="flex items-center gap-4 py-4"><User className="h-5 w-5 text-leaf-700"/><div><p className="text-xs text-soil-500">Name</p><p className="mt-1 font-semibold text-soil-900">{profile.full_name}</p></div></div>
         <div className="flex items-center gap-4 py-4"><Building2 className="h-5 w-5 text-leaf-700"/><div><p className="text-xs text-soil-500">Cooperative</p><p className="mt-1 font-semibold text-soil-900">{profile.cooperative_name}</p></div></div>
         <div className="flex items-center gap-4 py-4"><BadgeCheck className="h-5 w-5 text-leaf-700"/><div><p className="text-xs text-soil-500">Farmer ID</p><p className="mt-1 font-mono text-lg font-bold text-soil-900">{profile.farmer_code}</p></div></div>
+        <div className="flex items-center gap-4 py-4"><User className="h-5 w-5 text-leaf-700"/><div><p className="text-xs text-soil-500">Phone number</p><p className="mt-1 font-semibold text-soil-900">{profile.phone_number || 'Not provided'}</p></div></div>
+        <div className="flex items-center gap-4 py-4"><BadgeCheck className="h-5 w-5 text-leaf-700"/><div><p className="text-xs text-soil-500">Language and updates</p><p className="mt-1 font-semibold text-soil-900">{({en:'English',lg:'Luganda',nyn:'Runyankole',cgg:'Rukiga',sw:'Swahili'} as Record<string,string>)[profile.preferred_language] || profile.preferred_language} · {profile.preferred_channel === 'in_app' ? 'Inside Omulimi' : profile.preferred_channel === 'whatsapp' ? 'WhatsApp' : 'No proactive messages'}</p><p className="mt-1 text-xs text-soil-500">{profile.preferred_contact_time ? `Preferred time: ${profile.preferred_contact_time.slice(0,5)}` : 'No preferred time set'}</p></div></div>
       </div> : null}
       <button type="button" onClick={() => void handleSignOut()} disabled={signingOut} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#faf7ef] px-4 py-3 font-medium text-soil-700 transition hover:bg-[#efe7d8] disabled:opacity-60">
         {signingOut ? <Loader2 className="h-4 w-4 animate-spin"/> : <LogOut className="h-4 w-4"/>}{signingOut ? 'Signing out…' : 'Sign out'}
