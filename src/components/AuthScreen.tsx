@@ -10,6 +10,13 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [cooperativeCode, setCooperativeCode] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState('en');
+  const [preferredChannel, setPreferredChannel] = useState('in_app');
+  const [preferredContactTime, setPreferredContactTime] = useState('');
+  const [decisionStyle, setDecisionStyle] = useState('unknown');
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [proactiveContactConsent, setProactiveContactConsent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -31,6 +38,13 @@ export default function AuthScreen() {
         data: {
               full_name: fullName.trim(),
               cooperative_code: cooperativeCode.trim().toUpperCase(),
+              phone_number: phoneNumber.trim(),
+              preferred_language: preferredLanguage,
+              preferred_channel: preferredChannel,
+              preferred_contact_time: preferredContactTime,
+              decision_style: decisionStyle,
+              privacy_consent: privacyConsent,
+              proactive_contact_consent: proactiveContactConsent,
             },
           },
         });
@@ -66,7 +80,13 @@ export default function AuthScreen() {
       const rawMessage = err instanceof Error ? err.message : '';
       const normalizedMessage = rawMessage.toLowerCase();
 
-      if (normalizedMessage.includes('a valid cooperative code is required')) {
+      if (normalizedMessage.includes('privacy consent is required')) {
+        setError('Please agree to the account and farm information notice to create your account.');
+      } else if (normalizedMessage.includes('phone number must use international format')) {
+        setError('Enter your phone number in international format, for example +2567XXXXXXXX.');
+      } else if (normalizedMessage.includes('whatsapp contact requires a phone number and consent')) {
+        setError('WhatsApp updates need your phone number and your permission.');
+      } else if (normalizedMessage.includes('a valid cooperative code is required')) {
         setError('That cooperative code is invalid or inactive. Please check it with your cooperative.');
       } else if (normalizedMessage.includes('full name is required')) {
         setError('Please enter your full name.');
@@ -142,6 +162,128 @@ export default function AuthScreen() {
                   placeholder="Enter your cooperative code"
                 />
               </div>
+            </>
+          )}
+
+          {mode === 'register' && (
+            <>
+
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-soil-800 mb-1">
+                  Phone number (optional)
+                </label>
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  autoComplete="tel"
+                  required={preferredChannel === 'whatsapp'}
+                  pattern="^\\+[1-9][0-9]{7,14}$"
+                  title="Use international format, for example +2567XXXXXXXX"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                  placeholder="+2567XXXXXXXX"
+                />
+                <p className="mt-1 text-xs text-soil-500">Use the international format if you want WhatsApp updates.</p>
+              </div>
+
+              <div>
+                <label htmlFor="preferredLanguage" className="block text-sm font-medium text-soil-800 mb-1">
+                  Preferred language
+                </label>
+                <select
+                  id="preferredLanguage"
+                  value={preferredLanguage}
+                  onChange={(e) => setPreferredLanguage(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                >
+                  <option value="en">English</option>
+                  <option value="lg">Luganda</option>
+                  <option value="ach">Luo / Acholi</option>
+                  <option value="nyn">Runyakitara</option>
+                  <option value="teo">Ateso</option>
+                  <option value="other">Other</option>
+                  <option value="cgg">Rukiga</option>
+                  <option value="sw">Swahili</option>
+                </select>
+                <p className="mt-1 text-xs text-soil-500">Some Kato replies may still appear in English while language support is being improved.</p>
+              </div>
+
+              <div>
+                <label htmlFor="decisionStyle" className="block text-sm font-medium text-soil-800 mb-1">
+                  Do you make farming decisions alone or with someone?
+                </label>
+                <select
+                  id="decisionStyle"
+                  value={decisionStyle}
+                  onChange={(e) => setDecisionStyle(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                >
+                  <option value="unknown">I don't know / skip</option>
+                  <option value="alone">I decide alone</option>
+                  <option value="with_someone">I decide with someone</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="preferredChannel" className="block text-sm font-medium text-soil-800 mb-1">
+                  How should Omulimi contact you?
+                </label>
+                <select
+                  id="preferredChannel"
+                  value={preferredChannel}
+                  onChange={(e) => {
+                    setPreferredChannel(e.target.value);
+                    if (e.target.value === 'none') setProactiveContactConsent(false);
+                  }}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                >
+                  <option value="in_app">Inside Omulimi</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="none">I will come to Kato myself</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="preferredContactTime" className="block text-sm font-medium text-soil-800 mb-1">
+                  Best time to receive updates (optional)
+                </label>
+                <select
+                  id="preferredContactTime"
+                  value={preferredContactTime}
+                  onChange={(e) => setPreferredContactTime(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                >
+                  <option value="">I don't know / skip</option>
+                  <option value="08:00">Morning</option>
+                  <option value="12:00">Midday</option>
+                  <option value="18:00">Evening</option>
+                </select>
+              </div>
+
+              <label className="flex items-start gap-3 text-sm text-soil-700">
+                <input
+                  type="checkbox"
+                  required
+                  checked={privacyConsent}
+                  onChange={(e) => setPrivacyConsent(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#466b45]"
+                />
+                <span>I agree that Omulimi can use the farm and account information I provide to deliver farm guidance and operate my account.</span>
+              </label>
+
+              <label className="flex items-start gap-3 text-sm text-soil-700">
+                <input
+                  type="checkbox"
+                  required={preferredChannel === 'whatsapp'}
+                  disabled={preferredChannel === 'none'}
+                  checked={proactiveContactConsent}
+                  onChange={(e) => setProactiveContactConsent(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#466b45]"
+                />
+                <span>I agree to receive proactive farming updates through my selected contact channel.</span>
+              </label>
+
             </>
           )}
 

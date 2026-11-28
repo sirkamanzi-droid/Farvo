@@ -2,6 +2,41 @@ import { supabase } from '../lib/supabase';
 import { DISTRICTS } from './districts';
 import { Farm, District } from '../types';
 
+export type FarmQuestionnaireInput = {
+  yearsFarmedLand: string;
+  previousSeasonCrops: string[];
+  seasonBeforePreviousCrops: string[];
+  waterPoolsAfterRain: boolean | null;
+  waterAccess: string;
+};
+
+export type FarmCropDetailsInput = {
+  cropName: string;
+  variety: string | null;
+  plantingDate: string | null;
+  areaSharePercent: number | null;
+  inputSource: string | null;
+  fertiliserManureApplied: string | null;
+};
+
+export type FarmLivestockInput = {
+  species: string;
+  animalCount: number | null;
+  ageGroup: string | null;
+  cattleStatus: string | null;
+  vaccinatedThisYear: boolean | null;
+  vaccinationDetails: string | null;
+};
+
+export type FarmPlotBoundary = {
+  coordinates: [number, number][];
+  centroidLatitude: number;
+  centroidLongitude: number;
+  areaAcres: number;
+  areaHectares: number;
+  mappingMethod: 'gps_walk' | 'manual_draw';
+};
+
 const legacyStorageKey = (userId: string) => `omulimi_farms:${userId}`;
 const temporaryFarmId = () => `farm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -151,7 +186,8 @@ export async function saveFarmAssets(
   userId: string,
   farmId: string,
   crops: string[],
-  livestock: Array<{ species: string; animalCount: number | null }>
+  livestock: FarmLivestockInput[],
+  plotId?: string | null,
 ): Promise<void> {
   // GPS recapture must preserve existing farm assets without inserting duplicates.
   const [existingCropsResult, existingLivestockResult] = await Promise.all([
@@ -169,16 +205,107 @@ export async function saveFarmAssets(
 
   if (newCrops.length > 0) {
     const { error } = await supabase.from('farm_crops').insert(newCrops.map(cropName => ({
-      user_id: userId, farm_id: farmId, crop_name: cropName,
+      user_id: userId, farm_id: farmId, plot_id: plotId ?? null, crop_name: cropName,
     })));
     if (error) throw error;
   }
   if (newLivestock.length > 0) {
     const { error } = await supabase.from('farm_livestock').insert(newLivestock.map(item => ({
       user_id: userId, farm_id: farmId, species: item.species, animal_count: item.animalCount,
+      age_group: item.ageGroup, cattle_status: item.cattleStatus,
+      vaccinated_this_year: item.vaccinatedThisYear, vaccination_details: item.vaccinationDetails,
     })));
     if (error) throw error;
   }
+}
+
+export async function saveFarmQuestionnaire(
+  userId: string,
+  farmId: string,
+  answers: FarmQuestionnaireInput,
+): Promise<void> {
+  const { error } = await supabase.from('farms').update({
+    years_farmed_land: answers.yearsFarmedLand || null,
+    previous_season_crops: answers.previousSeasonCrops,
+    season_before_previous_crops: answers.seasonBeforePreviousCrops,
+    water_pools_after_rain: answers.waterPoolsAfterRain,
+    water_access: answers.waterAccess || null,
+  }).eq('id', farmId).eq('user_id', userId);
+  if (error) throw error;
+}
+
+export async function saveFarmCropDetails(
+  userId: string,
+  farmId: string,
+  plotId: string,
+  details: FarmCropDetailsInput[],
+): Promise<void> {
+  for (const item of details) {
+    const { error } = await supabase.from('farm_crops').update({
+      variety: item.variety,
+      planting_date: item.plantingDate,
+      area_share_percent: item.areaSharePercent,
+      input_source: item.inputSource,
+      fertiliser_manure_applied: item.fertiliserManureApplied,
+    }).eq('user_id', userId).eq('farm_id', farmId).eq('plot_id', plotId).eq('crop_name', item.cropName).eq('is_active', true);
+    if (error) throw error;
+  }
+}
+
+export async function getMainFarmPlotId(userId: string, farmId: string): Promise<string> {
+  const { data, error } = await supabase.from('farm_plots')
+    .select('id')
+    .eq('farm_id', farmId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (data?.id) return data.id;
+
+  const { data: farm, error: farmError } = await supabase.from('farms')
+    .select('latitude,longitude')
+    .eq('id', farmId)
+    .eq('user_id', userId)
+    .single();
+  if (farmError) throw farmError;
+  const { data: created, error: createError } = await supabase.from('farm_plots')
+    .insert({
+      farm_id: farmId, user_id: userId, label: 'Main plot',
+      boundary_status: 'needs_boundary', mapping_method: 'point',
+      centroid_latitude: farm.latitude, centroid_longitude: farm.longitude,
+    })
+    .select('id')
+    .single();
+  if (createError) throw createError;
+  return created.id;
+}
+
+export async function saveFarmPlotBoundary(
+  userId: string,
+  farmId: string,
+  boundary: FarmPlotBoundary,
+): Promise<string> {
+  if (boundary.coordinates.length < 4 ||
+      boundary.coordinates[0][0] !== boundary.coordinates[boundary.coordinates.length - 1][0] ||
+      boundary.coordinates[0][1] !== boundary.coordinates[boundary.coordinates.length - 1][1]) {
+    throw new Error('The farm boundary is incomplete. Walk around the plot and finish at the starting point.');
+  }
+  const plotId = await getMainFarmPlotId(userId, farmId);
+  const { error } = await supabase.from('farm_plots').update({
+    boundary_geojson: { type: 'Polygon', coordinates: [boundary.coordinates] },
+    boundary_status: 'mapped',
+    mapping_method: boundary.mappingMethod,
+    centroid_latitude: boundary.centroidLatitude,
+    centroid_longitude: boundary.centroidLongitude,
+    centroid_source: 'gps_walk',
+    centroid_accuracy_m: null,
+    area_acres: boundary.areaAcres,
+    area_hectares: boundary.areaHectares,
+    updated_at: new Date().toISOString(),
+  }).eq('id', plotId).eq('farm_id', farmId).eq('user_id', userId);
+  if (error) throw error;
+  return plotId;
 }
 
 export async function deleteFarm(userId: string, farmId: string): Promise<void> {
@@ -201,19 +328,22 @@ export async function syncFarmCrops(
   userId: string,
   farmId: string,
   selectedCrops: string[],
+  plotId?: string | null,
 ): Promise<void> {
   const desired = new Map<string, string>();
   for (const name of selectedCrops) {
     const trimmed = name.trim();
     if (trimmed) desired.set(trimmed.toLowerCase(), trimmed);
   }
-  if (desired.size === 0) throw new Error('Select at least one crop grown on this farm.');
+  if (desired.size === 0) throw new Error('Select at least one crop grown on this plot.');
+  const targetPlotId = plotId || await getMainFarmPlotId(userId, farmId);
 
   const { data: existing, error: lookupError } = await supabase
     .from('farm_crops')
     .select('id,crop_name,is_active')
     .eq('farm_id', farmId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .eq('plot_id', targetPlotId);
   if (lookupError) throw lookupError;
 
   const existingByName = new Map((existing ?? []).map(row => [row.crop_name.trim().toLowerCase(), row]));
@@ -225,69 +355,17 @@ export async function syncFarmCrops(
         .update({ is_active: shouldBeActive })
         .eq('id', row.id)
         .eq('farm_id', farmId)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('plot_id', targetPlotId);
       if (error) throw error;
     }
   }
 
   const missing = [...desired.entries()]
     .filter(([key]) => !existingByName.has(key))
-    .map(([, crop_name]) => ({ user_id: userId, farm_id: farmId, crop_name, is_active: true }));
+    .map(([, crop_name]) => ({ user_id: userId, farm_id: farmId, plot_id: targetPlotId, crop_name, is_active: true }));
   if (missing.length > 0) {
     const { error } = await supabase.from('farm_crops').insert(missing);
-    if (error) throw error;
-  }
-}
-
-/**
- * Keep the farm's primary crop registration in sync when the farmer changes
- * the crop selector. Other registered crops on the same farm are preserved.
- */
-export async function syncPrimaryFarmCrop(
-  userId: string,
-  farmId: string,
-  previousCrop: string,
-  nextCrop: string,
-): Promise<void> {
-  const oldName = previousCrop.trim();
-  const newName = nextCrop.trim();
-  if (!newName || oldName.toLowerCase() === newName.toLowerCase()) return;
-
-  if (oldName) {
-    const { error: deactivateError } = await supabase
-      .from('farm_crops')
-      .update({ is_active: false })
-      .eq('farm_id', farmId)
-      .eq('user_id', userId)
-      .eq('crop_name', oldName)
-      .eq('is_active', true);
-    if (deactivateError) throw deactivateError;
-  }
-
-  const { data: existing, error: lookupError } = await supabase
-    .from('farm_crops')
-    .select('id,is_active')
-    .eq('farm_id', farmId)
-    .eq('user_id', userId)
-    .ilike('crop_name', newName)
-    .limit(1)
-    .maybeSingle();
-  if (lookupError) throw lookupError;
-
-  if (existing) {
-    if (!existing.is_active) {
-      const { error } = await supabase
-        .from('farm_crops')
-        .update({ is_active: true })
-        .eq('id', existing.id)
-        .eq('farm_id', farmId)
-        .eq('user_id', userId);
-      if (error) throw error;
-    }
-  } else {
-    const { error } = await supabase
-      .from('farm_crops')
-      .insert({ user_id: userId, farm_id: farmId, crop_name: newName, is_active: true });
     if (error) throw error;
   }
 }
@@ -298,20 +376,57 @@ export async function syncPrimaryFarmCrop(
  * Keep historical rows by marking removed species inactive; update counts
  * and reactivate previously registered species when selected again.
  */
+export async function syncPrimaryFarmCrop(
+  userId: string,
+  farmId: string,
+  previousCrop: string,
+  nextCrop: string,
+): Promise<void> {
+  const oldName = previousCrop.trim();
+  const newName = nextCrop.trim();
+  if (!newName || oldName.toLowerCase() === newName.toLowerCase()) return;
+  const plotId = await getMainFarmPlotId(userId, farmId);
+
+  if (oldName) {
+    const { error } = await supabase.from('farm_crops').update({ is_active: false })
+      .eq('farm_id', farmId).eq('user_id', userId).eq('plot_id', plotId)
+      .eq('crop_name', oldName).eq('is_active', true);
+    if (error) throw error;
+  }
+
+  const { data: existing, error: lookupError } = await supabase.from('farm_crops')
+    .select('id,is_active').eq('farm_id', farmId).eq('user_id', userId)
+    .eq('plot_id', plotId).ilike('crop_name', newName).limit(1).maybeSingle();
+  if (lookupError) throw lookupError;
+
+  if (existing) {
+    if (!existing.is_active) {
+      const { error } = await supabase.from('farm_crops').update({ is_active: true })
+        .eq('id', existing.id).eq('farm_id', farmId).eq('user_id', userId).eq('plot_id', plotId);
+      if (error) throw error;
+    }
+  } else {
+    const { error } = await supabase.from('farm_crops').insert({
+      user_id: userId, farm_id: farmId, plot_id: plotId, crop_name: newName, is_active: true,
+    });
+    if (error) throw error;
+  }
+}
+
 export async function syncFarmLivestock(
   userId: string,
   farmId: string,
-  selectedLivestock: Array<{ species: string; animalCount: number | null }>,
+  selectedLivestock: FarmLivestockInput[],
 ): Promise<void> {
-  const desired = new Map<string, { species: string; animalCount: number | null }>();
+  const desired = new Map<string, FarmLivestockInput>();
   for (const item of selectedLivestock) {
     const species = item.species.trim();
-    if (species) desired.set(species.toLowerCase(), { species, animalCount: item.animalCount });
+    if (species) desired.set(species.toLowerCase(), { ...item, species });
   }
 
   const { data: existing, error: lookupError } = await supabase
     .from('farm_livestock')
-    .select('id,species,is_active')
+     .select('id,species,is_active')
     .eq('farm_id', farmId)
     .eq('user_id', userId);
   if (lookupError) throw lookupError;
@@ -328,7 +443,13 @@ export async function syncFarmLivestock(
     }
     if (selected) {
       const { error } = await supabase.from('farm_livestock')
-        .update({ animal_count: selected.animalCount })
+        .update({
+          animal_count: selected.animalCount,
+          age_group: selected.ageGroup,
+          cattle_status: selected.cattleStatus,
+          vaccinated_this_year: selected.vaccinatedThisYear,
+          vaccination_details: selected.vaccinationDetails,
+        })
         .eq('id', row.id).eq('farm_id', farmId).eq('user_id', userId);
       if (error) throw error;
     }
@@ -338,7 +459,9 @@ export async function syncFarmLivestock(
     .filter(([key]) => !existingBySpecies.has(key))
     .map(([, item]) => ({
       user_id: userId, farm_id: farmId, species: item.species,
-      animal_count: item.animalCount, is_active: true,
+      animal_count: item.animalCount, age_group: item.ageGroup,
+      cattle_status: item.cattleStatus, vaccinated_this_year: item.vaccinatedThisYear,
+      vaccination_details: item.vaccinationDetails, is_active: true,
     }));
   if (missing.length) {
     const { error } = await supabase.from('farm_livestock').insert(missing);

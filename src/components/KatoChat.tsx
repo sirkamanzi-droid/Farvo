@@ -5,6 +5,7 @@ import {
   Menu, MessageCircle, MoreHorizontal, Plus, Search, Sprout, Trash2, X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { recordFarmEvent } from '../lib/farmEvents';
 import { District, WeatherData } from '../types';
 
 type Conversation = {
@@ -25,6 +26,7 @@ type ChatMessage = {
 interface KatoChatProps {
   userId: string;
   farmId: string;
+  plotId?: string | null;
   district: District;
   cropName: string;
   weatherData: WeatherData | null;
@@ -46,7 +48,7 @@ function dateLabel(value: string) {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
-export default function KatoChat({ userId, farmId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
+export default function KatoChat({ userId, farmId, plotId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -57,6 +59,9 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
   const [historyOpen, setHistoryOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  const [onboardingQuestion, setOnboardingQuestion] = useState<{ code: string; prompt: string } | null>(null);
+  const [onboardingAnswer, setOnboardingAnswer] = useState('');
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastInitialQuestion = useRef<string | null>(null);
 
@@ -105,6 +110,103 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
     return () => { cancelled = true; };
   }, [loadConversations, loadMessages, initialQuestion]);
 
+  const loadOnboardingQuestion = useCallback(async () => {
+    setOnboardingLoading(true);
+    try {
+      const { data: profile, error: profileError } = await supabase.from('profiles')
+        .select('created_at').eq('id', userId).single();
+      if (profileError) throw profileError;
+      const createdAt = new Date(profile.created_at).getTime();
+      if (!Number.isFinite(createdAt) || Date.now() - createdAt > 7 * 24 * 60 * 60 * 1000) {
+        setOnboardingQuestion(null);
+        return;
+      }
+      const { data: events, error: eventError } = await supabase.from('farm_events')
+        .select('payload').eq('user_id', userId).eq('farm_id', farmId)
+        .eq('event_type', 'questionnaire_answer').order('occurred_at', { ascending: true });
+      if (eventError) throw eventError;
+      const answered = new Set((events || []).map(item => {
+        const payload = item.payload as Record<string, unknown> | null;
+        return typeof payload?.question_code === 'string' ? payload.question_code : '';
+      }));
+      const questions = [
+        { code: 'biggest_challenge', prompt: 'What is the biggest challenge you are facing on this farm right now? You can mention pests, weather, money, market access, labour, or something else.' },
+        { code: 'selling_habit', prompt: 'After harvest, what do you usually do: sell straight away, store the harvest, or do both?' },
+        { code: 'season_baseline', prompt: 'Thinking about last season, approximately how many kilograms did you harvest, and how much income did it bring in Uganda shillings? It is okay to estimate or say you do not know.' },
+        { code: 'farming_service', prompt: 'Have you used any farming app or service before? What did you like or dislike about it?' },
+      ];
+      setOnboardingQuestion(questions.find(question => !answered.has(question.code)) || null);
+    } catch (cause) {
+      console.warn('Could not load Kato onboarding question:', cause);
+      setOnboardingQuestion(null);
+    } finally {
+      setOnboardingLoading(false);
+    }
+  }, [farmId, userId]);
+
+  useEffect(() => { void loadOnboardingQuestion(); }, [loadOnboardingQuestion]);
+
+  const skipOnboardingQuestion = async () => {
+    if (!onboardingQuestion) return;
+    await recordFarmEvent({
+      userId, farmId, plotId, eventType: 'questionnaire_answer', source: 'farmer',
+      payload: { question_code: onboardingQuestion.code, answer: null, skipped: true },
+    });
+    setOnboardingAnswer('');
+    await loadOnboardingQuestion();
+  };
+
+  const sendOnboardingAnswer = async () => {
+    if (!onboardingQuestion || !onboardingAnswer.trim() || sending) return;
+    const question = onboardingQuestion;
+    const answer = onboardingAnswer.trim().slice(0, 1200);
+    await recordFarmEvent({
+      userId, farmId, eventType: 'questionnaire_answer', source: 'farmer',
+      payload: { question_code: question.code, answer, skipped: false },
+    });
+
+    if (question.code === 'biggest_challenge') {
+      const text = answer.toLowerCase();
+      const category = /pest|insect|worm|disease|fungus/.test(text) ? 'pests'
+        : /weather|rain|drought|dry|flood|heat/.test(text) ? 'weather'
+        : /money|cash|loan|cost|finance/.test(text) ? 'money'
+        : /market|buyer|price|sell/.test(text) ? 'market'
+        : /labour|labor|worker|people/.test(text) ? 'labour'
+        : /don't know|do not know|not sure/.test(text) ? 'unknown' : 'other';
+      const { error: updateError } = await supabase.from('farms').update({ biggest_challenge: category }).eq('id', farmId).eq('user_id', userId);
+      if (updateError) console.warn('Could not save the challenge category:', updateError);
+    } else if (question.code === 'selling_habit') {
+      const text = answer.toLowerCase();
+      const category = /both|some.*store|store.*some/.test(text) ? 'both'
+        : /store|keep|save.*harvest/.test(text) ? 'store'
+        : /sell|immediate|straight away|at once/.test(text) ? 'sell_at_once'
+        : /don't know|do not know|not sure/.test(text) ? 'unknown' : null;
+      if (category) {
+        const { error: updateError } = await supabase.from('farms').update({ selling_habit: category }).eq('id', farmId).eq('user_id', userId);
+        if (updateError) console.warn('Could not save the selling habit:', updateError);
+      }
+    } else if (question.code === 'season_baseline') {
+      const numbers = answer.match(/[0-9][0-9,]*(?:\.[0-9]+)?/g)?.map(value => Number(value.replace(/,/g, ''))) || [];
+      if (numbers.length >= 2) {
+        const harvest = /tonne|tonnes|metric ton/i.test(answer) ? numbers[0] * 1000 : numbers[0];
+        const income = /million/i.test(answer) ? numbers[1] * 1000000 : numbers[1];
+        const { error: updateError } = await supabase.from('farms').update({ last_season_harvest_kg: harvest, last_season_income_ugx: income }).eq('id', farmId).eq('user_id', userId);
+        if (updateError) console.warn('Could not save the season baseline:', updateError);
+      }
+    } else if (question.code === 'farming_service') {
+      const { error: updateError } = await supabase.from('farms').update({
+        previous_farming_service: answer.slice(0, 200),
+        previous_farming_service_feedback: answer,
+      }).eq('id', farmId).eq('user_id', userId);
+      if (updateError) console.warn('Could not save the previous farming service answer:', updateError);
+    }
+
+    setOnboardingAnswer('');
+    setOnboardingQuestion(null);
+    await sendMessage(undefined, answer, question.prompt);
+    await loadOnboardingQuestion();
+  };
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, sending]);
@@ -125,7 +227,7 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
     catch (err) { setError(err instanceof Error ? err.message : 'Could not open this conversation.'); }
   };
 
-  const sendMessage = async (event?: React.FormEvent, preset?: string) => {
+  const sendMessage = async (event?: React.FormEvent, preset?: string, onboardingPrompt?: string) => {
     event?.preventDefault();
     const question = (preset ?? input).trim();
     if (!question || sending) return;
@@ -153,10 +255,15 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
         setActiveId(conversationId);
       }
 
-      const { error: saveUserError } = await supabase.from('kato_messages').insert({
+      const { data: savedQuestion, error: saveUserError } = await supabase.from('kato_messages').insert({
         conversation_id: conversationId, user_id: userId, role: 'user', content: question,
-      });
+      }).select('id').single();
       if (saveUserError) throw saveUserError;
+      await recordFarmEvent({
+        userId, farmId, plotId, eventType: 'farmer_reply', source: 'farmer',
+        sourceRecordType: 'kato_messages', sourceRecordId: savedQuestion.id,
+        payload: { conversation_id: conversationId, role: 'user', message_length: question.length, crop_name: cropName, district_name: district.name },
+      });
       // Do not reload the entire chat list before the AI request. The farmer's
       // message is already safely stored; update the list after the answer arrives.
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -173,8 +280,15 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           signal: controller.signal,
           body: JSON.stringify({
-            messages: history.slice(-12).map(({ role, content }) => ({ role, content })),
+            messages: onboardingPrompt
+              ? [
+                  ...history.slice(-12, -1).map(({ role, content }) => ({ role, content })),
+                  { role: 'assistant', content: onboardingPrompt },
+                  { role: 'user', content: question },
+                ]
+              : history.slice(-12).map(({ role, content }) => ({ role, content })),
             farmId,
+            plotId,
             districtName: district.name,
             cropName,
             weatherDistrictName: weatherData && weatherDistrictName === district.name ? weatherDistrictName : null,
@@ -233,6 +347,11 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
         .select('id,role,content,created_at')
         .single();
       if (saveAnswerError) throw saveAnswerError;
+      await recordFarmEvent({
+        userId, farmId, plotId, eventType: 'advice', source: 'kato',
+        sourceRecordType: 'kato_messages', sourceRecordId: savedAnswer.id,
+        payload: { conversation_id: conversationId, role: 'assistant', crop_name: cropName, district_name: district.name },
+      });
 
       setMessages(prev => [...prev, savedAnswer as ChatMessage]);
       await Promise.all([
@@ -310,6 +429,15 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
 
         <section className="min-w-0 flex flex-col min-h-[calc(100vh-138px)] lg:min-h-0 lg:h-[calc(100vh-170px)] lg:rounded-2xl lg:border lg:border-[#ded5c3] lg:bg-[#faf7ef] overflow-hidden">
           <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 space-y-5">
+            {onboardingQuestion && !onboardingLoading && <div className="mx-auto mb-5 w-full max-w-3xl rounded-2xl border border-[#d8e2d0] bg-[#e7eddf] p-4">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-[#285b40]"><Sprout className="h-4 w-4"/>Kato · Getting to know your farm</div>
+              <p className="mt-2 text-sm leading-6 text-[#1d2d27]">{onboardingQuestion.prompt}</p>
+              <textarea value={onboardingAnswer} onChange={event=>setOnboardingAnswer(event.target.value)} rows={2} maxLength={1200} placeholder="Your answer (or say what you know)…" className="mt-3 w-full rounded-xl border border-[#d8d0c0] bg-white px-3 py-3 text-sm text-[#1d2d27] outline-none focus:border-[#719579]"/>
+              <div className="mt-2 flex gap-2">
+                <button type="button" disabled={!onboardingAnswer.trim()||sending} onClick={()=>void sendOnboardingAnswer()} className="flex-1 rounded-xl bg-[#174432] px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-50">{sending?'Sending…':'Send answer to Kato'}</button>
+                <button type="button" disabled={sending} onClick={()=>void skipOnboardingQuestion()} className="rounded-xl border border-[#c6d4c0] bg-white px-3 py-2.5 text-xs font-semibold text-[#52645a]">Skip</button>
+              </div>
+            </div>}
             {messages.length === 0 && !loadingHistory && <div className="mx-auto flex max-w-xl flex-col items-center px-3 pt-16 text-center sm:pt-24">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#e7eddf] text-[#174432]">
                 <Sprout className="h-7 w-7"/>

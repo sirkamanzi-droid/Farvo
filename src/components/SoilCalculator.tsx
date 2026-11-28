@@ -1,6 +1,7 @@
 import FormattedResponse from './FormattedResponse';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { recordFarmEvent } from '../lib/farmEvents';
 import { SUPPORTED_CROP_NAMES } from '../data/supportedCrops';
 import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Droplets, FlaskConical, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera } from 'lucide-react';
 
@@ -110,8 +111,8 @@ async function streamKatoReport(input: {
   return answer.trim();
 }
 
-export default function SoilCalculator({ userId, farmId, initialCrop, initialLatitude, initialLongitude, initialLocation, onBack }: {
-  userId: string; farmId: string; initialCrop: string; initialLatitude: number; initialLongitude: number;
+export default function SoilCalculator({ userId, farmId, plotId, initialCrop, initialLatitude, initialLongitude, initialLocation, onBack }: {
+  userId: string; farmId: string; plotId?: string | null; initialCrop: string; initialLatitude: number; initialLongitude: number;
   initialLocation: string; onBack: () => void;
 }) {
   const [crop, setCrop] = useState(CROPS.includes(initialCrop) ? initialCrop : 'Maize');
@@ -162,7 +163,7 @@ export default function SoilCalculator({ userId, farmId, initialCrop, initialLat
         }
         const context = await response.json() as { soilAssessments?: any[] };
         if (!active) return;
-        setSavedAssessments((context.soilAssessments || []).map((row: any) => ({
+        setSavedAssessments((context.soilAssessments || []).filter((row: any) => !plotId || row.plot_id === plotId).map((row: any) => ({
           id: row.id, createdAt: row.created_at, crop: row.crop, mode: row.mode,
           ph: row.measured_ph === null ? null : Number(row.measured_ph),
           texture: row.texture, drainage: row.drainage,
@@ -178,7 +179,7 @@ export default function SoilCalculator({ userId, farmId, initialCrop, initialLat
     };
     void load();
     return () => { active = false; };
-  }, [userId, farmId]);
+  }, [userId, farmId, plotId]);
 
   const useMyLocation = () => {
     if (!navigator.geolocation) { setError('Location is not available on this device.'); return; }
@@ -281,12 +282,18 @@ export default function SoilCalculator({ userId, farmId, initialCrop, initialLat
         usingExactLocation ? 'Location source: farmer-approved device GPS.' : 'Location source: selected farm district coordinates.',
       ];
       const { data, error: saveError } = await supabase.from('soil_assessments').insert({
-        user_id: userId, farm_id: farmId, crop, mode: measuredPH === null ? 'guided' : 'tested',
+        user_id: userId, farm_id: farmId, plot_id: plotId ?? null, crop, mode: measuredPH === null ? 'guided' : 'tested',
         measured_ph: measuredPH, texture, drainage, findings,
         location_label: reportLocation, latitude, longitude,
         weather_snapshot: weather, ai_report: aiReport,
       }).select('id,created_at').single();
       if (saveError) throw saveError;
+      await recordFarmEvent({
+        userId, farmId, plotId, eventType: 'soil_assessment', source: 'farmer',
+        sourceRecordType: 'soil_assessments', sourceRecordId: data.id,
+        occurredAt: data.created_at,
+        payload: { crop, mode: measuredPH === null ? 'guided' : 'tested', measured_ph: measuredPH, texture, drainage, location_label: reportLocation },
+      });
       const item: SavedAssessment = {
         id: data.id, createdAt: data.created_at, crop, mode: measuredPH === null ? 'guided' : 'tested',
         ph: measuredPH, texture, drainage, findings, locationLabel: reportLocation,

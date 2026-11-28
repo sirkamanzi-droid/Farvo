@@ -2,6 +2,7 @@ import FormattedResponse from './FormattedResponse';
 import React, { useEffect, useState } from 'react';
 import { MessageCircle, Send, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { recordFarmEvent } from '../lib/farmEvents';
 import type { WeatherData } from '../types';
 
 type Message = { role: 'user' | 'assistant'; content: string };
@@ -25,16 +26,18 @@ export default function DiagnosisKatoPanel(props: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [farmId, setFarmId] = useState<string | null>(null);
+  const [plotId, setPlotId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       const { data, error: readError } = await supabase.from('crop_care_plans')
-        .select('care_plan,farm_id').eq('id', props.planId).eq('user_id', props.userId).single();
+        .select('care_plan,farm_id,plot_id').eq('id', props.planId).eq('user_id', props.userId).single();
       if (!alive) return;
       if (readError) setError('Could not load this plant’s saved Kato conversation.');
       else {
         setFarmId(typeof data?.farm_id === 'string' ? data.farm_id : null);
+        setPlotId(typeof data?.plot_id === 'string' ? data.plot_id : null);
         const carePlan = (data?.care_plan || {}) as Record<string, unknown>;
         const saved = carePlan.kato_conversation;
         if (Array.isArray(saved)) setMessages(saved.filter((m): m is Message =>
@@ -70,6 +73,11 @@ export default function DiagnosisKatoPanel(props: Props) {
     setMessages(next); setDraft(''); setSending(true); setError('');
     try {
       await saveMessages(next);
+      if (farmId) await recordFarmEvent({
+        userId: props.userId, farmId, plotId, eventType: 'farmer_reply', source: 'farmer',
+        sourceRecordType: 'crop_care_plans', sourceRecordId: props.planId,
+        payload: { crop_name: props.cropName, context: 'diagnosis_kato_question', message_length: question.length },
+      });
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (sessionError || !token) throw new Error('Please sign in again to speak with Kato.');
@@ -79,6 +87,7 @@ export default function DiagnosisKatoPanel(props: Props) {
         body: JSON.stringify({
           messages: [{ role: 'user', content: `Diagnosis context for this conversation: Crop: ${props.cropName}. District selected in Omulimi: ${props.districtName}. Possible diagnosis: ${props.issueName} (unconfirmed). Image-service match score: ${props.confidence}% (not diagnostic accuracy). Scan observations: ${props.observations}. Keep this diagnosis context in mind when answering the farmer's following message.` }, ...next.slice(-11)],
           farmId,
+          plotId,
           cropName: props.cropName,
           districtName: props.districtName,
           weatherContext: props.weatherData,
@@ -113,6 +122,11 @@ export default function DiagnosisKatoPanel(props: Props) {
       const completed = [...next, { role: 'assistant' as const, content: answer.trim() }].slice(-24);
       setMessages(completed);
       await saveMessages(completed);
+      if (farmId) await recordFarmEvent({
+        userId: props.userId, farmId, plotId, eventType: 'advice', source: 'kato',
+        sourceRecordType: 'crop_care_plans', sourceRecordId: props.planId,
+        payload: { crop_name: props.cropName, context: 'diagnosis_kato_answer' },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kato could not answer right now.');
     } finally { setSending(false); }
