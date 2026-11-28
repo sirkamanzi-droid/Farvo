@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { recordFarmEvent } from '../lib/farmEvents';
 import { CalendarDays, CheckCircle2, Circle, Sprout, ClipboardCheck, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
-type Plan = { id:string; farm_id:string|null; crop_name:string; district_name:string; issue_name:string; status:'active'|'recovered'|'paused'; diagnosis_status:string; care_plan:Record<string,unknown>; started_at:string; next_review_at:string|null };
+type Plan = { id:string; farm_id:string|null; plot_id:string|null; crop_name:string; district_name:string; issue_name:string; status:'active'|'recovered'|'paused'; diagnosis_status:string; care_plan:Record<string,unknown>; started_at:string; next_review_at:string|null };
 type Task = { id:string; plan_id:string; title:string; instructions:string|null; task_type:string; due_at:string; status:'pending'|'done'|'skipped' };
 type Checkin = { id:string; plan_id:string; health_status:string; notes:string|null; observed_at:string };
 
@@ -29,7 +29,7 @@ export default function CropCare({userId}:{userId:string}) {
 
   const load=useCallback(async()=>{
     setLoading(true); setError('');
-    const p=await supabase.from('crop_care_plans').select('id,farm_id,crop_name,district_name,issue_name,status,diagnosis_status,care_plan,started_at,next_review_at').eq('user_id',userId).order('created_at',{ascending:false});
+    const p=await supabase.from('crop_care_plans').select('id,farm_id,plot_id,crop_name,district_name,issue_name,status,diagnosis_status,care_plan,started_at,next_review_at').eq('user_id',userId).order('created_at',{ascending:false});
     if(p.error){setError('Could not load your crop-care plans. Check your connection and try again.');setLoading(false);return;}
     const rows=(p.data||[]) as Plan[]; setPlans(rows);
     if(rows.length){
@@ -57,7 +57,7 @@ export default function CropCare({userId}:{userId:string}) {
     const dueAt=new Date(taskDate+'T09:00:00').toISOString();
     const {data,error:err}=await supabase.from('crop_care_tasks').insert({plan_id:showTask,user_id:userId,title:taskTitle.trim(),task_type:'inspect',due_at:dueAt,status:'pending'}).select('id').single();
     if(err)setError('Could not add this reminder. Please try again.');else{
-      if(plan?.farm_id) await recordFarmEvent({userId,farmId:plan.farm_id,eventType:'follow_up',source:'farmer',sourceRecordType:'crop_care_tasks',sourceRecordId:data.id,payload:{action:'task_scheduled',crop_name:plan.crop_name,title:taskTitle.trim(),due_at:dueAt}});
+      if(plan?.farm_id) await recordFarmEvent({userId,farmId:plan.farm_id,plotId:plan.plot_id,eventType:'follow_up',source:'farmer',sourceRecordType:'crop_care_tasks',sourceRecordId:data.id,payload:{action:'task_scheduled',crop_name:plan.crop_name,title:taskTitle.trim(),due_at:dueAt}});
       setTaskTitle('');setShowTask(null);await load();
     }
     setBusy(false);
@@ -66,7 +66,7 @@ export default function CropCare({userId}:{userId:string}) {
     setBusy(true);const {error:err}=await supabase.from('crop_care_tasks').update({status,completed_at:status==='done'?new Date().toISOString():null}).eq('id',task.id).eq('user_id',userId);
     if(err)setError('Could not update this task.');else{
       const plan=plans.find(item=>item.id===task.plan_id);
-      if(plan?.farm_id) await recordFarmEvent({userId,farmId:plan.farm_id,eventType:'follow_up',source:'farmer',sourceRecordType:'crop_care_tasks',sourceRecordId:task.id,payload:{action:'task_'+status,crop_name:plan.crop_name}});
+      if(plan?.farm_id) await recordFarmEvent({userId,farmId:plan.farm_id,plotId:plan.plot_id,eventType:'follow_up',source:'farmer',sourceRecordType:'crop_care_tasks',sourceRecordId:task.id,payload:{action:'task_'+status,crop_name:plan.crop_name}});
       await load();
     }setBusy(false);
   };
