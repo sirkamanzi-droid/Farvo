@@ -279,10 +279,13 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           signal: controller.signal,
           body: JSON.stringify({
-            messages: [
-              ...(onboardingPrompt ? [{ role: 'assistant', content: onboardingPrompt }] : []),
-              ...history.slice(-12).map(({ role, content }) => ({ role, content })),
-            ],
+            messages: onboardingPrompt
+              ? [
+                  ...history.slice(-12, -1).map(({ role, content }) => ({ role, content })),
+                  { role: 'assistant', content: onboardingPrompt },
+                  { role: 'user', content: question },
+                ]
+              : history.slice(-12).map(({ role, content }) => ({ role, content })),
             farmId,
             districtName: district.name,
             cropName,
