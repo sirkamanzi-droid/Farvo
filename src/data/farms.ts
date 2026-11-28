@@ -298,6 +298,8 @@ export async function saveFarmPlotBoundary(
     mapping_method: boundary.mappingMethod,
     centroid_latitude: boundary.centroidLatitude,
     centroid_longitude: boundary.centroidLongitude,
+    centroid_source: 'gps_walk',
+    centroid_accuracy_m: null,
     area_acres: boundary.areaAcres,
     area_hectares: boundary.areaHectares,
     updated_at: new Date().toISOString(),
