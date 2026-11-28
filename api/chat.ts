@@ -319,6 +319,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       notes: cleanObservation(row.notes),
     }));
 
+    const requestedPlotId = typeof body.plotId === 'string' ? body.plotId : null;
+    const selectedPlotContext = farmPlotRows.find(row => row.id === requestedPlotId) || null;
+
     const farmPlotContext = farmPlotRows.map(row => ({
       plotId: row.id,
       plotName: cleanLabel(row.label, 'Unnamed plot'),
@@ -472,6 +475,7 @@ Selected farm verified from this signed-in farmer's database records = ${farmCon
   questionnaire: farmQuestionnaireContext,
 }) : 'No saved farm was verified; do not claim farm-specific context'}.
 Registered plots on this selected farm = ${JSON.stringify(farmPlotContext)}.
+Plot currently selected by the farmer = ${selectedPlotContext ? JSON.stringify(farmPlotContext.find(plot => plot.plotId === selectedPlotContext.id)) : 'not selected or not found; do not assume a plot'}.
 Registered crops on this selected farm, linked to plot IDs where available = ${JSON.stringify(farmCropContext)}.
 Registered livestock on this selected farm = ${JSON.stringify(farmLivestockContext)}.
 Recent farm event history (newest first; farmer-reported answers and saved observations are not independently verified) = ${JSON.stringify(farmEventContext)}.
