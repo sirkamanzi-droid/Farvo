@@ -93,7 +93,7 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
   const useFarmPoint = () => {
     setPoint({
       latitude: farmLatitude, longitude: farmLongitude,
-      accuracyM: 0, capturedAt: new Date().toISOString(),
+      accuracyM: -1, capturedAt: new Date().toISOString(),
     });
     setBoundary(null);
     setNotice('Using the saved farm location as an approximate plot point.');
@@ -103,6 +103,7 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
   const startWalk = () => {
     if (!navigator.geolocation) { setError('This device does not support GPS boundary recording.'); return; }
     if (!point) { setError('Capture the plot location first, then start the boundary walk.'); return; }
+    if (point.accuracyM < 0) { setError('Capture the actual plot GPS location before recording its boundary.'); return; }
     setBoundary(null);
     setBoundaryPoints([point]);
     setRecording(true);
@@ -187,6 +188,7 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
       setNotice('Plot and crop saved.');
       await load();
       resetForm();
+      setNotice('Plot and crop saved.');
     } catch (cause) {
       console.error('Could not save farm plot:', cause);
       setError(cause instanceof Error ? cause.message : 'Could not save this plot. Please try again.');
@@ -244,7 +246,7 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
             <button type="button" onClick={capturePoint} className="rounded-xl border border-[#285b40] bg-white px-3 py-3 text-xs font-semibold text-[#174432]"><MapPin className="mr-1 inline h-4 w-4"/>Capture GPS</button>
             <button type="button" onClick={useFarmPoint} className="rounded-xl border border-[#e6dcc8] bg-white px-3 py-3 text-xs font-semibold text-[#52645a]">Use farm point</button>
           </div>
-          {point && <p className="mt-2 text-[11px] text-[#66746b]">Point: {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)} · GPS accuracy ±{Math.round(point.accuracyM)} m</p>}
+          {point && <p className="mt-2 text-[11px] text-[#66746b]">Point: {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)} · {point.accuracyM >= 0 ? `GPS accuracy ±${Math.round(point.accuracyM)} m` : 'Approximate saved farm point'}</p>}
           {!recording && !boundary && <button type="button" disabled={!point} onClick={startWalk} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#285b40] bg-white px-3 py-3 text-xs font-semibold text-[#174432] disabled:opacity-50"><Route className="h-4 w-4"/>Walk this plot boundary</button>}
           {recording && <div className="mt-3 rounded-xl bg-[#e7eddf] p-3">
             <p className="text-sm font-semibold text-[#174432]">Recording · {boundaryPoints.length} GPS points</p>
