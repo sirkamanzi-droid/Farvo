@@ -5,7 +5,7 @@ import AccountScreen from './components/AccountScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
-import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop, syncFarmCrops, syncFarmLivestock } from './data/farms';
+import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop, syncFarmCrops, syncFarmLivestock, getMainFarmPlotId, saveFarmPlotBoundary } from './data/farms';
 import FarmSetup, { type FarmSetupResult } from './components/FarmSetup';
 import SkyHero from './components/SkyHero';
 import WeatherDashboard from './components/WeatherDashboard';
@@ -204,11 +204,13 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const handleAddFarm=()=>setFarmSetupMode('add');
   const handleSaveFarmSetup=async(result:FarmSetupResult)=>{
     const crop=result.crops[0] || DEFAULT_CROP;
+    const latitude=result.boundary?.centroidLatitude ?? result.latitude;
+    const longitude=result.boundary?.centroidLongitude ?? result.longitude;
     const farm:Farm={
       ...createFarm(result.district,crop,farms.length),
       label:result.label,
-      latitude:result.latitude,
-      longitude:result.longitude,
+      latitude,
+      longitude,
       locationAccuracyM:result.accuracyM,
       locationSource:'phone_gps',
       locationCapturedAt:result.capturedAt,
@@ -221,7 +223,9 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     if(farmSetupMode==='initial'||farmSetupMode==='add'){
       savedFarm=await insertFarm(userId,farm);
       try {
-        await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock);
+        const plotId=await getMainFarmPlotId(userId,savedFarm.id);
+        if(result.boundary) await saveFarmPlotBoundary(userId,savedFarm.id,result.boundary);
+        await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock,plotId);
       } catch(error) {
         await deleteFarm(userId,savedFarm.id).catch(()=>undefined);
         throw error;
@@ -232,11 +236,13 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if(!target) throw new Error('Could not find the farm to update. Please reload and try again.');
       savedFarm=await updateFarm(userId,{
         ...target,label:result.label,district:result.district,crop,
-        latitude:result.latitude,longitude:result.longitude,
+        latitude,longitude,
         locationAccuracyM:result.accuracyM,locationSource:'phone_gps',locationCapturedAt:result.capturedAt,
         locationLabel:result.locationLabel,village:result.village,parish:result.parish,subcounty:result.subcounty,
       });
-      await syncFarmCrops(userId,savedFarm.id,result.crops);
+      const plotId=await getMainFarmPlotId(userId,savedFarm.id);
+      if(result.boundary) await saveFarmPlotBoundary(userId,savedFarm.id,result.boundary);
+      await syncFarmCrops(userId,savedFarm.id,result.crops,plotId);
       await syncFarmLivestock(userId,savedFarm.id,result.livestock);
       setFarms(current=>current.map(item=>item.id===savedFarm.id?savedFarm:item));
     } else {
