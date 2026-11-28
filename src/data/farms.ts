@@ -374,6 +374,43 @@ export async function syncFarmCrops(
  * Keep historical rows by marking removed species inactive; update counts
  * and reactivate previously registered species when selected again.
  */
+export async function syncPrimaryFarmCrop(
+  userId: string,
+  farmId: string,
+  previousCrop: string,
+  nextCrop: string,
+): Promise<void> {
+  const oldName = previousCrop.trim();
+  const newName = nextCrop.trim();
+  if (!newName || oldName.toLowerCase() === newName.toLowerCase()) return;
+  const plotId = await getMainFarmPlotId(userId, farmId);
+
+  if (oldName) {
+    const { error } = await supabase.from('farm_crops').update({ is_active: false })
+      .eq('farm_id', farmId).eq('user_id', userId).eq('plot_id', plotId)
+      .eq('crop_name', oldName).eq('is_active', true);
+    if (error) throw error;
+  }
+
+  const { data: existing, error: lookupError } = await supabase.from('farm_crops')
+    .select('id,is_active').eq('farm_id', farmId).eq('user_id', userId)
+    .eq('plot_id', plotId).ilike('crop_name', newName).limit(1).maybeSingle();
+  if (lookupError) throw lookupError;
+
+  if (existing) {
+    if (!existing.is_active) {
+      const { error } = await supabase.from('farm_crops').update({ is_active: true })
+        .eq('id', existing.id).eq('farm_id', farmId).eq('user_id', userId).eq('plot_id', plotId);
+      if (error) throw error;
+    }
+  } else {
+    const { error } = await supabase.from('farm_crops').insert({
+      user_id: userId, farm_id: farmId, plot_id: plotId, crop_name: newName, is_active: true,
+    });
+    if (error) throw error;
+  }
+}
+
 export async function syncFarmLivestock(
   userId: string,
   farmId: string,
