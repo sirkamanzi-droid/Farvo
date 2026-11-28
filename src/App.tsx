@@ -92,7 +92,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmSyncError, setFarmSyncError] = useState<string | null>(null);
   const [farmSetupMode, setFarmSetupMode] = useState<'initial' | 'add' | 'recapture' | null>(null);
-  const [farmSetupTargetId, setFarmSetupTargetId] = useState<string | null>(null);\n  const [farmSetupInitialCrops, setFarmSetupInitialCrops] = useState<string[]>([]);
+  const [farmSetupTargetId, setFarmSetupTargetId] = useState<string | null>(null);
+  const [farmSetupInitialCrops, setFarmSetupInitialCrops] = useState<string[]>([]);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
