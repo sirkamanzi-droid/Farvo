@@ -35,6 +35,11 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
   const [showAdd, setShowAdd] = useState(false);
   const [label, setLabel] = useState('');
   const [cropName, setCropName] = useState(SUPPORTED_CROP_NAMES[0] || 'Maize');
+  const [variety, setVariety] = useState('');
+  const [plantingDate, setPlantingDate] = useState('');
+  const [areaSharePercent, setAreaSharePercent] = useState('');
+  const [inputSource, setInputSource] = useState('unknown');
+  const [fertiliserManureApplied, setFertiliserManureApplied] = useState('');
   const [point, setPoint] = useState<BoundaryPoint | null>(null);
   const [boundaryPoints, setBoundaryPoints] = useState<BoundaryPoint[]>([]);
   const [boundary, setBoundary] = useState<FarmPlotBoundary | null>(null);
@@ -141,6 +146,7 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
     stopWatch();
     setLabel('');
     setCropName(SUPPORTED_CROP_NAMES[0] || 'Maize');
+    setVariety(''); setPlantingDate(''); setAreaSharePercent(''); setInputSource('unknown'); setFertiliserManureApplied('');
     setPoint(null);
     setBoundaryPoints([]);
     setBoundary(null);
@@ -174,6 +180,11 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
 
       const { data: crop, error: cropError } = await supabase.from('farm_crops').insert({
         user_id: userId, farm_id: farmId, plot_id: plot.id, crop_name: cropName, is_active: true,
+        variety: variety.trim() || null,
+        planting_date: plantingDate || null,
+        area_share_percent: areaSharePercent.trim() && Number.isFinite(Number(areaSharePercent)) ? Math.min(100, Math.max(0, Number(areaSharePercent))) : null,
+        input_source: inputSource || 'unknown',
+        fertiliser_manure_applied: fertiliserManureApplied.trim() || null,
       }).select('id').single();
       if (cropError || !crop) {
         await supabase.from('farm_plots').delete().eq('id', plot.id).eq('farm_id', farmId).eq('user_id', userId);
@@ -242,6 +253,16 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
           <select value={cropName} onChange={event => setCropName(event.target.value)} className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-3 text-sm text-[#1d2d27]">
             {SUPPORTED_CROP_NAMES.map(name => <option key={name} value={name}>{name}</option>)}
           </select>
+          <label className="mt-3 block text-xs font-semibold text-[#52645a]">Variety (if known)</label>
+          <input value={variety} onChange={event=>setVariety(event.target.value)} placeholder="Variety or leave blank" className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/>
+          <label className="mt-3 block text-xs font-semibold text-[#52645a]">Planting date (actual or planned)</label>
+          <input type="date" value={plantingDate} onChange={event=>setPlantingDate(event.target.value)} className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/>
+          <label className="mt-3 block text-xs font-semibold text-[#52645a]">Share of this farm under this crop (%)</label>
+          <input type="number" min="0" max="100" step="1" value={areaSharePercent} onChange={event=>setAreaSharePercent(event.target.value)} placeholder="I don't know / skip" className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/>
+          <label className="mt-3 block text-xs font-semibold text-[#52645a]">Where do you get seed and inputs?</label>
+          <select value={inputSource} onChange={event=>setInputSource(event.target.value)} className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"><option value="unknown">I don't know / skip</option><option value="shop">Shop</option><option value="cooperative">Cooperative</option><option value="saved_seed">Saved seed</option><option value="other">Other</option></select>
+          <label className="mt-3 block text-xs font-semibold text-[#52645a]">Fertiliser or manure applied this season?</label>
+          <input value={fertiliserManureApplied} onChange={event=>setFertiliserManureApplied(event.target.value)} placeholder="Name it, or leave blank" className="mt-1 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-2.5 text-sm"/>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button type="button" onClick={capturePoint} className="rounded-xl border border-[#285b40] bg-white px-3 py-3 text-xs font-semibold text-[#174432]"><MapPin className="mr-1 inline h-4 w-4"/>Capture GPS</button>
             <button type="button" onClick={useFarmPoint} className="rounded-xl border border-[#e6dcc8] bg-white px-3 py-3 text-xs font-semibold text-[#52645a]">Use farm point</button>
