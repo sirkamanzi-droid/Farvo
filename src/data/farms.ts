@@ -2,6 +2,15 @@ import { supabase } from '../lib/supabase';
 import { DISTRICTS } from './districts';
 import { Farm, District } from '../types';
 
+export type FarmPlotBoundary = {
+  coordinates: [number, number][];
+  centroidLatitude: number;
+  centroidLongitude: number;
+  areaAcres: number;
+  areaHectares: number;
+  mappingMethod: 'gps_walk' | 'manual_draw';
+};
+
 const legacyStorageKey = (userId: string) => `omulimi_farms:${userId}`;
 const temporaryFarmId = () => `farm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -151,7 +160,8 @@ export async function saveFarmAssets(
   userId: string,
   farmId: string,
   crops: string[],
-  livestock: Array<{ species: string; animalCount: number | null }>
+  livestock: Array<{ species: string; animalCount: number | null }>,
+  plotId?: string | null,
 ): Promise<void> {
   // GPS recapture must preserve existing farm assets without inserting duplicates.
   const [existingCropsResult, existingLivestockResult] = await Promise.all([
@@ -169,7 +179,7 @@ export async function saveFarmAssets(
 
   if (newCrops.length > 0) {
     const { error } = await supabase.from('farm_crops').insert(newCrops.map(cropName => ({
-      user_id: userId, farm_id: farmId, crop_name: cropName,
+      user_id: userId, farm_id: farmId, plot_id: plotId ?? null, crop_name: cropName,
     })));
     if (error) throw error;
   }
@@ -179,6 +189,60 @@ export async function saveFarmAssets(
     })));
     if (error) throw error;
   }
+}
+
+export async function getMainFarmPlotId(userId: string, farmId: string): Promise<string> {
+  const { data, error } = await supabase.from('farm_plots')
+    .select('id')
+    .eq('farm_id', farmId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (data?.id) return data.id;
+
+  const { data: farm, error: farmError } = await supabase.from('farms')
+    .select('latitude,longitude')
+    .eq('id', farmId)
+    .eq('user_id', userId)
+    .single();
+  if (farmError) throw farmError;
+  const { data: created, error: createError } = await supabase.from('farm_plots')
+    .insert({
+      farm_id: farmId, user_id: userId, label: 'Main plot',
+      boundary_status: 'needs_boundary', mapping_method: 'point',
+      centroid_latitude: farm.latitude, centroid_longitude: farm.longitude,
+    })
+    .select('id')
+    .single();
+  if (createError) throw createError;
+  return created.id;
+}
+
+export async function saveFarmPlotBoundary(
+  userId: string,
+  farmId: string,
+  boundary: FarmPlotBoundary,
+): Promise<string> {
+  if (boundary.coordinates.length < 4 ||
+      boundary.coordinates[0][0] !== boundary.coordinates[boundary.coordinates.length - 1][0] ||
+      boundary.coordinates[0][1] !== boundary.coordinates[boundary.coordinates.length - 1][1]) {
+    throw new Error('The farm boundary is incomplete. Walk around the plot and finish at the starting point.');
+  }
+  const plotId = await getMainFarmPlotId(userId, farmId);
+  const { error } = await supabase.from('farm_plots').update({
+    boundary_geojson: { type: 'Polygon', coordinates: [boundary.coordinates] },
+    boundary_status: 'mapped',
+    mapping_method: boundary.mappingMethod,
+    centroid_latitude: boundary.centroidLatitude,
+    centroid_longitude: boundary.centroidLongitude,
+    area_acres: boundary.areaAcres,
+    area_hectares: boundary.areaHectares,
+    updated_at: new Date().toISOString(),
+  }).eq('id', plotId).eq('farm_id', farmId).eq('user_id', userId);
+  if (error) throw error;
+  return plotId;
 }
 
 export async function deleteFarm(userId: string, farmId: string): Promise<void> {
@@ -201,6 +265,7 @@ export async function syncFarmCrops(
   userId: string,
   farmId: string,
   selectedCrops: string[],
+  plotId?: string | null,
 ): Promise<void> {
   const desired = new Map<string, string>();
   for (const name of selectedCrops) {
@@ -232,7 +297,7 @@ export async function syncFarmCrops(
 
   const missing = [...desired.entries()]
     .filter(([key]) => !existingByName.has(key))
-    .map(([, crop_name]) => ({ user_id: userId, farm_id: farmId, crop_name, is_active: true }));
+    .map(([, crop_name]) => ({ user_id: userId, farm_id: farmId, plot_id: plotId ?? null, crop_name, is_active: true }));
   if (missing.length > 0) {
     const { error } = await supabase.from('farm_crops').insert(missing);
     if (error) throw error;
