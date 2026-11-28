@@ -78,7 +78,13 @@ export default function AuthScreen() {
       const rawMessage = err instanceof Error ? err.message : '';
       const normalizedMessage = rawMessage.toLowerCase();
 
-      if (normalizedMessage.includes('a valid cooperative code is required')) {
+      if (normalizedMessage.includes('privacy consent is required')) {
+        setError('Please agree to the account and farm information notice to create your account.');
+      } else if (normalizedMessage.includes('phone number must use international format')) {
+        setError('Enter your phone number in international format, for example +2567XXXXXXXX.');
+      } else if (normalizedMessage.includes('whatsapp contact requires a phone number and consent')) {
+        setError('WhatsApp updates need your phone number and your permission.');
+      } else if (normalizedMessage.includes('a valid cooperative code is required')) {
         setError('That cooperative code is invalid or inactive. Please check it with your cooperative.');
       } else if (normalizedMessage.includes('full name is required')) {
         setError('Please enter your full name.');
@@ -168,6 +174,9 @@ export default function AuthScreen() {
                   id="phoneNumber"
                   type="tel"
                   autoComplete="tel"
+                  required={preferredChannel === 'whatsapp'}
+                  pattern="^\\+[1-9][0-9]{7,14}$"
+                  title="Use international format, for example +2567XXXXXXXX"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
@@ -201,7 +210,10 @@ export default function AuthScreen() {
                 <select
                   id="preferredChannel"
                   value={preferredChannel}
-                  onChange={(e) => setPreferredChannel(e.target.value)}
+                  onChange={(e) => {
+                    setPreferredChannel(e.target.value);
+                    if (e.target.value === 'none') setProactiveContactConsent(false);
+                  }}
                   className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
                 >
                   <option value="in_app">Inside Omulimi</option>
@@ -238,6 +250,7 @@ export default function AuthScreen() {
                 <input
                   type="checkbox"
                   required={preferredChannel === 'whatsapp'}
+                  disabled={preferredChannel === 'none'}
                   checked={proactiveContactConsent}
                   onChange={(e) => setProactiveContactConsent(e.target.checked)}
                   className="mt-1 h-4 w-4 accent-[#466b45]"
