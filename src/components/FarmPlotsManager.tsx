@@ -248,9 +248,9 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold text-[#1d2d27]">{plot.label}</h2>
                 <p className="mt-1 text-xs text-[#66746b]">{cropNamesFor(plot.id).join(', ') || 'No crop linked yet'}</p>
-                <p className="mt-1 text-[11px] text-[#879188]">{plot.boundary_status === 'mapped' ? 'Boundary mapped' : 'Point location only · boundary not mapped'}</p>
+                <p className="mt-1 text-[11px] text-[#879188]">{plot.boundary_status === 'mapped' ? 'Boundary mapped by GPS walk' : plot.centroid_source === 'phone_gps' ? `GPS point only · accuracy ±${Math.round(plot.centroid_accuracy_m ?? 0)} m` : 'Approximate farm point · boundary not mapped'}</p>
                 {plot.area_acres !== null && <p className="mt-1 text-xs text-[#52645a]">Approx. {Number(plot.area_acres).toFixed(2)} acres · {Number(plot.area_hectares || 0).toFixed(2)} hectares</p>}
-                <button type="button" onClick={()=>onSelectPlot(plot,cropNamesFor(plot.id)[0] || '')} className={activePlotId===plot.id ? 'mt-2 rounded-lg bg-[#174432] px-3 py-2 text-[11px] font-semibold text-white' : 'mt-2 rounded-lg border border-[#c6d4c0] bg-white px-3 py-2 text-[11px] font-semibold text-[#285b40]'}>{activePlotId===plot.id ? 'Currently selected' : 'Use for weather and soil'}</button>
+                <button type="button" onClick={()=>onSelectPlot(plot,cropNamesFor(plot.id)[0] || '')} className={activePlotId===plot.id ? 'mt-2 rounded-lg bg-[#174432] px-3 py-2 text-[11px] font-semibold text-white' : 'mt-2 rounded-lg border border-[#c6d4c0] bg-white px-3 py-2 text-[11px] font-semibold text-[#285b40]'}>{activePlotId===plot.id ? 'Currently selected' : 'Select this plot'}</button>
               </div>
               <span className={plot.boundary_status === 'mapped' ? 'rounded-full bg-[#e7eddf] px-2 py-1 text-[10px] font-semibold text-[#285b40]' : 'rounded-full bg-[#f5ebd2] px-2 py-1 text-[10px] font-semibold text-[#8b6531]'}>
                 {plot.boundary_status === 'mapped' ? 'Mapped' : 'Needs mapping'}
