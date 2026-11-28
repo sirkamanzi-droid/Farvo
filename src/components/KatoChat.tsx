@@ -26,6 +26,7 @@ type ChatMessage = {
 interface KatoChatProps {
   userId: string;
   farmId: string;
+  plotId?: string | null;
   district: District;
   cropName: string;
   weatherData: WeatherData | null;
@@ -47,7 +48,7 @@ function dateLabel(value: string) {
   return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
 }
 
-export default function KatoChat({ userId, farmId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
+export default function KatoChat({ userId, farmId, plotId, district, cropName, weatherData, weatherDistrictName, initialQuestion, onInitialQuestionHandled, farmerName }: KatoChatProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -148,7 +149,7 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
   const skipOnboardingQuestion = async () => {
     if (!onboardingQuestion) return;
     await recordFarmEvent({
-      userId, farmId, eventType: 'questionnaire_answer', source: 'farmer',
+      userId, farmId, plotId, eventType: 'questionnaire_answer', source: 'farmer',
       payload: { question_code: onboardingQuestion.code, answer: null, skipped: true },
     });
     setOnboardingAnswer('');
@@ -259,7 +260,7 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
       }).select('id').single();
       if (saveUserError) throw saveUserError;
       await recordFarmEvent({
-        userId, farmId, eventType: 'farmer_reply', source: 'farmer',
+        userId, farmId, plotId, eventType: 'farmer_reply', source: 'farmer',
         sourceRecordType: 'kato_messages', sourceRecordId: savedQuestion.id,
         payload: { conversation_id: conversationId, role: 'user', message_length: question.length, crop_name: cropName, district_name: district.name },
       });
@@ -287,6 +288,7 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
                 ]
               : history.slice(-12).map(({ role, content }) => ({ role, content })),
             farmId,
+            plotId,
             districtName: district.name,
             cropName,
             weatherDistrictName: weatherData && weatherDistrictName === district.name ? weatherDistrictName : null,
@@ -346,7 +348,7 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
         .single();
       if (saveAnswerError) throw saveAnswerError;
       await recordFarmEvent({
-        userId, farmId, eventType: 'advice', source: 'kato',
+        userId, farmId, plotId, eventType: 'advice', source: 'kato',
         sourceRecordType: 'kato_messages', sourceRecordId: savedAnswer.id,
         payload: { conversation_id: conversationId, role: 'assistant', crop_name: cropName, district_name: district.name },
       });
