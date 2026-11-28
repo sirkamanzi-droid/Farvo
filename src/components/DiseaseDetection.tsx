@@ -508,6 +508,34 @@ export default function DiseaseDetection({
 
     const cropId = selectedCrop?.id || 'maize';
     const result = await computeDiagnosis(cropId, dataUrl);
+    const eventKey = `disease-scan:${crypto.randomUUID()}`;
+    const scanTimestamp = scannedAt || new Date().toISOString();
+
+    const saveScanEvent = async (sourceRecordId: string | null = null) => {
+      const { error } = await supabase.from('farm_events').insert({
+        user_id: userId,
+        farm_id: farmId,
+        event_type: 'disease_detection',
+        occurred_at: scanTimestamp,
+        source: 'farmer',
+        source_record_type: sourceRecordId ? 'crop_care_plans' : null,
+        source_record_id: sourceRecordId,
+        idempotency_key: eventKey,
+        payload: {
+          crop_id: cropId,
+          crop_name: selectedCrop?.name || cropId,
+          district_name: districtName,
+          outcome: result.outcome,
+          disease_name: result.diseaseName || null,
+          simple_disease_name: result.simpleDiseaseName || null,
+          confidence_score: result.confidence,
+          observations: result.whatObserved || null,
+          scanned_at: scanTimestamp,
+          confidence_is_diagnostic_accuracy: false,
+        },
+      });
+      if (error) console.error('Could not save crop scan to farm history:', error);
+    };
 
     const minimumDisplayTime = 1800;
     setTimeout(() => {
@@ -516,8 +544,19 @@ export default function DiseaseDetection({
       if (result.outcome === 'disease' && selectedCrop) {
         setCarePlanStatus('creating');
         void onCreateCarePlan({ farmId, cropName: selectedCrop.name, diagnosis: result })
-          .then(async (id) => { setCarePlanId(id); setCarePlanStatus('created'); await loadFarmContext(); })
-          .catch((error) => { console.error('Automatic crop-care plan creation failed:', error); setCarePlanStatus('error'); });
+          .then(async (id) => {
+            setCarePlanId(id);
+            setCarePlanStatus('created');
+            await saveScanEvent(id);
+            await loadFarmContext();
+          })
+          .catch(async (error) => {
+            console.error('Automatic crop-care plan creation failed:', error);
+            setCarePlanStatus('error');
+            await saveScanEvent();
+          });
+      } else {
+        void saveScanEvent();
       }
     }, minimumDisplayTime);
   }
