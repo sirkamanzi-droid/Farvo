@@ -94,6 +94,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [farmSetupMode, setFarmSetupMode] = useState<'initial' | 'add' | 'recapture' | null>(null);
   const [farmSetupTargetId, setFarmSetupTargetId] = useState<string | null>(null);
   const [farmSetupInitialCrops, setFarmSetupInitialCrops] = useState<string[]>([]);
+  const [farmSetupInitialLivestock, setFarmSetupInitialLivestock] = useState<Array<{ species: string; animalCount: number | null }>>([]);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
