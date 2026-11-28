@@ -205,6 +205,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     const crop=result.crops[0] || DEFAULT_CROP;
     const farm:Farm={
       ...createFarm(result.district,crop,farms.length),
+      label:result.label,
       latitude:result.latitude,
       longitude:result.longitude,
       locationAccuracyM:result.accuracyM,
@@ -229,7 +230,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       const target=farms.find(item=>item.id===farmSetupTargetId);
       if(!target) throw new Error('Could not find the farm to update. Please reload and try again.');
       savedFarm=await updateFarm(userId,{
-        ...target,district:result.district,crop,
+        ...target,label:result.label,district:result.district,crop,
         latitude:result.latitude,longitude:result.longitude,
         locationAccuracyM:result.accuracyM,locationSource:'phone_gps',locationCapturedAt:result.capturedAt,
         locationLabel:result.locationLabel,village:result.village,parish:result.parish,subcounty:result.subcounty,
@@ -296,7 +297,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     }
   };
   if(!activeFarm) {
-    if(farmSetupMode==='initial') return <FarmSetup title="Create your first farm" onSave={handleSaveFarmSetup}/>;
+    if(farmSetupMode==='initial') return <FarmSetup title="Create your first farm" initialLabel="My farm" onSave={handleSaveFarmSetup}/>;
     return <div className="min-h-screen bg-parchment-100 flex items-center justify-center px-6 text-center text-sm text-soil-700">{farmSyncError || 'Loading your farm…'}</div>;
   }
 
@@ -329,8 +330,8 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         </div></div>}
       </main>
       {showKnowledgeCentre&&<KnowledgeCentre onBack={()=>setShowKnowledgeCentre(false)} onAskKato={(question)=>{setPendingKatoQuestion(question);setShowKnowledgeCentre(false);setActiveTab('kato');}}/>}
-      {farmSetupMode==='add'&&<FarmSetup title="Add another farm" onCancel={()=>setFarmSetupMode(null)} onSave={handleSaveFarmSetup}/>}
-      {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s location" initialCrops={farmSetupInitialCrops} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
+      {farmSetupMode==='add'&&<FarmSetup title="Add another farm" initialLabel={`Farm ${farms.length + 1}`} onCancel={()=>setFarmSetupMode(null)} onSave={handleSaveFarmSetup}/>}
+      {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s details" initialLabel={activeFarm.label} initialCrops={farmSetupInitialCrops} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       {!showSoilCalculator&&!showKnowledgeCentre&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
       {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} initialCrop={activeFarm.crop} initialLatitude={activeFarm.latitude ?? 0} initialLongitude={activeFarm.longitude ?? 0} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
