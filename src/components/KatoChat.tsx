@@ -5,6 +5,7 @@ import {
   Menu, MessageCircle, MoreHorizontal, Plus, Search, Sprout, Trash2, X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { recordFarmEvent } from '../lib/farmEvents';
 import { District, WeatherData } from '../types';
 
 type Conversation = {
@@ -157,6 +158,11 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
         conversation_id: conversationId, user_id: userId, role: 'user', content: question,
       });
       if (saveUserError) throw saveUserError;
+      await recordFarmEvent({
+        userId, farmId, eventType: 'farmer_reply', source: 'farmer',
+        sourceRecordType: 'kato_messages', sourceRecordId: undefined,
+        payload: { conversation_id: conversationId, role: 'user', message_length: question.length, crop_name: cropName, district_name: district.name },
+      });
       // Do not reload the entire chat list before the AI request. The farmer's
       // message is already safely stored; update the list after the answer arrives.
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -233,6 +239,11 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
         .select('id,role,content,created_at')
         .single();
       if (saveAnswerError) throw saveAnswerError;
+      await recordFarmEvent({
+        userId, farmId, eventType: 'advice', source: 'kato',
+        sourceRecordType: 'kato_messages', sourceRecordId: savedAnswer.id,
+        payload: { conversation_id: conversationId, role: 'assistant', crop_name: cropName, district_name: district.name },
+      });
 
       setMessages(prev => [...prev, savedAnswer as ChatMessage]);
       await Promise.all([
