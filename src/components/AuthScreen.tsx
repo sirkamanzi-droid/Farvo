@@ -201,6 +201,7 @@ export default function AuthScreen() {
                   <option value="cgg">Rukiga</option>
                   <option value="sw">Swahili</option>
                 </select>
+                <p className="mt-1 text-xs text-soil-500">Some Kato replies may still appear in English while language support is being improved.</p>
               </div>
 
               <div>
@@ -255,7 +256,7 @@ export default function AuthScreen() {
                   onChange={(e) => setProactiveContactConsent(e.target.checked)}
                   className="mt-1 h-4 w-4 accent-[#466b45]"
                 />
-                <span>I agree to receive proactive farming updates through my selected contact channel. I can change this preference later.</span>
+                <span>I agree to receive proactive farming updates through my selected contact channel.</span>
               </label>
 
             </>
