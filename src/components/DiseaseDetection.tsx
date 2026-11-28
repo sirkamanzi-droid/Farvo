@@ -32,7 +32,7 @@ interface Diagnosis {
   whatObserved?: string;
 }
 
-type SavedDiagnosis = { id: string; crop_name: string; district_name: string; issue_name: string; started_at: string; source_scan: Record<string, unknown> | null; care_plan: Record<string, unknown> | null };
+type SavedDiagnosis = { id: string; plot_id?: string | null; crop_name: string; district_name: string; issue_name: string; started_at: string; source_scan: Record<string, unknown> | null; care_plan: Record<string, unknown> | null };
 
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
@@ -435,7 +435,7 @@ export default function DiseaseDetection({
       const registeredCrops = CROPS.filter(crop => farmCropNames.some(name => cropKey(name) === crop.id))
         .map(crop => ({ ...crop, plotId: plotId ?? null }));
       setFarmCrops(registeredCrops);
-      setSavedDiagnoses((context.cropCarePlans || []) as SavedDiagnosis[]);
+      setSavedDiagnoses(((context.cropCarePlans || []) as SavedDiagnosis[]).filter(item => !plotId || item.plot_id === plotId));
       if (registeredCrops.length === 0) {
         setFarmContextError('No supported crops are registered for this farm yet. Update the farm’s crop details before starting a scan.');
       }
