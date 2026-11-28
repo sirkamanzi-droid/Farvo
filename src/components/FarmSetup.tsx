@@ -1,10 +1,79 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MapPin, LocateFixed, Loader2, Sprout, X } from 'lucide-react';
 import { DISTRICTS } from '../data/districts';
 import { findNearestDistrict, type LocationStatus } from '../data/geolocation';
 import { SUPPORTED_CROP_NAMES } from '../data/supportedCrops';
 import type { District } from '../types';
 import { supabase } from '../lib/supabase';
+import type { FarmPlotBoundary } from '../data/farms';
+
+type BoundaryPoint = { latitude: number; longitude: number; accuracyM: number; capturedAt: string };
+
+function distanceMetres(a: BoundaryPoint, b: BoundaryPoint) {
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  const dLat = radians(b.latitude - a.latitude);
+  const dLon = radians(b.longitude - a.longitude);
+  const lat1 = radians(a.latitude);
+  const lat2 = radians(b.latitude);
+  const value = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+}
+
+function buildGpsBoundary(points: BoundaryPoint[]): FarmPlotBoundary {
+  const first = points[0];
+  const ring: [number, number][] = points.map(point => [point.longitude, point.latitude]);
+  ring.push([first.longitude, first.latitude]);
+
+  const meanLatitude = points.reduce((sum, point) => sum + point.latitude, 0) / points.length;
+  const radians = Math.PI / 180;
+  const scaleX = 111320 * Math.cos(meanLatitude * radians);
+  const scaleY = 110540;
+  const projected = points.map(point => ({
+    x: point.longitude * scaleX,
+    y: point.latitude * scaleY,
+  }));
+  let twiceArea = 0;
+  let centroidX = 0;
+  let centroidY = 0;
+  for (let index = 0; index < projected.length; index++) {
+    const current = projected[index];
+    const next = projected[(index + 1) % projected.length];
+    const cross = current.x * next.y - next.x * current.y;
+    twiceArea += cross;
+    centroidX += (current.x + next.x) * cross;
+    centroidY += (current.y + next.y) * cross;
+  }
+  const planarArea = Math.abs(twiceArea / 2);
+  const centroidLatitude = Math.abs(twiceArea) > 0.01
+    ? centroidY / (3 * twiceArea) / scaleY
+    : meanLatitude;
+  const centroidLongitude = Math.abs(twiceArea) > 0.01
+    ? centroidX / (3 * twiceArea) / scaleX
+    : points.reduce((sum, point) => sum + point.longitude, 0) / points.length;
+
+  let sphericalArea = 0;
+  for (let index = 0; index < ring.length - 1; index++) {
+    const [lon1, lat1] = ring[index];
+    const [lon2, lat2] = ring[index + 1];
+    sphericalArea += (lon2 - lon1) * radians *
+      (2 + Math.sin(lat1 * radians) + Math.sin(lat2 * radians));
+  }
+  const areaSquareMetres = Math.abs(sphericalArea * 6371008.8 * 6371008.8 / 2);
+  const areaAcres = areaSquareMetres / 4046.8564224;
+  const areaHectares = areaSquareMetres / 10000;
+  if (!Number.isFinite(planarArea) || !Number.isFinite(areaAcres) || areaAcres <= 0 ||
+      !Number.isFinite(centroidLatitude) || !Number.isFinite(centroidLongitude)) {
+    throw new Error('We could not calculate this boundary. Walk the plot again with a clearer GPS signal.');
+  }
+  return {
+    coordinates: ring,
+    centroidLatitude,
+    centroidLongitude,
+    areaAcres,
+    areaHectares,
+    mappingMethod: 'gps_walk',
+  };
+}
 
 export type FarmSetupResult = {
   latitude: number;
@@ -19,6 +88,7 @@ export type FarmSetupResult = {
   village: string | null;
   parish: string | null;
   subcounty: string | null;
+  boundary: FarmPlotBoundary | null;
 };
 
 type Props = {
@@ -34,6 +104,11 @@ const LIVESTOCK_OPTIONS = ['Cattle', 'Goats', 'Sheep', 'Pigs', 'Chicken', 'Ducks
 
 export default function FarmSetup({ title = 'Set up your farm', onCancel, initialCrops = [], initialLabel = 'My farm', initialLivestock = [], onSave }: Props) {
   const [position, setPosition] = useState<{ latitude: number; longitude: number; accuracyM: number; capturedAt: string } | null>(null);
+  const [boundaryPoints, setBoundaryPoints] = useState<BoundaryPoint[]>([]);
+  const [boundary, setBoundary] = useState<FarmPlotBoundary | null>(null);
+  const [recordingBoundary, setRecordingBoundary] = useState(false);
+  const [boundaryError, setBoundaryError] = useState('');
+  const boundaryWatchId = useRef<number | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [locationError, setLocationError] = useState('');
   const [geocoding, setGeocoding] = useState(false);
@@ -43,6 +118,88 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
   const [livestock, setLivestock] = useState<Array<{ species: string; animalCount: string }>>(() => initialLivestock.map(item => ({ species: item.species, animalCount: item.animalCount === null ? '' : String(item.animalCount) })));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  const stopBoundaryWatch = () => {
+    if (boundaryWatchId.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(boundaryWatchId.current);
+      boundaryWatchId.current = null;
+    }
+    setRecordingBoundary(false);
+  };
+
+  useEffect(() => () => {
+    if (boundaryWatchId.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(boundaryWatchId.current);
+    }
+  }, []);
+
+  const startBoundaryWalk = () => {
+    if (!navigator.geolocation) {
+      setBoundaryError('This device cannot record a GPS boundary.');
+      return;
+    }
+    if (!position) {
+      setBoundaryError('Capture the farm GPS location first, then start walking its boundary.');
+      return;
+    }
+    setBoundary(null);
+    setBoundaryError('');
+    setBoundaryPoints([{
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracyM: position.accuracyM,
+      capturedAt: position.capturedAt,
+    }]);
+    setRecordingBoundary(true);
+    boundaryWatchId.current = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        if (coords.accuracy > 100) {
+          setBoundaryError('GPS accuracy is weak. Move to a clearer area; this reading was not added.');
+          return;
+        }
+        const point: BoundaryPoint = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracyM: coords.accuracy,
+          capturedAt: new Date().toISOString(),
+        };
+        setBoundaryPoints(current => {
+          const last = current[current.length - 1];
+          if (last && distanceMetres(last, point) < 3) return current;
+          return [...current, point].slice(-1200);
+        });
+        setBoundaryError('');
+      },
+      error => {
+        setBoundaryError(error.code === error.PERMISSION_DENIED
+          ? 'Location permission was denied. Allow GPS access and start the walk again.'
+          : 'GPS tracking paused. Check location services and try again.');
+        stopBoundaryWatch();
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
+    );
+  };
+
+  const finishBoundaryWalk = () => {
+    stopBoundaryWatch();
+    if (boundaryPoints.length < 3) {
+      setBoundaryError('Walk at least three different corners before finishing the boundary.');
+      return;
+    }
+    try {
+      setBoundary(buildGpsBoundary(boundaryPoints));
+      setBoundaryError('');
+    } catch (error) {
+      setBoundaryError(error instanceof Error ? error.message : 'Could not calculate this boundary.');
+    }
+  };
+
+  const removeBoundary = () => {
+    stopBoundaryWatch();
+    setBoundaryPoints([]);
+    setBoundary(null);
+    setBoundaryError('');
+  };
 
   const captureLocation = () => {
     if (!navigator.geolocation) {
@@ -134,6 +291,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
         village: area?.village ?? null,
         parish: area?.parish ?? null,
         subcounty: area?.subcounty ?? null,
+        boundary,
         livestock: livestock.map(item => ({
           species: item.species,
           animalCount: item.animalCount.trim() && Number.isFinite(Number(item.animalCount))
@@ -189,6 +347,30 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
             <p className="mt-1 text-[11px] text-[#7b867d]">Area names come from OpenStreetMap and may be incomplete. GPS coordinates remain the location reference. © OpenStreetMap contributors.</p>
           </div>}
           {locationError && <p role="alert" className="mt-3 text-xs text-rose-700">{locationError}</p>}
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-[#e6dcc8] bg-[#faf7ef] p-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e7eddf]"><MapPin className="h-5 w-5 text-[#285b40]"/></span>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-[#1d2d27]">Farm boundary (optional)</h2>
+              <p className="mt-1 text-xs leading-5 text-[#66746b]">Walk around the edge of this plot while GPS records its shape. You can add or map more plots later. If you skip this, Omulimi keeps the farm point and marks the boundary as not yet mapped.</p>
+            </div>
+          </div>
+          {!recordingBoundary && !boundary && <button type="button" onClick={startBoundaryWalk} disabled={!position} className="mt-3 w-full rounded-xl border border-[#285b40] bg-white px-4 py-3 text-sm font-semibold text-[#174432] disabled:opacity-50">Start GPS boundary walk</button>}
+          {recordingBoundary && <div className="mt-3 rounded-xl bg-[#e7eddf] p-3">
+            <p className="text-sm font-semibold text-[#174432]">Recording boundary · {boundaryPoints.length} points</p>
+            <p className="mt-1 text-xs leading-5 text-[#52645a]">Keep Omulimi open and walk along the plot edge. GPS points are collected on this device; a data connection is not required for recording.</p>
+            <button type="button" onClick={finishBoundaryWalk} className="mt-3 w-full rounded-xl bg-[#174432] px-4 py-3 text-sm font-semibold text-white">Finish boundary</button>
+          </div>}
+          {boundary && <div className="mt-3 rounded-xl border border-[#d8e2d0] bg-white p-3">
+            <p className="text-sm font-semibold text-[#174432]">Boundary recorded</p>
+            <p className="mt-1 text-xs text-[#52645a]">Approximate area: {boundary.areaAcres.toFixed(2)} acres · {boundary.areaHectares.toFixed(2)} hectares</p>
+            <p className="mt-1 text-xs text-[#7b867d]">Centre: {boundary.centroidLatitude.toFixed(6)}, {boundary.centroidLongitude.toFixed(6)}</p>
+            <button type="button" onClick={removeBoundary} className="mt-2 text-xs font-semibold text-[#8b4b35]">Remove boundary and use farm point</button>
+          </div>}
+          {boundaryError && <p role="alert" className="mt-2 text-xs text-rose-700">{boundaryError}</p>}
+          {!position && <p className="mt-2 text-xs text-[#879188]">Capture the farm GPS location above to enable boundary walking.</p>}
         </section>
 
         <section className="mt-4 rounded-2xl border border-[#e6dcc8] bg-[#faf7ef] p-4">
