@@ -26,16 +26,18 @@ export default function DiagnosisKatoPanel(props: Props) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [farmId, setFarmId] = useState<string | null>(null);
+  const [plotId, setPlotId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       const { data, error: readError } = await supabase.from('crop_care_plans')
-        .select('care_plan,farm_id').eq('id', props.planId).eq('user_id', props.userId).single();
+        .select('care_plan,farm_id,plot_id').eq('id', props.planId).eq('user_id', props.userId).single();
       if (!alive) return;
       if (readError) setError('Could not load this plant’s saved Kato conversation.');
       else {
         setFarmId(typeof data?.farm_id === 'string' ? data.farm_id : null);
+        setPlotId(typeof data?.plot_id === 'string' ? data.plot_id : null);
         const carePlan = (data?.care_plan || {}) as Record<string, unknown>;
         const saved = carePlan.kato_conversation;
         if (Array.isArray(saved)) setMessages(saved.filter((m): m is Message =>
@@ -72,7 +74,7 @@ export default function DiagnosisKatoPanel(props: Props) {
     try {
       await saveMessages(next);
       if (farmId) await recordFarmEvent({
-        userId: props.userId, farmId, eventType: 'farmer_reply', source: 'farmer',
+        userId: props.userId, farmId, plotId, eventType: 'farmer_reply', source: 'farmer',
         sourceRecordType: 'crop_care_plans', sourceRecordId: props.planId,
         payload: { crop_name: props.cropName, context: 'diagnosis_kato_question', message_length: question.length },
       });
@@ -85,6 +87,7 @@ export default function DiagnosisKatoPanel(props: Props) {
         body: JSON.stringify({
           messages: [{ role: 'user', content: `Diagnosis context for this conversation: Crop: ${props.cropName}. District selected in Omulimi: ${props.districtName}. Possible diagnosis: ${props.issueName} (unconfirmed). Image-service match score: ${props.confidence}% (not diagnostic accuracy). Scan observations: ${props.observations}. Keep this diagnosis context in mind when answering the farmer's following message.` }, ...next.slice(-11)],
           farmId,
+          plotId,
           cropName: props.cropName,
           districtName: props.districtName,
           weatherContext: props.weatherData,
@@ -120,7 +123,7 @@ export default function DiagnosisKatoPanel(props: Props) {
       setMessages(completed);
       await saveMessages(completed);
       if (farmId) await recordFarmEvent({
-        userId: props.userId, farmId, eventType: 'advice', source: 'kato',
+        userId: props.userId, farmId, plotId, eventType: 'advice', source: 'kato',
         sourceRecordType: 'crop_care_plans', sourceRecordId: props.planId,
         payload: { crop_name: props.cropName, context: 'diagnosis_kato_answer' },
       });
