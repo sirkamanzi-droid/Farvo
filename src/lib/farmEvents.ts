@@ -16,6 +16,7 @@ export type FarmEventSource = 'farmer' | 'kato' | 'system' | 'agronomist' | 'ext
 type RecordFarmEventInput = {
   userId: string;
   farmId: string;
+  plotId?: string | null;
   eventType: FarmEventType;
   source: FarmEventSource;
   sourceRecordType?: string;
