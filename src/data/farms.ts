@@ -350,9 +350,10 @@ export async function syncPrimaryFarmCrop(
       if (error) throw error;
     }
   } else {
+    const plotId = await getMainFarmPlotId(userId, farmId);
     const { error } = await supabase
       .from('farm_crops')
-      .insert({ user_id: userId, farm_id: farmId, crop_name: newName, is_active: true });
+      .insert({ user_id: userId, farm_id: farmId, plot_id: plotId, crop_name: newName, is_active: true });
     if (error) throw error;
   }
 }
