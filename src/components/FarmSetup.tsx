@@ -12,6 +12,7 @@ export type FarmSetupResult = {
   accuracyM: number;
   capturedAt: string;
   district: District;
+  label: string;
   crops: string[];
   livestock: Array<{ species: string; animalCount: number | null }>;
   locationLabel: string | null;
@@ -24,17 +25,19 @@ type Props = {
   title?: string;
   onCancel?: () => void;
   initialCrops?: string[];
+  initialLabel?: string;
   onSave: (result: FarmSetupResult) => Promise<void>;
 };
 
 const LIVESTOCK_OPTIONS = ['Cattle', 'Goats', 'Sheep', 'Pigs', 'Chicken', 'Ducks', 'Turkeys', 'Rabbits', 'Fish'];
 
-export default function FarmSetup({ title = 'Set up your farm', onCancel, initialCrops = [], onSave }: Props) {
+export default function FarmSetup({ title = 'Set up your farm', onCancel, initialCrops = [], initialLabel = 'My farm', onSave }: Props) {
   const [position, setPosition] = useState<{ latitude: number; longitude: number; accuracyM: number; capturedAt: string } | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
   const [locationError, setLocationError] = useState('');
   const [geocoding, setGeocoding] = useState(false);
   const [area, setArea] = useState<{ displayName: string | null; village: string | null; parish: string | null; subcounty: string | null; district: string | null; region: string | null } | null>(null);
+  const [farmName, setFarmName] = useState(initialLabel);
   const [crops, setCrops] = useState<string[]>(initialCrops);
   const [livestock, setLivestock] = useState<Array<{ species: string; animalCount: string }>>([]);
   const [saving, setSaving] = useState(false);
@@ -108,6 +111,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
   };
 
   const submit = async () => {
+    if (!farmName.trim()) { setSaveError('Enter a name for this farm.'); return; }
     if (!position) { setSaveError('Capture this farm’s GPS location first.'); return; }
     if (crops.length === 0) { setSaveError('Select at least one crop grown on this farm.'); return; }
     setSaving(true);
@@ -123,6 +127,7 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
       await onSave({
         ...position,
         district,
+        label: farmName.trim().slice(0, 60),
         crops,
         locationLabel: area?.displayName ?? null,
         village: area?.village ?? null,
@@ -152,6 +157,12 @@ export default function FarmSetup({ title = 'Set up your farm', onCancel, initia
           </div>
           {onCancel && <button onClick={onCancel} aria-label="Close" className="rounded-full p-2 text-[#66746b]"><X className="h-5 w-5"/></button>}
         </div>
+
+        <section className="mb-4 rounded-2xl border border-[#e6dcc8] bg-[#faf7ef] p-4">
+          <label htmlFor="farm-name" className="block text-sm font-semibold text-[#1d2d27]">Farm name</label>
+          <p className="mt-1 text-xs text-[#66746b]">Give this farm a name you will recognise.</p>
+          <input id="farm-name" type="text" maxLength={60} value={farmName} onChange={event => setFarmName(event.target.value)} placeholder="e.g. Home Farm" className="mt-3 w-full rounded-xl border border-[#e6dcc8] bg-white px-3 py-3 text-sm text-[#1d2d27] outline-none focus:border-[#285b40]" />
+        </section>
 
         <section className="rounded-2xl border border-[#e6dcc8] bg-[#faf7ef] p-4">
           <div className="flex items-start gap-3">
