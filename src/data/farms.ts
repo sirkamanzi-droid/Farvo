@@ -333,13 +333,15 @@ export async function syncFarmCrops(
     const trimmed = name.trim();
     if (trimmed) desired.set(trimmed.toLowerCase(), trimmed);
   }
-  if (desired.size === 0) throw new Error('Select at least one crop grown on this farm.');
+  if (desired.size === 0) throw new Error('Select at least one crop grown on this plot.');
+  const targetPlotId = plotId || await getMainFarmPlotId(userId, farmId);
 
   const { data: existing, error: lookupError } = await supabase
     .from('farm_crops')
     .select('id,crop_name,is_active')
     .eq('farm_id', farmId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .eq('plot_id', targetPlotId);
   if (lookupError) throw lookupError;
 
   const existingByName = new Map((existing ?? []).map(row => [row.crop_name.trim().toLowerCase(), row]));
@@ -351,73 +353,17 @@ export async function syncFarmCrops(
         .update({ is_active: shouldBeActive })
         .eq('id', row.id)
         .eq('farm_id', farmId)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('plot_id', targetPlotId);
       if (error) throw error;
     }
   }
 
   const missing = [...desired.entries()]
     .filter(([key]) => !existingByName.has(key))
-    .map(([, crop_name]) => ({ user_id: userId, farm_id: farmId, plot_id: plotId ?? null, crop_name, is_active: true }));
+    .map(([, crop_name]) => ({ user_id: userId, farm_id: farmId, plot_id: targetPlotId, crop_name, is_active: true }));
   if (missing.length > 0) {
     const { error } = await supabase.from('farm_crops').insert(missing);
-    if (error) throw error;
-  }
-}
-
-/**
- * Keep the farm's primary crop registration in sync when the farmer changes
- * the crop selector. Other registered crops on the same farm are preserved.
- */
-export async function syncPrimaryFarmCrop(
-  userId: string,
-  farmId: string,
-  previousCrop: string,
-  nextCrop: string,
-): Promise<void> {
-  const oldName = previousCrop.trim();
-  const newName = nextCrop.trim();
-  if (!newName || oldName.toLowerCase() === newName.toLowerCase()) return;
-  const plotId = await getMainFarmPlotId(userId, farmId);
-
-  if (oldName) {
-    const { error: deactivateError } = await supabase
-      .from('farm_crops')
-      .update({ is_active: false })
-      .eq('farm_id', farmId)
-      .eq('user_id', userId)
-      .eq('plot_id', plotId)
-      .eq('crop_name', oldName)
-      .eq('is_active', true);
-    if (deactivateError) throw deactivateError;
-  }
-
-  const { data: existing, error: lookupError } = await supabase
-    .from('farm_crops')
-    .select('id,is_active')
-    .eq('farm_id', farmId)
-    .eq('user_id', userId)
-    .eq('plot_id', plotId)
-    .ilike('crop_name', newName)
-    .limit(1)
-    .maybeSingle();
-  if (lookupError) throw lookupError;
-
-  if (existing) {
-    if (!existing.is_active) {
-      const { error } = await supabase
-        .from('farm_crops')
-        .update({ is_active: true })
-        .eq('id', existing.id)
-        .eq('farm_id', farmId)
-        .eq('user_id', userId)
-        .eq('plot_id', plotId);
-      if (error) throw error;
-    }
-  } else {
-    const { error } = await supabase
-      .from('farm_crops')
-      .insert({ user_id: userId, farm_id: farmId, plot_id: plotId, crop_name: newName, is_active: true });
     if (error) throw error;
   }
 }
