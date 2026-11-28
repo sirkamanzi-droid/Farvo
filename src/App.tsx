@@ -5,7 +5,7 @@ import AccountScreen from './components/AccountScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
-import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop, syncFarmCrops } from './data/farms';
+import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop, syncFarmCrops, syncFarmLivestock } from './data/farms';
 import FarmSetup, { type FarmSetupResult } from './components/FarmSetup';
 import SkyHero from './components/SkyHero';
 import WeatherDashboard from './components/WeatherDashboard';
@@ -236,9 +236,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         locationLabel:result.locationLabel,village:result.village,parish:result.parish,subcounty:result.subcounty,
       });
       await syncFarmCrops(userId,savedFarm.id,result.crops);
-      if(target.locationSource!=='phone_gps') {
-        await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock);
-      }
+      await syncFarmLivestock(userId,savedFarm.id,result.livestock);
       setFarms(current=>current.map(item=>item.id===savedFarm.id?savedFarm:item));
     } else {
       throw new Error('This farm setup action is not supported.');
@@ -259,6 +257,11 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       if(error) throw error;
       const selected = (data ?? []).map(row=>row.crop_name);
       setFarmSetupInitialCrops(selected.length ? selected : [activeFarm.crop]);
+      const { data: livestockRows, error: livestockError } = await supabase.from('farm_livestock')
+        .select('species,animal_count').eq('farm_id',activeFarm.id).eq('user_id',userId).eq('is_active',true)
+        .order('created_at',{ascending:true});
+      if(livestockError) throw livestockError;
+      setFarmSetupInitialLivestock((livestockRows ?? []).map(row=>({species:row.species,animalCount:row.animal_count===null?null:Number(row.animal_count)})));
       setFarmSetupTargetId(activeFarm.id);
       setFarmSetupMode('recapture');
       setFarmSyncError(null);
@@ -331,7 +334,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       </main>
       {showKnowledgeCentre&&<KnowledgeCentre onBack={()=>setShowKnowledgeCentre(false)} onAskKato={(question)=>{setPendingKatoQuestion(question);setShowKnowledgeCentre(false);setActiveTab('kato');}}/>}
       {farmSetupMode==='add'&&<FarmSetup title="Add another farm" initialLabel={`Farm ${farms.length + 1}`} onCancel={()=>setFarmSetupMode(null)} onSave={handleSaveFarmSetup}/>}
-      {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s details" initialLabel={activeFarm.label} initialCrops={farmSetupInitialCrops} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
+      {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s details" initialLabel={activeFarm.label} initialCrops={farmSetupInitialCrops} initialLivestock={farmSetupInitialLivestock} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       {!showSoilCalculator&&!showKnowledgeCentre&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
       {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} initialCrop={activeFarm.crop} initialLatitude={activeFarm.latitude ?? 0} initialLongitude={activeFarm.longitude ?? 0} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}

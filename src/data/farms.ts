@@ -291,3 +291,57 @@ export async function syncPrimaryFarmCrop(
     if (error) throw error;
   }
 }
+
+
+/**
+ * Reconcile the complete livestock selection from the farm editor.
+ * Keep historical rows by marking removed species inactive; update counts
+ * and reactivate previously registered species when selected again.
+ */
+export async function syncFarmLivestock(
+  userId: string,
+  farmId: string,
+  selectedLivestock: Array<{ species: string; animalCount: number | null }>,
+): Promise<void> {
+  const desired = new Map<string, { species: string; animalCount: number | null }>();
+  for (const item of selectedLivestock) {
+    const species = item.species.trim();
+    if (species) desired.set(species.toLowerCase(), { species, animalCount: item.animalCount });
+  }
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('farm_livestock')
+    .select('id,species,is_active')
+    .eq('farm_id', farmId)
+    .eq('user_id', userId);
+  if (lookupError) throw lookupError;
+
+  const existingBySpecies = new Map((existing ?? []).map(row => [row.species.trim().toLowerCase(), row]));
+  for (const row of existing ?? []) {
+    const selected = desired.get(row.species.trim().toLowerCase());
+    const shouldBeActive = Boolean(selected);
+    if (row.is_active !== shouldBeActive) {
+      const { error } = await supabase.from('farm_livestock')
+        .update({ is_active: shouldBeActive })
+        .eq('id', row.id).eq('farm_id', farmId).eq('user_id', userId);
+      if (error) throw error;
+    }
+    if (selected) {
+      const { error } = await supabase.from('farm_livestock')
+        .update({ animal_count: selected.animalCount })
+        .eq('id', row.id).eq('farm_id', farmId).eq('user_id', userId);
+      if (error) throw error;
+    }
+  }
+
+  const missing = [...desired.entries()]
+    .filter(([key]) => !existingBySpecies.has(key))
+    .map(([, item]) => ({
+      user_id: userId, farm_id: farmId, species: item.species,
+      animal_count: item.animalCount, is_active: true,
+    }));
+  if (missing.length) {
+    const { error } = await supabase.from('farm_livestock').insert(missing);
+    if (error) throw error;
+  }
+}
