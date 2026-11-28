@@ -378,6 +378,7 @@ export async function syncPrimaryFarmCrop(
   const oldName = previousCrop.trim();
   const newName = nextCrop.trim();
   if (!newName || oldName.toLowerCase() === newName.toLowerCase()) return;
+  const plotId = await getMainFarmPlotId(userId, farmId);
 
   if (oldName) {
     const { error: deactivateError } = await supabase
@@ -385,6 +386,7 @@ export async function syncPrimaryFarmCrop(
       .update({ is_active: false })
       .eq('farm_id', farmId)
       .eq('user_id', userId)
+      .eq('plot_id', plotId)
       .eq('crop_name', oldName)
       .eq('is_active', true);
     if (deactivateError) throw deactivateError;
@@ -395,6 +397,7 @@ export async function syncPrimaryFarmCrop(
     .select('id,is_active')
     .eq('farm_id', farmId)
     .eq('user_id', userId)
+    .eq('plot_id', plotId)
     .ilike('crop_name', newName)
     .limit(1)
     .maybeSingle();
@@ -407,11 +410,11 @@ export async function syncPrimaryFarmCrop(
         .update({ is_active: true })
         .eq('id', existing.id)
         .eq('farm_id', farmId)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('plot_id', plotId);
       if (error) throw error;
     }
   } else {
-    const plotId = await getMainFarmPlotId(userId, farmId);
     const { error } = await supabase
       .from('farm_crops')
       .insert({ user_id: userId, farm_id: farmId, plot_id: plotId, crop_name: newName, is_active: true });
