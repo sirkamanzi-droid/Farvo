@@ -285,16 +285,16 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   };
   const handleCaptureFarmLocation=async()=>{
     try {
+      const plotId=await getMainFarmPlotId(userId,activeFarm.id);
       const { data, error } = await supabase.from('farm_crops')
         .select('crop_name')
         .eq('farm_id',activeFarm.id)
         .eq('user_id',userId)
-        .eq('is_active',true)
-        ;
+        .eq('plot_id',plotId)
+        .eq('is_active',true);
       if(error) throw error;
       const selected = (data ?? []).map(row=>row.crop_name);
       setFarmSetupInitialCrops(selected.length ? selected : [activeFarm.crop]);
-      const plotId=await getMainFarmPlotId(userId,activeFarm.id);
       const [{data:livestockRows,error:livestockError},{data:farmAnswers,error:farmAnswersError},{data:cropRows,error:cropRowsError}]=await Promise.all([
         supabase.from('farm_livestock').select('species,animal_count,age_group,cattle_status,vaccinated_this_year,vaccination_details').eq('farm_id',activeFarm.id).eq('user_id',userId).eq('is_active',true),
         supabase.from('farms').select('years_farmed_land,previous_season_crops,season_before_previous_crops,water_pools_after_rain,water_access').eq('id',activeFarm.id).eq('user_id',userId).single(),
