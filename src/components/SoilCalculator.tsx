@@ -1,6 +1,7 @@
 import FormattedResponse from './FormattedResponse';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { recordFarmEvent } from '../lib/farmEvents';
 import { SUPPORTED_CROP_NAMES } from '../data/supportedCrops';
 import { ArrowLeft, CheckCircle2, ChevronRight, CloudRain, Droplets, FlaskConical, Save, Sprout, Thermometer, Loader2, RefreshCw, Camera } from 'lucide-react';
 
@@ -287,6 +288,12 @@ export default function SoilCalculator({ userId, farmId, initialCrop, initialLat
         weather_snapshot: weather, ai_report: aiReport,
       }).select('id,created_at').single();
       if (saveError) throw saveError;
+      await recordFarmEvent({
+        userId, farmId, eventType: 'soil_assessment', source: 'farmer',
+        sourceRecordType: 'soil_assessments', sourceRecordId: data.id,
+        occurredAt: data.created_at,
+        payload: { crop, mode: measuredPH === null ? 'guided' : 'tested', measured_ph: measuredPH, texture, drainage, location_label: reportLocation },
+      });
       const item: SavedAssessment = {
         id: data.id, createdAt: data.created_at, crop, mode: measuredPH === null ? 'guided' : 'tested',
         ph: measuredPH, texture, drainage, findings, locationLabel: reportLocation,
