@@ -51,6 +51,7 @@ export async function recordFarmEvent(input: RecordFarmEventInput): Promise<void
     const { error } = await supabase.from('farm_events').insert({
     user_id: input.userId,
     farm_id: input.farmId,
+    plot_id: input.plotId || null,
     event_type: input.eventType,
     source: input.source,
     source_record_type: input.sourceRecordType || null,
