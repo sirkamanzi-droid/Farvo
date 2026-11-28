@@ -5,7 +5,7 @@ import AccountScreen from './components/AccountScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
-import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop } from './data/farms';
+import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop, syncFarmCrops } from './data/farms';
 import FarmSetup, { type FarmSetupResult } from './components/FarmSetup';
 import SkyHero from './components/SkyHero';
 import WeatherDashboard from './components/WeatherDashboard';
@@ -92,7 +92,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [farmSyncError, setFarmSyncError] = useState<string | null>(null);
   const [farmSetupMode, setFarmSetupMode] = useState<'initial' | 'add' | 'recapture' | null>(null);
-  const [farmSetupTargetId, setFarmSetupTargetId] = useState<string | null>(null);
+  const [farmSetupTargetId, setFarmSetupTargetId] = useState<string | null>(null);\n  const [farmSetupInitialCrops, setFarmSetupInitialCrops] = useState<string[]>([]);
   const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [pendingKatoQuestion, setPendingKatoQuestion] = useState<string | null>(null);
@@ -233,6 +233,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         locationAccuracyM:result.accuracyM,locationSource:'phone_gps',locationCapturedAt:result.capturedAt,
         locationLabel:result.locationLabel,village:result.village,parish:result.parish,subcounty:result.subcounty,
       });
+      await syncFarmCrops(userId,savedFarm.id,result.crops);
       if(target.locationSource!=='phone_gps') {
         await saveFarmAssets(userId,savedFarm.id,result.crops,result.livestock);
       }
@@ -245,9 +246,24 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     setFarmSetupMode(null);
     setFarmSetupTargetId(null);
   };
-  const handleCaptureFarmLocation=()=>{
-    setFarmSetupTargetId(activeFarm.id);
-    setFarmSetupMode('recapture');
+  const handleCaptureFarmLocation=async()=>{
+    try {
+      const { data, error } = await supabase.from('farm_crops')
+        .select('crop_name')
+        .eq('farm_id',activeFarm.id)
+        .eq('user_id',userId)
+        .eq('is_active',true)
+        .order('created_at',{ascending:true});
+      if(error) throw error;
+      const selected = (data ?? []).map(row=>row.crop_name);
+      setFarmSetupInitialCrops(selected.length ? selected : [activeFarm.crop]);
+      setFarmSetupTargetId(activeFarm.id);
+      setFarmSetupMode('recapture');
+      setFarmSyncError(null);
+    } catch(error) {
+      console.error('Could not load this farm’s registered crops:',error);
+      setFarmSyncError('Could not load this farm’s crop list. Please try again before editing it.');
+    }
   };
   const handleSelectFarm=(farm:Farm)=>setActiveFarmId(farm.id);
   const handleDeleteActiveFarm=async()=>{
@@ -313,7 +329,7 @@ function AuthenticatedApp({ userId }: { userId: string }) {
       </main>
       {showKnowledgeCentre&&<KnowledgeCentre onBack={()=>setShowKnowledgeCentre(false)} onAskKato={(question)=>{setPendingKatoQuestion(question);setShowKnowledgeCentre(false);setActiveTab('kato');}}/>}
       {farmSetupMode==='add'&&<FarmSetup title="Add another farm" onCancel={()=>setFarmSetupMode(null)} onSave={handleSaveFarmSetup}/>}
-      {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s location" initialCrops={[activeFarm.crop]} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
+      {farmSetupMode==='recapture'&&<FarmSetup title="Update this farm’s location" initialCrops={farmSetupInitialCrops} onCancel={()=>{setFarmSetupMode(null);setFarmSetupTargetId(null);}} onSave={handleSaveFarmSetup}/>}
       {comingSoon&&<div className="fixed inset-0 z-40 bg-soil-900/50 flex items-center justify-center p-4"><div className="w-full max-w-sm rounded-3xl bg-[#f8f4eb] border border-[#e6dcc8] p-6 text-center shadow-xl"><div className="h-14 w-14 rounded-2xl bg-leaf-100 flex items-center justify-center mx-auto"><Wrench className="h-7 w-7 text-leaf-700"/></div><p className="text-xs font-bold text-leaf-700 mt-4">COMING SOON</p><h2 className="text-xl font-bold text-soil-900 mt-1">{comingSoon.title}</h2><p className="text-sm text-soil-600 mt-2">{comingSoon.description}</p><button onClick={()=>setComingSoon(null)} className="mt-5 w-full rounded-xl bg-leaf-700 text-white py-3 text-sm font-bold">Got it</button></div></div>}
       {!showSoilCalculator&&!showKnowledgeCentre&&<BottomNav active={activeTab} onChange={setActiveTab}/>} 
       {showSoilCalculator&&<div className="fixed inset-0 z-40 overflow-y-auto bg-[#f1ebdc]"><div className="mx-auto min-h-full w-full max-w-3xl"><SoilCalculator userId={userId} farmId={activeFarm.id} initialCrop={activeFarm.crop} initialLatitude={activeFarm.latitude ?? 0} initialLongitude={activeFarm.longitude ?? 0} initialLocation={`${activeFarm.district.name} District, Uganda`} onBack={()=>setShowSoilCalculator(false)}/></div></div>}
