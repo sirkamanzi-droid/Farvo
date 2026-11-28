@@ -31,7 +31,7 @@ export async function loadFarmContext(
   const [profileResult, plotsResult, cropsResult, livestockResult, soilResult, carePlansResult, eventsResult] = await Promise.all([
     supabase.from('profiles').select('full_name,preferred_language,decision_style').eq('id', userId).maybeSingle(),
     supabase.from('farm_plots')
-      .select('id,label,boundary_status,mapping_method,centroid_latitude,centroid_longitude,area_acres,area_hectares,created_at')
+      .select('id,label,boundary_status,mapping_method,centroid_latitude,centroid_longitude,centroid_source,centroid_accuracy_m,area_acres,area_hectares,created_at')
       .eq('user_id', userId).eq('farm_id', farmId).order('created_at', { ascending: true }),
     supabase.from('farm_crops')
       .select('id,plot_id,crop_name,variety,planting_date,growth_stage,area_value,area_unit,area_share_percent,input_source,fertiliser_manure_applied,notes,is_active,created_at,updated_at')
