@@ -154,13 +154,13 @@ export default function KatoChat({ userId, farmId, district, cropName, weatherDa
         setActiveId(conversationId);
       }
 
-      const { error: saveUserError } = await supabase.from('kato_messages').insert({
+      const { data: savedQuestion, error: saveUserError } = await supabase.from('kato_messages').insert({
         conversation_id: conversationId, user_id: userId, role: 'user', content: question,
-      });
+      }).select('id').single();
       if (saveUserError) throw saveUserError;
       await recordFarmEvent({
         userId, farmId, eventType: 'farmer_reply', source: 'farmer',
-        sourceRecordType: 'kato_messages', sourceRecordId: undefined,
+        sourceRecordType: 'kato_messages', sourceRecordId: savedQuestion.id,
         payload: { conversation_id: conversationId, role: 'user', message_length: question.length, crop_name: cropName, district_name: district.name },
       });
       // Do not reload the entire chat list before the AI request. The farmer's
