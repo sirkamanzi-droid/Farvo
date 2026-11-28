@@ -253,13 +253,13 @@ function AuthenticatedApp({ userId }: { userId: string }) {
         .eq('farm_id',activeFarm.id)
         .eq('user_id',userId)
         .eq('is_active',true)
-        .order('created_at',{ascending:true});
+        ;
       if(error) throw error;
       const selected = (data ?? []).map(row=>row.crop_name);
       setFarmSetupInitialCrops(selected.length ? selected : [activeFarm.crop]);
       const { data: livestockRows, error: livestockError } = await supabase.from('farm_livestock')
         .select('species,animal_count').eq('farm_id',activeFarm.id).eq('user_id',userId).eq('is_active',true)
-        .order('created_at',{ascending:true});
+        ;
       if(livestockError) throw livestockError;
       setFarmSetupInitialLivestock((livestockRows ?? []).map(row=>({species:row.species,animalCount:row.animal_count===null?null:Number(row.animal_count)})));
       setFarmSetupTargetId(activeFarm.id);
