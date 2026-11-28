@@ -12,6 +12,7 @@ interface Crop {
   name: string;
   emoji: string;
   diseaseSupported: boolean;
+  plotId?: string | null;
 }
 
 const CROPS: Crop[] = SUPPORTED_CROPS.map(crop => ({ ...crop, diseaseSupported: true }));
@@ -362,13 +363,15 @@ export default function DiseaseDetection({
   onCreateCarePlan,
   userId,
   farmId,
+  plotId,
   districtName,
   weatherData,
   weatherDistrictName,
 }: {
-  onCreateCarePlan: (input: { farmId: string; cropName: string; diagnosis: Diagnosis }) => Promise<string>;
+  onCreateCarePlan: (input: { farmId: string; plotId?: string | null; cropName: string; diagnosis: Diagnosis }) => Promise<string>;
   userId: string;
   farmId: string;
+  plotId?: string;
   districtName: string;
   weatherData: WeatherData | null;
   weatherDistrictName: string | null;
@@ -423,12 +426,14 @@ export default function DiseaseDetection({
       }
       const context = await response.json() as {
         farm?: { crop?: string };
-        crops?: Array<{ id: string; crop_name: string }>;
+        crops?: Array<{ id: string; crop_name: string; plot_id: string | null }>;
         cropCarePlans?: SavedDiagnosis[];
       };
-      const registeredNames = (context.crops || []).map(crop => crop.crop_name);
-      const farmCropNames = registeredNames.length ? registeredNames : (context.farm?.crop ? [context.farm.crop] : []);
-      const registeredCrops = CROPS.filter(crop => farmCropNames.some(name => cropKey(name) === crop.id));
+      const plotCrops = (context.crops || []).filter(crop => !plotId || crop.plot_id === plotId);
+      const registeredNames = plotCrops.map(crop => crop.crop_name);
+      const farmCropNames = registeredNames.length ? registeredNames : (!plotId && context.farm?.crop ? [context.farm.crop] : []);
+      const registeredCrops = CROPS.filter(crop => farmCropNames.some(name => cropKey(name) === crop.id))
+        .map(crop => ({ ...crop, plotId: plotId ?? null }));
       setFarmCrops(registeredCrops);
       setSavedDiagnoses((context.cropCarePlans || []) as SavedDiagnosis[]);
       if (registeredCrops.length === 0) {
@@ -444,14 +449,14 @@ export default function DiseaseDetection({
     }
   };
 
-  useEffect(() => { void loadFarmContext(); }, [userId, farmId]);
+  useEffect(() => { void loadFarmContext(); }, [userId, farmId, plotId]);
   useEffect(() => {
     setView('home');
     setSelectedCrop(null);
     setPhotoDataUrl(null);
     setPhotoError(null);
     setDiagnosis(null);
-  }, [farmId]);
+  }, [farmId, plotId]);
 
   async function handleDeleteDiagnosis(item: SavedDiagnosis) {
     const confirmed = window.confirm(`Delete this ${item.crop_name} crop check? Its care plan, activities and check-ins will also be deleted. This cannot be undone.`);
@@ -516,6 +521,7 @@ export default function DiseaseDetection({
       const { error } = await supabase.from('farm_events').insert({
         user_id: userId,
         farm_id: farmId,
+        plot_id: selectedCrop?.plotId ?? plotId ?? null,
         event_type: 'disease_detection',
         occurred_at: scanTimestamp,
         source: 'farmer',
@@ -544,7 +550,7 @@ export default function DiseaseDetection({
       setView('result');
       if (result.outcome === 'disease' && selectedCrop) {
         setCarePlanStatus('creating');
-        void onCreateCarePlan({ farmId, cropName: selectedCrop.name, diagnosis: result })
+        void onCreateCarePlan({ farmId, plotId: selectedCrop.plotId ?? plotId ?? null, cropName: selectedCrop.name, diagnosis: result })
           .then(async (id) => {
             setCarePlanId(id);
             setCarePlanStatus('created');
