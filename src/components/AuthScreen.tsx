@@ -10,6 +10,12 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [cooperativeCode, setCooperativeCode] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState('en');
+  const [preferredChannel, setPreferredChannel] = useState('in_app');
+  const [preferredContactTime, setPreferredContactTime] = useState('');
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [proactiveContactConsent, setProactiveContactConsent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -31,6 +37,12 @@ export default function AuthScreen() {
         data: {
               full_name: fullName.trim(),
               cooperative_code: cooperativeCode.trim().toUpperCase(),
+              phone_number: phoneNumber.trim(),
+              preferred_language: preferredLanguage,
+              preferred_channel: preferredChannel,
+              preferred_contact_time: preferredContactTime,
+              privacy_consent: privacyConsent,
+              proactive_contact_consent: proactiveContactConsent,
             },
           },
         });
@@ -142,6 +154,97 @@ export default function AuthScreen() {
                   placeholder="Enter your cooperative code"
                 />
               </div>
+            </>
+          )}
+
+          {mode === 'register' && (
+            <>
+
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-soil-800 mb-1">
+                  Phone number (optional)
+                </label>
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  autoComplete="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                  placeholder="+2567XXXXXXXX"
+                />
+                <p className="mt-1 text-xs text-soil-500">Use the international format if you want WhatsApp updates.</p>
+              </div>
+
+              <div>
+                <label htmlFor="preferredLanguage" className="block text-sm font-medium text-soil-800 mb-1">
+                  Preferred language
+                </label>
+                <select
+                  id="preferredLanguage"
+                  value={preferredLanguage}
+                  onChange={(e) => setPreferredLanguage(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                >
+                  <option value="en">English</option>
+                  <option value="lg">Luganda</option>
+                  <option value="nyn">Runyankole</option>
+                  <option value="cgg">Rukiga</option>
+                  <option value="sw">Swahili</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="preferredChannel" className="block text-sm font-medium text-soil-800 mb-1">
+                  How should Omulimi contact you?
+                </label>
+                <select
+                  id="preferredChannel"
+                  value={preferredChannel}
+                  onChange={(e) => setPreferredChannel(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                >
+                  <option value="in_app">Inside Omulimi</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="none">No proactive messages</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="preferredContactTime" className="block text-sm font-medium text-soil-800 mb-1">
+                  Best time to receive updates (optional)
+                </label>
+                <input
+                  id="preferredContactTime"
+                  type="time"
+                  value={preferredContactTime}
+                  onChange={(e) => setPreferredContactTime(e.target.value)}
+                  className="w-full rounded-xl border border-leaf-200 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-leaf-500"
+                />
+              </div>
+
+              <label className="flex items-start gap-3 text-sm text-soil-700">
+                <input
+                  type="checkbox"
+                  required
+                  checked={privacyConsent}
+                  onChange={(e) => setPrivacyConsent(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#466b45]"
+                />
+                <span>I agree that Omulimi can use the farm and account information I provide to deliver farm guidance and operate my account.</span>
+              </label>
+
+              <label className="flex items-start gap-3 text-sm text-soil-700">
+                <input
+                  type="checkbox"
+                  required={preferredChannel === 'whatsapp'}
+                  checked={proactiveContactConsent}
+                  onChange={(e) => setProactiveContactConsent(e.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[#466b45]"
+                />
+                <span>I agree to receive proactive farming updates through my selected contact channel. I can change this preference later.</span>
+              </label>
+
             </>
           )}
 
