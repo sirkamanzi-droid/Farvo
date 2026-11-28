@@ -54,7 +54,7 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
   const load = useCallback(async () => {
     setLoading(true);
     const [plotResult, cropResult] = await Promise.all([
-      supabase.from('farm_plots').select('id,label,boundary_status,mapping_method,centroid_latitude,centroid_longitude,area_acres,area_hectares,created_at').eq('farm_id', farmId).eq('user_id', userId).order('created_at', { ascending: true }),
+      supabase.from('farm_plots').select('id,label,boundary_status,mapping_method,centroid_latitude,centroid_longitude,centroid_source,centroid_accuracy_m,area_acres,area_hectares,created_at').eq('farm_id', farmId).eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('farm_crops').select('id,plot_id,crop_name').eq('farm_id', farmId).eq('user_id', userId).eq('is_active', true).order('created_at', { ascending: true }),
     ]);
     if (plotResult.error || cropResult.error) {
@@ -175,6 +175,8 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
         mapping_method: boundary?.mappingMethod ?? 'point',
         centroid_latitude: latitude,
         centroid_longitude: longitude,
+        centroid_source: boundary ? 'gps_walk' : point.accuracyM >= 0 ? 'phone_gps' : 'farm_point',
+        centroid_accuracy_m: boundary || point.accuracyM < 0 ? null : point.accuracyM,
         area_acres: boundary?.areaAcres ?? null,
         area_hectares: boundary?.areaHectares ?? null,
       }).select('id').single();
@@ -204,6 +206,8 @@ export default function FarmPlotsManager({ userId, farmId, farmLatitude, farmLon
         id: plot.id, label: label.trim(), boundary_status: boundary ? 'mapped' : 'needs_boundary',
         mapping_method: boundary?.mappingMethod ?? 'point',
         centroid_latitude: latitude, centroid_longitude: longitude,
+        centroid_source: boundary ? 'gps_walk' : point.accuracyM >= 0 ? 'phone_gps' : 'farm_point',
+        centroid_accuracy_m: boundary || point.accuracyM < 0 ? null : point.accuracyM,
         area_acres: boundary?.areaAcres ?? null, area_hectares: boundary?.areaHectares ?? null,
         created_at: new Date().toISOString(),
       }, cropName);
