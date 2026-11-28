@@ -5,7 +5,7 @@ import AccountScreen from './components/AccountScreen';
 import React, { useState, useEffect, useRef } from 'react';
 import { DEFAULT_CROP, SUPPORTED_CROP_NAMES } from './data/supportedCrops';
 import { District, WeatherData, Farm } from './types';
-import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets } from './data/farms';
+import { fetchFarms, importLegacyFarms, loadLegacyFarms, insertFarm, updateFarm, deleteFarm, createFarm, saveFarmAssets, syncPrimaryFarmCrop } from './data/farms';
 import FarmSetup, { type FarmSetupResult } from './components/FarmSetup';
 import SkyHero from './components/SkyHero';
 import WeatherDashboard from './components/WeatherDashboard';
@@ -268,11 +268,14 @@ function AuthenticatedApp({ userId }: { userId: string }) {
     const changed={...activeFarm,district,crop};
     try {
       const saved=await updateFarm(userId,changed);
+      if(activeFarm.crop!==crop) {
+        await syncPrimaryFarmCrop(userId,saved.id,activeFarm.crop,crop);
+      }
       setFarms(current=>current.map(f=>f.id===saved.id?saved:f));
       setFarmSyncError(null);
     } catch(error) {
       console.error('Could not update farm:',error);
-      setFarmSyncError('Your farm changes could not be saved. Please try again.');
+      setFarmSyncError('Your farm changes could not be fully saved. Please try again.');
     }
   };
   if(!activeFarm) {

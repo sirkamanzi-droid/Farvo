@@ -189,3 +189,57 @@ export async function deleteFarm(userId: string, farmId: string): Promise<void> 
     .eq('user_id', userId);
   if (error) throw error;
 }
+
+
+/**
+ * Keep the farm's primary crop registration in sync when the farmer changes
+ * the crop selector. Other registered crops on the same farm are preserved.
+ */
+export async function syncPrimaryFarmCrop(
+  userId: string,
+  farmId: string,
+  previousCrop: string,
+  nextCrop: string,
+): Promise<void> {
+  const oldName = previousCrop.trim();
+  const newName = nextCrop.trim();
+  if (!newName || oldName.toLowerCase() === newName.toLowerCase()) return;
+
+  if (oldName) {
+    const { error: deactivateError } = await supabase
+      .from('farm_crops')
+      .update({ is_active: false })
+      .eq('farm_id', farmId)
+      .eq('user_id', userId)
+      .eq('crop_name', oldName)
+      .eq('is_active', true);
+    if (deactivateError) throw deactivateError;
+  }
+
+  const { data: existing, error: lookupError } = await supabase
+    .from('farm_crops')
+    .select('id,is_active')
+    .eq('farm_id', farmId)
+    .eq('user_id', userId)
+    .ilike('crop_name', newName)
+    .limit(1)
+    .maybeSingle();
+  if (lookupError) throw lookupError;
+
+  if (existing) {
+    if (!existing.is_active) {
+      const { error } = await supabase
+        .from('farm_crops')
+        .update({ is_active: true })
+        .eq('id', existing.id)
+        .eq('farm_id', farmId)
+        .eq('user_id', userId);
+      if (error) throw error;
+    }
+  } else {
+    const { error } = await supabase
+      .from('farm_crops')
+      .insert({ user_id: userId, farm_id: farmId, crop_name: newName, is_active: true });
+    if (error) throw error;
+  }
+}
